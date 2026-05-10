@@ -1,6 +1,6 @@
-// Civics Quest — Prisma Schema
-// Phase 0: datasource + generator only.
-// Full schema models are added in Phase 1 (spec Section 27).
+// Civics Quest — Full Database Schema
+// Phase 1: All tables from spec Section 27, adapted for Prisma.
+// Table names use snake_case (@@map). Model fields use camelCase.
 
 generator client {
   provider = "prisma-client-js"
@@ -9,4 +9,995 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  PARENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ApprovalStatus {
+  DRAFT
+  NEEDS_REVIEW
+  APPROVED
+  NEEDS_REVISION
+  ARCHIVED
+}
+
+/// Content trust tier per spec Section 24.2.
+/// A = FDOE released (auto-approved), B = reviewed bank,
+/// C = AI draft (always Needs Review), D = bulk-approve-by-tag.
+enum SourceTier {
+  A
+  B
+  C
+  D
+}
+
+enum CognitiveComplexity {
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum StimulusType {
+  NONE
+  EXCERPT
+  CHART
+  MAP
+  TABLE
+  FLOWCHART
+  TIMELINE
+  POLITICAL_CARTOON
+  DIAGRAM
+  SCENARIO
+  IMAGE
+}
+
+enum ItemType {
+  MULTIPLE_CHOICE
+  SCENARIO_MC
+  SOURCE_MC
+  IMAGE_MC
+  FLOWCHART_MC
+  TIMELINE_MC
+  MATCHING
+  SEQUENCING
+  CATEGORIZATION
+  SELECT_ALL
+  SHORT_ANSWER
+}
+
+enum AssessmentType {
+  MASTERY_CHALLENGE
+  PRACTICE
+  READINESS_CHECK
+  REPUBLIC_CHALLENGE
+  FINAL_TRIAL
+  REASSESSMENT
+  DIAGNOSTIC
+}
+
+enum RemediationType {
+  VOCABULARY_TRAINING
+  MINI_LESSON_REPLAY
+  SCENARIO_LAB
+  PRIMARY_SOURCE_COACH
+  VISUAL_EVIDENCE_LAB
+  MISCONCEPTION_FIX
+  BASIC_RETEACH
+  GUIDED_REASONING
+}
+
+/// Student benchmark progress statuses per spec Section 12.2.
+enum StudentProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  READY_FOR_MASTERY
+  NEEDS_REMEDIATION
+  REMEDIATION_COMPLETE
+  MASTERED
+  EXPOSURE_COMPLETE
+  TEACHER_OVERRIDE
+  INTERVENTION_REQUIRED
+}
+
+enum TermTier {
+  TIER_2
+  TIER_3
+}
+
+enum BenchmarkConnectionType {
+  PREREQUISITE
+  CO_REQUISITE
+  EXTENDS
+  SUPPORTS
+}
+
+enum LessonStepType {
+  VIDEO
+  NOTE
+  INTERACTIVE_CHECK
+  DISCUSSION
+  WORKED_EXAMPLE
+  VOCABULARY
+  SOURCE_ANALYSIS
+}
+
+enum ResourceType {
+  VIDEO
+  ARTICLE
+  PRIMARY_SOURCE
+  INTERACTIVE
+  WORKSHEET
+  REFERENCE
+}
+
+enum AssignmentStatus {
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RemediationStatus {
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+}
+
+enum BadgeTrack {
+  MASTERY
+  READING
+  STRATEGY
+  ENGAGEMENT
+}
+
+enum TeacherOverrideAction {
+  UNLOCK_BENCHMARK
+  MARK_MASTERED
+  MARK_EXPOSURE_COMPLETE
+  ASSIGN_REMEDIATION
+  EXTEND_DEADLINE
+  CUSTOM
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  INACTIVE
+  DROPPED
+}
+
+enum ParentVerifiedStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// ============================================================
+// USERS, STUDENTS, TEACHERS, PARENTS
+// ============================================================
+
+model User {
+  id        String     @id @default(cuid())
+  role      UserRole
+  cleverId  String?    @unique @map("clever_id")
+  googleId  String?    @unique @map("google_id")
+  firstName String     @map("first_name")
+  lastName  String     @map("last_name")
+  email     String?    @unique
+  status    UserStatus @default(ACTIVE)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  student   Student?
+  teacher   Teacher?
+  parent    Parent?
+  auditLogs AuditLog[]
+
+  @@map("users")
+}
+
+model Student {
+  id                String  @id @default(cuid())
+  userId            String  @unique @map("user_id")
+  districtStudentId String? @unique @map("district_student_id")
+  gradeLevel        Int     @default(7) @map("grade_level")
+  active            Boolean @default(true)
+  l1Language        String? @map("l1_language")
+  ellStatus         String? @map("ell_status")
+  readingLevelFlag  Boolean @default(false) @map("reading_level_flag")
+  eseStatus         Boolean @default(false) @map("ese_status")
+
+  user                  User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentLinks           ParentStudentLink[]
+  classEnrollments      ClassEnrollment[]
+  studentProgress       StudentProgress[]
+  assessmentAttempts    AssessmentAttempt[]
+  studentRemediations   StudentRemediation[]
+  spacedReviewStates    SpacedReviewState[]
+  spacedReviewEvents    SpacedReviewEvent[]
+  confidenceSnapshots   ConfidenceCalibrationSnapshot[]
+  sourceDecoderProgress SourceDecoderProgress[]
+  strategyTrackProgress StrategyTrackProgress[]
+  studentBadges         StudentBadge[]
+  eocReadiness          EocReadinessSnapshot[]
+  eocActualScores       EocActualScore[]
+  accommodations        StudentAccommodation[]
+  teacherOverrides      TeacherOverride[]
+
+  @@map("students")
+}
+
+model Teacher {
+  id       String  @id @default(cuid())
+  userId   String  @unique @map("user_id")
+  schoolId String? @map("school_id")
+  active   Boolean @default(true)
+
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes   Class[]
+  overrides TeacherOverride[]
+
+  @@map("teachers")
+}
+
+model Parent {
+  id     String  @id @default(cuid())
+  userId String  @unique @map("user_id")
+  active Boolean @default(true)
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  studentLinks ParentStudentLink[]
+
+  @@map("parents")
+}
+
+model ParentStudentLink {
+  id             String               @id @default(cuid())
+  parentId       String               @map("parent_id")
+  studentId      String               @map("student_id")
+  relationship   String
+  verifiedStatus ParentVerifiedStatus @default(PENDING) @map("verified_status")
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  parent  Parent  @relation(fields: [parentId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([parentId, studentId])
+  @@map("parent_student_links")
+}
+
+// ============================================================
+// CLASSES & ENROLLMENTS
+// ============================================================
+
+model Class {
+  id         String  @id @default(cuid())
+  teacherId  String  @map("teacher_id")
+  name       String
+  period     String?
+  schoolYear String  @map("school_year")
+  active     Boolean @default(true)
+
+  teacher            Teacher                  @relation(fields: [teacherId], references: [id])
+  enrollments        ClassEnrollment[]
+  assignments        Assignment[]
+  readinessSnapshots ClassReadinessSnapshot[]
+
+  @@map("classes")
+}
+
+model ClassEnrollment {
+  id         String           @id @default(cuid())
+  classId    String           @map("class_id")
+  studentId  String           @map("student_id")
+  status     EnrollmentStatus @default(ACTIVE)
+  enrolledAt DateTime         @default(now()) @map("enrolled_at")
+
+  class   Class   @relation(fields: [classId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([classId, studentId])
+  @@map("class_enrollments")
+}
+
+// ============================================================
+// CURRICULUM: UNITS, REPORTING CATEGORIES, BENCHMARKS
+// ============================================================
+
+model Unit {
+  id                   String  @id @default(cuid())
+  title                String
+  description          String?
+  sequenceOrder        Int     @map("sequence_order")
+  gameRegionName       String  @map("game_region_name")
+  reportingCategoryMix Json?   @map("reporting_category_mix")
+  active               Boolean @default(true)
+
+  benchmarks Benchmark[]
+
+  @@map("units")
+}
+
+model ReportingCategory {
+  id                 String  @id @default(cuid())
+  name               String  @unique
+  blueprintWeightMin Float   @map("blueprint_weight_min")
+  blueprintWeightMax Float   @map("blueprint_weight_max")
+  description        String?
+
+  benchmarks              Benchmark[]
+  questions               Question[]
+  misconceptions          Misconception[]
+  eocReadinessSnapshots   EocReadinessSnapshot[]
+  classReadinessSnapshots ClassReadinessSnapshot[]
+
+  @@map("reporting_categories")
+}
+
+model Benchmark {
+  id                  String         @id @default(cuid())
+  code                String         @unique
+  title               String
+  unitId              String         @map("unit_id")
+  reportingCategoryId String         @map("reporting_category_id")
+  sequenceOrder       Int            @map("sequence_order")
+  lessonSummary       String?        @map("lesson_summary")
+  approvalStatus      ApprovalStatus @default(DRAFT) @map("approval_status")
+  version             Int            @default(1)
+
+  unit                 Unit                   @relation(fields: [unitId], references: [id])
+  reportingCategory    ReportingCategory      @relation(fields: [reportingCategoryId], references: [id])
+  clarifications       BenchmarkClarification[]
+  connectionsFrom      BenchmarkConnection[]  @relation("ConnectionSource")
+  connectionsTo        BenchmarkConnection[]  @relation("ConnectionTarget")
+  terms                Term[]
+  resources            Resource[]
+  lessons              Lesson[]
+  questions            Question[]
+  assessments          Assessment[]
+  assignments          Assignment[]
+  studentProgress      StudentProgress[]
+  remediationItems     RemediationItem[]
+  spacedReviewStates   SpacedReviewState[]
+  spacedReviewEvents   SpacedReviewEvent[]
+
+  @@map("benchmarks")
+}
+
+model BenchmarkClarification {
+  id            String @id @default(cuid())
+  benchmarkId   String @map("benchmark_id")
+  text          String
+  sequenceOrder Int    @map("sequence_order")
+
+  benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
+
+  @@map("benchmark_clarifications")
+}
+
+model BenchmarkConnection {
+  id                   String                  @id @default(cuid())
+  benchmarkId          String                  @map("benchmark_id")
+  connectedBenchmarkId String                  @map("connected_benchmark_id")
+  relationshipType     BenchmarkConnectionType @map("relationship_type")
+
+  benchmark          Benchmark @relation("ConnectionSource", fields: [benchmarkId], references: [id])
+  connectedBenchmark Benchmark @relation("ConnectionTarget", fields: [connectedBenchmarkId], references: [id])
+
+  @@unique([benchmarkId, connectedBenchmarkId])
+  @@map("benchmark_connections")
+}
+
+// ============================================================
+// VOCABULARY
+// ============================================================
+
+model Term {
+  id             String         @id @default(cuid())
+  benchmarkId    String?        @map("benchmark_id")
+  term           String
+  definition     String
+  tier           TermTier
+  relatedVocab   String?        @map("related_vocab")
+  approvalStatus ApprovalStatus @default(DRAFT) @map("approval_status")
+
+  benchmark    Benchmark?        @relation(fields: [benchmarkId], references: [id])
+  translations TermTranslation[]
+
+  @@map("terms")
+}
+
+model TermTranslation {
+  id                   String         @id @default(cuid())
+  termId               String         @map("term_id")
+  languageCode         String         @map("language_code")
+  definitionTranslated String         @map("definition_translated")
+  approvalStatus       ApprovalStatus @default(DRAFT) @map("approval_status")
+
+  term Term @relation(fields: [termId], references: [id])
+
+  @@unique([termId, languageCode])
+  @@map("term_translations")
+}
+
+// ============================================================
+// RESOURCES & LESSONS
+// ============================================================
+
+model Resource {
+  id             String         @id @default(cuid())
+  benchmarkId    String         @map("benchmark_id")
+  title          String
+  url            String?
+  resourceType   ResourceType   @map("resource_type")
+  description    String?
+  approvalStatus ApprovalStatus @default(DRAFT) @map("approval_status")
+
+  benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
+
+  @@map("resources")
+}
+
+model Lesson {
+  id                    String         @id @default(cuid())
+  benchmarkId           String         @map("benchmark_id")
+  title                 String
+  body                  String
+  studentFriendlyTarget String         @map("student_friendly_target")
+  approvalStatus        ApprovalStatus @default(DRAFT) @map("approval_status")
+  version               Int            @default(1)
+
+  benchmark Benchmark   @relation(fields: [benchmarkId], references: [id])
+  steps     LessonStep[]
+
+  @@map("lessons")
+}
+
+model LessonStep {
+  id            String         @id @default(cuid())
+  lessonId      String         @map("lesson_id")
+  stepType      LessonStepType @map("step_type")
+  title         String
+  content       String
+  sequenceOrder Int            @map("sequence_order")
+  required      Boolean        @default(true)
+
+  lesson          Lesson           @relation(fields: [lessonId], references: [id])
+  currentProgress StudentProgress[] @relation("CurrentLessonStep")
+
+  @@map("lesson_steps")
+}
+
+// ============================================================
+// STIMULI
+// ============================================================
+
+model Stimulus {
+  id               String         @id @default(cuid())
+  title            String
+  stimulusType     StimulusType   @map("stimulus_type")
+  content          String
+  mediaUrl         String?        @map("media_url")
+  source           String?
+  copyrightNotes   String?        @map("copyright_notes")
+  readingLoadLevel Int            @map("reading_load_level")
+  approvalStatus   ApprovalStatus @default(DRAFT) @map("approval_status")
+
+  variants  StimulusVariant[]
+  questions Question[]
+
+  @@map("stimuli")
+}
+
+model StimulusVariant {
+  id               String         @id @default(cuid())
+  stimulusId       String         @map("stimulus_id")
+  readingLoadLevel Int            @map("reading_load_level")
+  content          String
+  approvalStatus   ApprovalStatus @default(DRAFT) @map("approval_status")
+
+  stimulus Stimulus @relation(fields: [stimulusId], references: [id])
+
+  @@unique([stimulusId, readingLoadLevel])
+  @@map("stimulus_variants")
+}
+
+// ============================================================
+// QUESTIONS & OPTIONS
+// ============================================================
+
+model Question {
+  id                  String              @id @default(cuid())
+  /// Stable external key for idempotent seed imports. Format: q-{benchmarkCode}-{NNN}
+  externalKey         String?             @unique @map("external_key")
+  benchmarkId         String              @map("benchmark_id")
+  reportingCategoryId String              @map("reporting_category_id")
+  prompt              String
+  stimulusId          String?             @map("stimulus_id")
+  itemType            ItemType            @map("item_type")
+  difficulty          Float               @default(0.5)
+  cognitiveComplexity CognitiveComplexity @map("cognitive_complexity")
+  readingLoadLevel    Int                 @map("reading_load_level")
+  skillTag            String              @map("skill_tag")
+  remediationTag      String              @map("remediation_tag")
+  misconceptionId     String?             @map("misconception_id")
+  approvalStatus      ApprovalStatus      @default(APPROVED) @map("approval_status")
+  sourceTier          SourceTier          @default(B) @map("source_tier")
+  active              Boolean             @default(true)
+
+  benchmark         Benchmark         @relation(fields: [benchmarkId], references: [id])
+  reportingCategory ReportingCategory @relation(fields: [reportingCategoryId], references: [id])
+  stimulus          Stimulus?         @relation(fields: [stimulusId], references: [id])
+  misconception     Misconception?    @relation("QuestionMisconception", fields: [misconceptionId], references: [id])
+  options           QuestionOption[]
+  assessmentItems   AssessmentQuestion[]
+  attemptResponses  AttemptResponse[]
+  spacedReviewEvents SpacedReviewEvent[]
+
+  @@index([benchmarkId])
+  @@map("questions")
+}
+
+model QuestionOption {
+  id              String  @id @default(cuid())
+  questionId      String  @map("question_id")
+  optionText      String  @map("option_text")
+  /// SECURITY: Never expose isCorrect to the client before submission of a secure assessment.
+  isCorrect       Boolean @map("is_correct")
+  feedback        String?
+  misconceptionId String? @map("misconception_id")
+
+  question         Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  misconception    Misconception? @relation("OptionMisconception", fields: [misconceptionId], references: [id])
+  attemptResponses AttemptResponse[]
+
+  @@map("question_options")
+}
+
+// ============================================================
+// MISCONCEPTIONS
+// ============================================================
+
+model Misconception {
+  id                      String         @id @default(cuid())
+  code                    String         @unique
+  reportingCategoryId     String         @map("reporting_category_id")
+  label                   String
+  description             String
+  commonDistractorPattern String?        @map("common_distractor_pattern")
+  /// Optional: points to a RemediationItem specifically designed to fix this misconception.
+  fixRemediationId        String?        @map("fix_remediation_id")
+  approvalStatus          ApprovalStatus @default(APPROVED) @map("approval_status")
+
+  reportingCategory ReportingCategory @relation(fields: [reportingCategoryId], references: [id])
+  fixRemediation    RemediationItem?  @relation("MisconceptionFix", fields: [fixRemediationId], references: [id])
+  questions         Question[]        @relation("QuestionMisconception")
+  questionOptions   QuestionOption[]  @relation("OptionMisconception")
+  remediationItems  RemediationItem[] @relation("RemediationMisconception")
+
+  @@map("misconceptions")
+}
+
+// ============================================================
+// ASSESSMENTS
+// ============================================================
+
+model Assessment {
+  id               String         @id @default(cuid())
+  benchmarkId      String         @map("benchmark_id")
+  title            String
+  assessmentType   AssessmentType @map("assessment_type")
+  masteryThreshold Float          @default(0.80) @map("mastery_threshold")
+  blueprintJson    Json?          @map("blueprint_json")
+  approvalStatus   ApprovalStatus @default(DRAFT) @map("approval_status")
+
+  benchmark   Benchmark            @relation(fields: [benchmarkId], references: [id])
+  questions   AssessmentQuestion[]
+  attempts    AssessmentAttempt[]
+  assignments Assignment[]
+
+  @@map("assessments")
+}
+
+model AssessmentQuestion {
+  id            String @id @default(cuid())
+  assessmentId  String @map("assessment_id")
+  questionId    String @map("question_id")
+  sequenceOrder Int    @map("sequence_order")
+  points        Float  @default(1.0)
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id])
+  question   Question   @relation(fields: [questionId], references: [id])
+
+  @@unique([assessmentId, questionId])
+  @@map("assessment_questions")
+}
+
+// ============================================================
+// ASSIGNMENTS
+// ============================================================
+
+model Assignment {
+  id           String           @id @default(cuid())
+  classId      String           @map("class_id")
+  benchmarkId  String           @map("benchmark_id")
+  assessmentId String?          @map("assessment_id")
+  assignedBy   String           @map("assigned_by")
+  startAt      DateTime?        @map("start_at")
+  dueAt        DateTime?        @map("due_at")
+  status       AssignmentStatus @default(SCHEDULED)
+
+  class      Class       @relation(fields: [classId], references: [id])
+  benchmark  Benchmark   @relation(fields: [benchmarkId], references: [id])
+  assessment Assessment? @relation(fields: [assessmentId], references: [id])
+
+  @@map("assignments")
+}
+
+// ============================================================
+// STUDENT PROGRESS & ASSESSMENT ATTEMPTS
+// ============================================================
+
+model StudentProgress {
+  id                 String                @id @default(cuid())
+  studentId          String                @map("student_id")
+  benchmarkId        String                @map("benchmark_id")
+  status             StudentProgressStatus @default(NOT_STARTED)
+  masteryScore       Float?                @map("mastery_score")
+  masteredAt         DateTime?             @map("mastered_at")
+  currentStepId      String?               @map("current_step_id")
+  attemptsCount      Int                   @default(0) @map("attempts_count")
+  offRampTriggeredAt DateTime?             @map("off_ramp_triggered_at")
+
+  student     Student     @relation(fields: [studentId], references: [id])
+  benchmark   Benchmark   @relation(fields: [benchmarkId], references: [id])
+  currentStep LessonStep? @relation("CurrentLessonStep", fields: [currentStepId], references: [id])
+
+  @@unique([studentId, benchmarkId])
+  @@index([studentId, benchmarkId])
+  @@map("student_progress")
+}
+
+model AssessmentAttempt {
+  id            String    @id @default(cuid())
+  assessmentId  String    @map("assessment_id")
+  studentId     String    @map("student_id")
+  attemptNumber Int       @map("attempt_number")
+  score         Float?
+  passed        Boolean?
+  startedAt     DateTime  @default(now()) @map("started_at")
+  submittedAt   DateTime? @map("submitted_at")
+
+  assessment Assessment      @relation(fields: [assessmentId], references: [id])
+  student    Student         @relation(fields: [studentId], references: [id])
+  responses  AttemptResponse[]
+
+  @@index([assessmentId, studentId])
+  @@map("assessment_attempts")
+}
+
+model AttemptResponse {
+  id               String  @id @default(cuid())
+  attemptId        String  @map("attempt_id")
+  questionId       String  @map("question_id")
+  responseJson     Json    @map("response_json")
+  selectedOptionId String? @map("selected_option_id")
+  /// Server-computed — never accepted from client payload.
+  isCorrect        Boolean @map("is_correct")
+  pointsAwarded    Float   @default(0) @map("points_awarded")
+  /// 0 = "Not sure", 1 = "Pretty sure", 2 = "Very sure"; null if not captured.
+  confidence       Int?
+  timeSeconds      Int?    @map("time_seconds")
+
+  attempt        AssessmentAttempt @relation(fields: [attemptId], references: [id])
+  question       Question          @relation(fields: [questionId], references: [id])
+  selectedOption QuestionOption?   @relation(fields: [selectedOptionId], references: [id])
+
+  @@map("attempt_responses")
+}
+
+// ============================================================
+// REMEDIATION
+// ============================================================
+
+model RemediationItem {
+  id              String          @id @default(cuid())
+  benchmarkId     String          @map("benchmark_id")
+  title           String
+  remediationType RemediationType @map("remediation_type")
+  skillTag        String          @map("skill_tag")
+  misconceptionId String?         @map("misconception_id")
+  content         String
+  approvalStatus  ApprovalStatus  @default(DRAFT) @map("approval_status")
+
+  benchmark           Benchmark          @relation(fields: [benchmarkId], references: [id])
+  misconception       Misconception?     @relation("RemediationMisconception", fields: [misconceptionId], references: [id])
+  fixForMisconception Misconception[]    @relation("MisconceptionFix")
+  studentRemediations StudentRemediation[]
+
+  @@map("remediation_items")
+}
+
+model StudentRemediation {
+  id                String            @id @default(cuid())
+  studentId         String            @map("student_id")
+  benchmarkId       String            @map("benchmark_id")
+  remediationItemId String            @map("remediation_item_id")
+  status            RemediationStatus @default(ASSIGNED)
+  assignedAt        DateTime          @default(now()) @map("assigned_at")
+  completedAt       DateTime?         @map("completed_at")
+
+  student         Student         @relation(fields: [studentId], references: [id])
+  remediationItem RemediationItem @relation(fields: [remediationItemId], references: [id])
+
+  @@map("student_remediations")
+}
+
+// ============================================================
+// SPACED RETRIEVAL ENGINE (SM-2)
+// Spec Section 15. Do NOT skip the due_at index.
+// ============================================================
+
+model SpacedReviewState {
+  id              String    @id @default(cuid())
+  studentId       String    @map("student_id")
+  benchmarkId     String    @map("benchmark_id")
+  repetitionCount Int       @default(0) @map("repetition_count")
+  /// SM-2 easiness factor. Default 2.5 per algorithm spec.
+  easinessFactor  Float     @default(2.5) @map("easiness_factor")
+  intervalDays    Int       @default(1) @map("interval_days")
+  /// Indexed — the daily drill query filters by this column.
+  dueAt           DateTime  @map("due_at")
+  lastReviewedAt  DateTime? @map("last_reviewed_at")
+  /// SM-2 quality score (0–5) from the last review.
+  lastQuality     Int?      @map("last_quality")
+
+  student   Student   @relation(fields: [studentId], references: [id])
+  benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
+
+  @@unique([studentId, benchmarkId])
+  @@index([studentId, benchmarkId])
+  @@index([dueAt])
+  @@map("spaced_review_state")
+}
+
+model SpacedReviewEvent {
+  id          String   @id @default(cuid())
+  studentId   String   @map("student_id")
+  benchmarkId String   @map("benchmark_id")
+  questionId  String   @map("question_id")
+  /// SM-2 quality score (0–5) computed from (correctness × confidence).
+  quality     Int
+  /// 0 = "Not sure", 1 = "Pretty sure", 2 = "Very sure"
+  confidence  Int?
+  isCorrect   Boolean  @map("is_correct")
+  occurredAt  DateTime @default(now()) @map("occurred_at")
+
+  student   Student   @relation(fields: [studentId], references: [id])
+  benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
+  question  Question  @relation(fields: [questionId], references: [id])
+
+  @@map("spaced_review_events")
+}
+
+// ============================================================
+// CONFIDENCE CALIBRATION (Spec Section 17)
+// ============================================================
+
+model ConfidenceCalibrationSnapshot {
+  id                        String   @id @default(cuid())
+  studentId                 String   @map("student_id")
+  /// e.g. "benchmark:SS.7.CG.1.1" or "overall"
+  scope                     String
+  snapshotAt                DateTime @default(now()) @map("snapshot_at")
+  highConfidenceCorrect     Int      @default(0) @map("high_confidence_correct")
+  highConfidenceIncorrect   Int      @default(0) @map("high_confidence_incorrect")
+  mediumConfidenceCorrect   Int      @default(0) @map("medium_confidence_correct")
+  mediumConfidenceIncorrect Int      @default(0) @map("medium_confidence_incorrect")
+  lowConfidenceCorrect      Int      @default(0) @map("low_confidence_correct")
+  lowConfidenceIncorrect    Int      @default(0) @map("low_confidence_incorrect")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("confidence_calibration_snapshots")
+}
+
+// ============================================================
+// PARALLEL TRACKS (Source Decoder & Strategist)
+// ============================================================
+
+model SourceDecoderProgress {
+  id          String    @id @default(cuid())
+  studentId   String    @map("student_id")
+  level       Int
+  completedAt DateTime? @map("completed_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, level])
+  @@map("source_decoder_progress")
+}
+
+model StrategyTrackProgress {
+  id          String    @id @default(cuid())
+  studentId   String    @map("student_id")
+  missionCode String    @map("mission_code")
+  completedAt DateTime? @map("completed_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, missionCode])
+  @@map("strategy_track_progress")
+}
+
+// ============================================================
+// BADGES
+// ============================================================
+
+model Badge {
+  id           String     @id @default(cuid())
+  name         String     @unique
+  description  String
+  iconKey      String     @map("icon_key")
+  criteriaJson Json       @map("criteria_json")
+  track        BadgeTrack
+
+  studentBadges StudentBadge[]
+
+  @@map("badges")
+}
+
+model StudentBadge {
+  id        String   @id @default(cuid())
+  studentId String   @map("student_id")
+  badgeId   String   @map("badge_id")
+  awardedAt DateTime @default(now()) @map("awarded_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  badge   Badge   @relation(fields: [badgeId], references: [id])
+
+  @@unique([studentId, badgeId])
+  @@map("student_badges")
+}
+
+// ============================================================
+// EOC ANALYTICS & CALIBRATION (Spec Section 20)
+// ============================================================
+
+model EocReadinessSnapshot {
+  id                  String   @id @default(cuid())
+  studentId           String   @map("student_id")
+  reportingCategoryId String   @map("reporting_category_id")
+  readinessScore      Float    @map("readiness_score")
+  readinessLow        Float    @map("readiness_low")
+  readinessHigh       Float    @map("readiness_high")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  student           Student           @relation(fields: [studentId], references: [id])
+  reportingCategory ReportingCategory @relation(fields: [reportingCategoryId], references: [id])
+
+  @@map("eoc_readiness_snapshots")
+}
+
+model ClassReadinessSnapshot {
+  id                  String   @id @default(cuid())
+  classId             String   @map("class_id")
+  reportingCategoryId String   @map("reporting_category_id")
+  readinessScore      Float    @map("readiness_score")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  class             Class             @relation(fields: [classId], references: [id])
+  reportingCategory ReportingCategory @relation(fields: [reportingCategoryId], references: [id])
+
+  @@map("class_readiness_snapshots")
+}
+
+model EocActualScore {
+  id                  String   @id @default(cuid())
+  studentId           String   @map("student_id")
+  schoolYear          String   @map("school_year")
+  scaledScore         Float?   @map("scaled_score")
+  achievementLevel    Int?     @map("achievement_level")
+  enteredBy           String   @map("entered_by")
+  enteredAt           DateTime @default(now()) @map("entered_at")
+  consentAcknowledged Boolean  @default(false) @map("consent_acknowledged")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, schoolYear])
+  @@map("eoc_actual_scores")
+}
+
+model EocCalibrationRun {
+  id                                 String   @id @default(cuid())
+  schoolYear                         String   @map("school_year")
+  correlationReadinessToScaled       Float?   @map("correlation_readiness_to_scaled")
+  correlationByReportingCategory     Json?    @map("correlation_by_reporting_category")
+  correlationByStimulusType          Json?    @map("correlation_by_stimulus_type")
+  correlationByComplexity            Json?    @map("correlation_by_complexity")
+  correlationByReadingLoad           Json?    @map("correlation_by_reading_load")
+  correlationByConfidenceCalibration Json?    @map("correlation_by_confidence_calibration")
+  recommendedWeightChanges           Json?    @map("recommended_weight_changes")
+  applied                            Boolean  @default(false)
+  runAt                              DateTime @default(now()) @map("run_at")
+
+  @@map("eoc_calibration_runs")
+}
+
+// ============================================================
+// ACCOMMODATIONS (Spec Appendix G — first-class profile attributes)
+// ============================================================
+
+model Accommodation {
+  id          String @id @default(cuid())
+  code        String @unique
+  name        String
+  description String
+
+  studentAccommodations StudentAccommodation[]
+
+  @@map("accommodations")
+}
+
+model StudentAccommodation {
+  id              String   @id @default(cuid())
+  studentId       String   @map("student_id")
+  accommodationId String   @map("accommodation_id")
+  grantedBy       String   @map("granted_by")
+  grantedAt       DateTime @default(now()) @map("granted_at")
+  active          Boolean  @default(true)
+
+  student       Student       @relation(fields: [studentId], references: [id])
+  accommodation Accommodation @relation(fields: [accommodationId], references: [id])
+
+  @@unique([studentId, accommodationId])
+  @@map("student_accommodations")
+}
+
+// ============================================================
+// TEACHER OVERRIDES & AUDIT LOG
+// ============================================================
+
+model TeacherOverride {
+  id          String                @id @default(cuid())
+  teacherId   String                @map("teacher_id")
+  studentId   String                @map("student_id")
+  benchmarkId String?               @map("benchmark_id")
+  action      TeacherOverrideAction
+  reason      String
+  createdAt   DateTime              @default(now()) @map("created_at")
+
+  teacher Teacher @relation(fields: [teacherId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("teacher_overrides")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  metadataJson Json?   @map("metadata_json")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@map("audit_logs")
 }

@@ -148,11 +148,11 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
-**Phase 1 — Not started**
+**Phase 2 — Not started**
 
-Phase 0 complete — Audit 0 passed 2026-05-09.
+Phase 1 complete — Audit 1 passed 2026-05-09.
 
-Next action: Begin Phase 1. Use `/plan` before any schema work. Implement all spec Section 27 tables as Prisma models, run migrations on a fresh DB, populate all seed scripts. Target: Audit 1 (spec Section 36.2).
+Next action: Begin Phase 2. Use `/plan` before implementing auth. Implement Clever OAuth, Google OAuth fallback, mock auth (dev only), role middleware (student/teacher/parent/admin), base routing, session encryption. Target: Audit 2 (spec Section 36.3).
 
 ---
 
@@ -160,7 +160,7 @@ Next action: Begin Phase 1. Use `/plan` before any schema work. Implement all sp
 
 _(Update this at the end of every session.)_
 
-**Session of 2026-05-09:** Phase 0 complete. Installed PostgreSQL 16.13 (Homebrew). Initialized git repo. Scaffolded full project: Next.js 14, TypeScript 5, Tailwind CSS 3, Prisma 5, next-auth 4, Zod, Jest. Created `.env.example` (15 vars), `docs/runbook.md`, `docs/architecture.md`, `docs/adrs/0001-postgresql-local-homebrew.md`, all seed stubs, health endpoint. npm install: 634 packages. Audit 0 passed all 7 items. Tagged `phase-0-complete`.
+**Session of 2026-05-09 (Phase 1):** Phase 1 complete. Implemented full Prisma schema (45 models, all Section 27 tables, FK constraints, indexes). Created and applied migration `20260509202124_phase_1_initial_schema`. Wrote all 5 seed scripts: reporting_categories (4), benchmarks/units/accommodations (7 units, 6 benchmarks, 6 accommodations), misconception_inventory (50), vocabulary (85 terms), sample_questions_unit_1 (90 questions × 360 options, 15 per benchmark, full tagging: benchmark, reporting_category, cognitive_complexity, reading_load_level, skill_tag, remediation_tag, misconception_id, source_tier B, approval_status APPROVED). All seeds idempotent. Added ts-node dev dependency for Jest TypeScript config. Wrote 29 integration tests (tests/integration/seed.test.ts) — 29/29 pass. Migration verified on fresh DB via prisma migrate reset. TypeScript: 0 errors. Audit 1 passed all 10 items. Tagged `phase-1-complete`.
 
 ---
 
