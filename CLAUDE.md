@@ -148,17 +148,19 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
-**Phase 5 — Not started**
+**Phase 6 — Not started**
 
-Phase 4 complete — Audit 4 passed 2026-05-14.
+Phase 5 complete — Audit 5 passed 2026-05-14.
 
-Next action: Begin Phase 5. Use `/plan` before implementing spaced retrieval engine. Implement SM-2 scheduler, daily drill queue, decay detection, off-ramp high-frequency review. Target: Audit 5 (spec Section 36.6).
+Next action: Begin Phase 6. Use `/plan` before implementing adaptive difficulty engine. Implement within-session 3/3 rule (3 correct → bump complexity up, 3 incorrect → bump down + worked example), worked example insertion, near-transfer item follow-up, session state reset between sessions. Mastery Challenges remain fixed-form. Target: Audit 6 (spec Section 36.7).
 
 ---
 
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-05-14 (Phase 5):** Phase 5 complete. Audit 5 passed. Spaced retrieval engine built in full. Domain module `src/lib/spaced-retrieval/` with 5 files: `sm2.ts` — pure SM-2 algorithm (`computeQuality`, `computeNextState`, `computeDueAt`, `halveInterval` — all pure functions matching spec Section 15.2 exactly); `drill.ts` — `getDrillQueue()` pulling due items (dueAt <= now), capped at 15, interleaved across benchmarks, alternate question selection excluding previously seen items; `review.ts` — `submitReview()` recording SpacedReviewEvent + updating SM-2 state in a `$transaction`, off-ramp halving logic (checks last 2 events for consecutive quality>=3 recovery), `gradeReviewAnswer()` server-side grading; `decay.ts` — `getDecayingBenchmarks()` per-student + `getClassDecayRates()` per-teacher-class with spike alerts; `index.ts` — public exports. API routes: `GET /api/drill` (student drill queue) and `POST /api/drill/[benchmarkId]/review` (submit answer + SM-2 update, server-side grading). Tests: 25 unit (sm2.test.ts) + 25 integration (all 9 Audit 5 items) = 50 new tests; 205 total (all pass). TypeScript: 0 errors. Tagged `phase-5-complete`.
 
 **Session of 2026-05-14 (Phase 4):** Phase 4 complete. Implemented full mastery + remediation engine. Domain modules: `src/lib/mastery/` (4 files: `unlock.ts` — next benchmark unlock via sequenceOrder, `off-ramp.ts` — pure `isOffRampConditionMet()` + DB-backed `checkOffRamp()` with $transaction + AuditLog + SpacedReviewState halving, `status.ts` — `updateProgressAfterAttempt()` orchestrator wired into submit route as non-fatal hook, `override.ts` — teacher override with sequential TeacherOverride+AuditLog write) and `src/lib/remediation/` (3 files: `assign.ts` — `selectRemediationType()` pure function + `assignRemediation()` DB function, `complete.ts` — completion + REMEDIATION_COMPLETE advancement, `questions.ts` — alternate question fetch excluding seen IDs). API routes: POST `/api/mastery/[benchmarkId]/override` (teacher/admin only), POST `/api/remediation/[studentRemediationId]/complete` (student only). Submit route now calls `updateProgressAfterAttempt` post-grading (non-fatal error handling). Tests: 18 unit (pure functions) + 40 integration (all 8 Audit 4 items) = 58 new tests; 155 total (all pass). TypeScript: 0 errors. Audit 4 passed all 8 items. Tagged `phase-4-complete`.
 
