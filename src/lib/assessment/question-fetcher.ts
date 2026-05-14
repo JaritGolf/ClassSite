@@ -8,9 +8,17 @@
  * Correct options and feedback are fetched by separate functions that are
  * ONLY called server-side after submission — never included in the
  * pre-submission question delivery response.
+ *
+ * Phase 7 addition: when `studentId` is provided, stimulus content is
+ * selected at the student's effective reading-load level (accommodation-aware).
  */
 
 import { prisma } from '@/lib/db'
+import {
+  getEffectiveReadingLevel,
+  fetchStimulusForQuestion,
+  type StimulusAttachment,
+} from '@/lib/reading-load'
 
 /** Safe question shape — no isCorrect, no feedback on options */
 export interface SafeOption {
@@ -25,6 +33,8 @@ export interface SafeQuestion {
   cognitiveComplexity: string
   readingLoadLevel: number
   options: SafeOption[]
+  /** Stimulus content at the student's effective reading-load level, or null if no stimulus */
+  stimulus: StimulusAttachment | null
 }
 
 export interface AssessmentMeta {
@@ -38,10 +48,18 @@ export interface AssessmentMeta {
  * Fetch an assessment's metadata + questions for safe delivery to a student.
  * Returns null if the assessment does not exist.
  *
+ * When `studentId` is provided:
+ *   - Resolves the student's effective reading-load level (accommodation-aware)
+ *   - Attaches stimulus content (with variant selection) to each question that has one
+ *   - For MASTERY_CHALLENGE: accommodations do not downgrade the level
+ *
  * NEVER includes isCorrect on options. Uses explicit Prisma select to prevent
  * accidental inclusion if schema fields change.
  */
-export async function fetchAssessmentForStudent(assessmentId: string): Promise<{
+export async function fetchAssessmentForStudent(
+  assessmentId: string,
+  studentId?: string
+): Promise<{
   meta: AssessmentMeta
   questions: SafeQuestion[]
 } | null> {
@@ -80,6 +98,38 @@ export async function fetchAssessmentForStudent(assessmentId: string): Promise<{
 
   if (!assessment) return null
 
+  const isMasteryChallenge = assessment.assessmentType === 'MASTERY_CHALLENGE'
+
+  // Resolve effective reading level if studentId provided
+  let effectiveLevel = 2 // default
+  if (studentId) {
+    const levelResult = await getEffectiveReadingLevel(
+      studentId,
+      2, // base level
+      isMasteryChallenge
+    )
+    effectiveLevel = levelResult.effectiveLevel
+  }
+
+  // Attach stimulus content to each question (parallel fetch)
+  const questions = await Promise.all(
+    assessment.questions.map(async (aq) => {
+      let stimulus: StimulusAttachment | null = null
+      if (studentId) {
+        stimulus = await fetchStimulusForQuestion(aq.question.id, effectiveLevel, [])
+      }
+      return {
+        id: aq.question.id,
+        prompt: aq.question.prompt,
+        itemType: aq.question.itemType,
+        cognitiveComplexity: aq.question.cognitiveComplexity,
+        readingLoadLevel: aq.question.readingLoadLevel,
+        options: aq.question.options,
+        stimulus,
+      }
+    })
+  )
+
   return {
     meta: {
       id: assessment.id,
@@ -87,14 +137,7 @@ export async function fetchAssessmentForStudent(assessmentId: string): Promise<{
       assessmentType: assessment.assessmentType,
       masteryThreshold: assessment.masteryThreshold,
     },
-    questions: assessment.questions.map((aq) => ({
-      id: aq.question.id,
-      prompt: aq.question.prompt,
-      itemType: aq.question.itemType,
-      cognitiveComplexity: aq.question.cognitiveComplexity,
-      readingLoadLevel: aq.question.readingLoadLevel,
-      options: aq.question.options,
-    })),
+    questions,
   }
 }
 

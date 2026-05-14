@@ -13,6 +13,7 @@ import type { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getNextItem } from '@/lib/adaptive-difficulty'
+import { getEffectiveReadingLevel } from '@/lib/reading-load'
 
 interface RouteParams {
   params: { attemptId: string }
@@ -40,7 +41,9 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const payload = await getNextItem(params.attemptId, student.id)
+    // Resolve accommodation-adjusted reading level for practice (Audit 7 item 4)
+    const { effectiveLevel } = await getEffectiveReadingLevel(student.id, 2, false)
+    const payload = await getNextItem(params.attemptId, student.id, effectiveLevel)
     return NextResponse.json(payload)
   } catch (err) {
     console.error('[practice/next-item]', err instanceof Error ? err.message : err)

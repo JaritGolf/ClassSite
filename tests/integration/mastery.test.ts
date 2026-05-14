@@ -108,9 +108,10 @@ beforeAll(async () => {
   benchmarkId = bm1!.id
   nextBenchmarkId = bm2!.id
 
-  // 2. Get 5 seeded questions from SS.7.CG.1.1
+  // 2. Get 5 seeded questions from SS.7.CG.1.1 at level >= 2.
+  // Mastery Challenges require reading-load level 2 minimum (Audit 7 item 2).
   const dbQuestions = await prisma.question.findMany({
-    where: { benchmarkId, approvalStatus: 'APPROVED' },
+    where: { benchmarkId, approvalStatus: 'APPROVED', readingLoadLevel: { gte: 2 } },
     take: 5,
     include: { options: { select: { id: true, isCorrect: true } } },
   })

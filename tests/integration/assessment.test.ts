@@ -41,9 +41,10 @@ beforeAll(async () => {
   })
   expect(benchmark).not.toBeNull()
 
-  // Get 5 questions from the seeded bank
+  // Get 5 questions at reading-load level >= 2 from the seeded bank.
+  // Mastery Challenges require level-2 minimum (Audit 7 item 2 — enforced in gradeAndSubmit).
   const dbQuestions = await prisma.question.findMany({
-    where: { benchmarkId: benchmark!.id },
+    where: { benchmarkId: benchmark!.id, readingLoadLevel: { gte: 2 } },
     take: 5,
     include: {
       options: { select: { id: true, isCorrect: true } },

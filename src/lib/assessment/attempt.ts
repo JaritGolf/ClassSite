@@ -26,6 +26,7 @@ export class AssessmentError extends Error {
       | 'FORBIDDEN'
       | 'ALREADY_SUBMITTED'
       | 'CONFIDENCE_REQUIRED'
+      | 'INVALID_CONTENT'
   ) {
     super(message)
     this.name = 'AssessmentError'
@@ -199,7 +200,25 @@ export async function gradeAndSubmit(
     )
   }
 
-  // 3. Validate confidence requirement (Audit 3 item 3)
+  // 3a. Mastery Challenge reading-load level-2 minimum (Audit 7 item 2)
+  if (assessment.assessmentType === 'MASTERY_CHALLENGE') {
+    const questionLevels = await prisma.assessmentQuestion.findMany({
+      where: { assessmentId: attempt.assessmentId },
+      select: { question: { select: { id: true, readingLoadLevel: true } } },
+    })
+    const belowLevel2 = questionLevels.filter(
+      (aq) => aq.question.readingLoadLevel < 2
+    )
+    if (belowLevel2.length > 0) {
+      throw new AssessmentError(
+        `Mastery Challenge contains ${belowLevel2.length} question(s) below reading-load level 2. ` +
+          'Resolve content configuration before accepting submissions.',
+        'INVALID_CONTENT'
+      )
+    }
+  }
+
+  // 3b. Validate confidence requirement (Audit 3 item 3)
   if (CONFIDENCE_REQUIRED_TYPES.has(assessment.assessmentType)) {
     const missingConfidence = input.responses.some(
       (r) => r.confidence === undefined || r.confidence === null

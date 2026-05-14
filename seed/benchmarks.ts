@@ -295,6 +295,9 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
     { code: 'ACC-SIMPLE-LANG', name: 'Simplified Language', description: 'Defaults stimulus to reading-load level 1 where available.' },
     { code: 'ACC-T2-VOCAB', name: 'Tier-2 Vocabulary Popovers Always On', description: 'Tier-2 academic words always show glossary popover.' },
     { code: 'ACC-REDUCED-CHOICES', name: 'Reduced Answer Choices', description: '3 instead of 4 answer choices on practice (not Mastery). Phase 9+.' },
+    // Phase 7: reading-load accommodation codes used by getEffectiveReadingLevel
+    { code: 'ELL', name: 'English Language Learner', description: 'Defaults stimulus content to reading-load level 1 for practice. Tier-2 glossary and sentence-chunking enabled by default.' },
+    { code: 'BELOW-GRADE-READER', name: 'Below-Grade Reader', description: 'Defaults stimulus content to reading-load level 1. Read-aloud and sentence-chunking enabled by default.' },
   ]
   for (const acc of accommodations) {
     await prisma.accommodation.upsert({

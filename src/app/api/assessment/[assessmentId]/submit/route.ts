@@ -84,6 +84,7 @@ export async function POST(req: NextRequest, { params: _params }: RouteParams) {
         FORBIDDEN: 403,
         ALREADY_SUBMITTED: 409,
         CONFIDENCE_REQUIRED: 422,
+        INVALID_CONTENT: 422,
       } as const
       return NextResponse.json(
         { error: err.message, code: err.code },

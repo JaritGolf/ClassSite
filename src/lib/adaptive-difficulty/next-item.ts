@@ -8,6 +8,9 @@
  *
  * Security: options are returned WITHOUT isCorrect (safe delivery model
  * matching Phase 3 fetchAssessmentForStudent).
+ *
+ * Phase 7 addition: optional `effectiveReadingLevel` parameter filters
+ * questions to the student's accommodation-adjusted level for practice.
  */
 
 import { prisma } from '@/lib/db'
@@ -52,18 +55,20 @@ export type NextItemPayload =
 /**
  * Return the next item for the student in a practice session.
  *
- * @param attemptId - The current AssessmentAttempt.id
- * @param studentId - Used to determine seen question IDs for exclusion
+ * @param attemptId            - The current AssessmentAttempt.id
+ * @param studentId            - Used to determine seen question IDs for exclusion
+ * @param effectiveReadingLevel - Optional: filter questions to this level (accommodation override)
  */
 export async function getNextItem(
   attemptId: string,
-  studentId: string
+  studentId: string,
+  effectiveReadingLevel?: number
 ): Promise<NextItemPayload> {
   const state = await getSessionState(attemptId)
 
   if (!state) {
     // No adaptive state → this is a fixed-form assessment; return raw next question
-    return getNextRegularQuestion(attemptId, null, null)
+    return getNextRegularQuestion(attemptId, null, null, effectiveReadingLevel)
   }
 
   // ── Pending worked example ─────────────────────────────────────────────
@@ -95,14 +100,15 @@ export async function getNextItem(
       await getBenchmarkId(attemptId),
       state.currentComplexity,
       excludeIds,
-      null // no skill-tag filter — any same-complexity question works
+      null, // no skill-tag filter — any same-complexity question works
+      effectiveReadingLevel
     )
     if (!nearTransfer) return { type: 'NO_ITEMS_AVAILABLE' }
     return { type: 'NEAR_TRANSFER', question: nearTransfer }
   }
 
   // ── Regular next question at currentComplexity ─────────────────────────
-  return getNextRegularQuestion(attemptId, state.currentComplexity, null)
+  return getNextRegularQuestion(attemptId, state.currentComplexity, null, effectiveReadingLevel)
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -110,12 +116,13 @@ export async function getNextItem(
 async function getNextRegularQuestion(
   attemptId: string,
   complexity: CognitiveComplexity | null,
-  skillTag: string | null
+  skillTag: string | null,
+  effectiveReadingLevel?: number
 ): Promise<NextItemPayload> {
   const benchmarkId = await getBenchmarkId(attemptId)
   const seenIds = await getSeenQuestionIds(attemptId)
 
-  const question = await selectQuestion(benchmarkId, complexity, seenIds, skillTag)
+  const question = await selectQuestion(benchmarkId, complexity, seenIds, skillTag, effectiveReadingLevel)
   if (!question) return { type: 'NO_ITEMS_AVAILABLE' }
   return { type: 'QUESTION', question }
 }
@@ -171,12 +178,17 @@ async function buildWorkedExamplePayload(
   }
 }
 
-/** Pick one approved question at the given complexity, excluding seen IDs. */
+/**
+ * Pick one approved question at the given complexity, excluding seen IDs.
+ * When effectiveReadingLevel is provided, filters to questions at that level
+ * or below (accommodation-aware practice mode, Audit 7 item 4).
+ */
 async function selectQuestion(
   benchmarkId: string,
   complexity: CognitiveComplexity | null,
   seenIds: string[],
-  skillTag: string | null
+  skillTag: string | null,
+  effectiveReadingLevel?: number
 ): Promise<SafeQuestion | null> {
   const question = await prisma.question.findFirst({
     where: {
@@ -185,6 +197,9 @@ async function selectQuestion(
       active: true,
       ...(complexity ? { cognitiveComplexity: complexity } : {}),
       ...(skillTag ? { skillTag } : {}),
+      ...(effectiveReadingLevel !== undefined
+        ? { readingLoadLevel: { lte: effectiveReadingLevel } }
+        : {}),
       id: seenIds.length > 0 ? { notIn: seenIds } : undefined,
     },
     select: {
