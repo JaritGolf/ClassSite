@@ -148,11 +148,11 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
-**Phase 2 — Not started**
+**Phase 3 — Not started**
 
-Phase 1 complete — Audit 1 passed 2026-05-09.
+Phase 2 complete — Audit 2 passed 2026-05-14.
 
-Next action: Begin Phase 2. Use `/plan` before implementing auth. Implement Clever OAuth, Google OAuth fallback, mock auth (dev only), role middleware (student/teacher/parent/admin), base routing, session encryption. Target: Audit 2 (spec Section 36.3).
+Next action: Begin Phase 3. Use `/plan` before implementing assessment engine. Implement server-side grading, assessment attempts, confidence capture, tamper rejection, practice vs. secure mode. Target: Audit 3 (spec Section 36.4).
 
 ---
 
@@ -160,7 +160,7 @@ Next action: Begin Phase 2. Use `/plan` before implementing auth. Implement Clev
 
 _(Update this at the end of every session.)_
 
-**Session of 2026-05-09 (Phase 1):** Phase 1 complete. Implemented full Prisma schema (45 models, all Section 27 tables, FK constraints, indexes). Created and applied migration `20260509202124_phase_1_initial_schema`. Wrote all 5 seed scripts: reporting_categories (4), benchmarks/units/accommodations (7 units, 6 benchmarks, 6 accommodations), misconception_inventory (50), vocabulary (85 terms), sample_questions_unit_1 (90 questions × 360 options, 15 per benchmark, full tagging: benchmark, reporting_category, cognitive_complexity, reading_load_level, skill_tag, remediation_tag, misconception_id, source_tier B, approval_status APPROVED). All seeds idempotent. Added ts-node dev dependency for Jest TypeScript config. Wrote 29 integration tests (tests/integration/seed.test.ts) — 29/29 pass. Migration verified on fresh DB via prisma migrate reset. TypeScript: 0 errors. Audit 1 passed all 10 items. Tagged `phase-1-complete`.
+**Session of 2026-05-14 (Phase 2):** Phase 2 complete. Implemented full auth system: next-auth v4, JWT session strategy, SESSION_SECRET, Clever OAuth custom provider (scaffolded with full TODO docs for Phase 17), Google OAuth fallback (new users created INACTIVE pending admin approval), mock credentials provider (dev only, double-guarded by MOCK_AUTH env + NODE_ENV check). Role-based route protection via withAuth middleware using checkRouteAccess pure function (ADMIN has super-access). Type augmentation for Session/User/JWT with UserRole. SessionProvider wrapper. Login page (Server Component + Client buttons), role home shells (student/teacher/parent/admin dashboards), unauthorized page. Docs: Clever setup section in runbook.md, ADR 0002 (JWT sessions), ADR 0003 (Google pending approval). Tests: 22 unit + 11 integration = 33 new tests; 62 total (all pass). TypeScript: 0 errors. Audit 2 passed all 7 items. Tagged `phase-2-complete`.
 
 ---
 
