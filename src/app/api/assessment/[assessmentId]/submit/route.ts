@@ -19,6 +19,7 @@ import type { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { gradeAndSubmit, SubmitSchema, AssessmentError } from '@/lib/assessment'
+import { updateProgressAfterAttempt } from '@/lib/mastery'
 
 interface RouteParams {
   params: { assessmentId: string }
@@ -63,6 +64,18 @@ export async function POST(req: NextRequest, { params: _params }: RouteParams) {
 
   try {
     const result = await gradeAndSubmit(parsed.data, student.id)
+
+    // Phase 4: update mastery state after grading.
+    // Non-fatal — the student's submission is already persisted regardless.
+    try {
+      await updateProgressAfterAttempt(result.attemptId, student.id)
+    } catch (masteryErr) {
+      console.error(
+        '[mastery/updateProgress]',
+        masteryErr instanceof Error ? masteryErr.message : masteryErr
+      )
+    }
+
     return NextResponse.json(result)
   } catch (err) {
     if (err instanceof AssessmentError) {
