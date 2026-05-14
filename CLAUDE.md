@@ -148,11 +148,11 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
-**Phase 3 — Not started**
+**Phase 4 — Not started**
 
-Phase 2 complete — Audit 2 passed 2026-05-14.
+Phase 3 complete — Audit 3 passed 2026-05-14.
 
-Next action: Begin Phase 3. Use `/plan` before implementing assessment engine. Implement server-side grading, assessment attempts, confidence capture, tamper rejection, practice vs. secure mode. Target: Audit 3 (spec Section 36.4).
+Next action: Begin Phase 4. Use `/plan` before implementing mastery + remediation engines. Implement mastery status tracking (LOCKED/ATTEMPTED/MASTERED/OFF_RAMP), lock/unlock logic, off-ramp trigger (3 failed + remediation + 7 days), diagnostic remediation. Target: Audit 4 (spec Section 36.5).
 
 ---
 
@@ -160,7 +160,7 @@ Next action: Begin Phase 3. Use `/plan` before implementing assessment engine. I
 
 _(Update this at the end of every session.)_
 
-**Session of 2026-05-14 (Phase 2):** Phase 2 complete. Implemented full auth system: next-auth v4, JWT session strategy, SESSION_SECRET, Clever OAuth custom provider (scaffolded with full TODO docs for Phase 17), Google OAuth fallback (new users created INACTIVE pending admin approval), mock credentials provider (dev only, double-guarded by MOCK_AUTH env + NODE_ENV check). Role-based route protection via withAuth middleware using checkRouteAccess pure function (ADMIN has super-access). Type augmentation for Session/User/JWT with UserRole. SessionProvider wrapper. Login page (Server Component + Client buttons), role home shells (student/teacher/parent/admin dashboards), unauthorized page. Docs: Clever setup section in runbook.md, ADR 0002 (JWT sessions), ADR 0003 (Google pending approval). Tests: 22 unit + 11 integration = 33 new tests; 62 total (all pass). TypeScript: 0 errors. Audit 2 passed all 7 items. Tagged `phase-2-complete`.
+**Session of 2026-05-14 (Phase 3):** Phase 3 complete. Implemented full server-side assessment engine. Domain module `src/lib/assessment/` with 4 files: `grader.ts` (pure grading function — never reads isCorrect/pointsAwarded from client payload, uses correctOptions Map from DB only), `question-fetcher.ts` (explicit Prisma `select` that deliberately omits `isCorrect` and `feedback` on options), `attempt.ts` (startAttempt + gradeAndSubmit — ownership guard, double-submit guard, confidence required for MASTERY_CHALLENGE/REPUBLIC_CHALLENGE/FINAL_TRIAL, $transaction atomicity, practice vs. secure feedback branching), `index.ts` (Zod SubmitSchema strips unknown fields including any tampered `isCorrect`/`pointsAwarded`). API routes: GET `/api/assessment/[id]`, POST `/api/assessment/[id]/start`, POST `/api/assessment/[id]/submit` — all use `getSession()` + JSON 401/403. Fixed test isolation: assessment test uses `test-phase3-` prefixed user (outside auth cleanup scope); added `maxWorkers: 1` to jest.config.ts to prevent DB-racing between seed's `deleteMany`+recreate and assessment test's captured option IDs. Tests: 17 unit (grader) + 18 integration (all 7 Audit 3 items) = 35 new tests; 97 total (all pass). TypeScript: 0 errors. Audit 3 passed all 7 items. Tagged `phase-3-complete`.
 
 ---
 
@@ -185,6 +185,7 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 
 - [2026-05-09] PostgreSQL hosting (Phase 0): chose Homebrew local install (PG 16.13) over Docker or hosted dev DB. Fastest to unblock, offline, free. Reversible by changing `DATABASE_URL`. See ADR 0001.
 - [2026-05-09] next-auth version (Phase 0): chose v4 (stable) over v5/Auth.js (newer API, less battle-tested). Reversible at Phase 2 implementation — evaluate upgrade then. See `docs/architecture.md`.
+- [2026-05-14] Jest maxWorkers (Phase 3): set `maxWorkers: 1` in jest.config.ts so all test suites run serially. Required because seed test does `deleteMany`+recreate on question options (regenerates IDs), which race-corrupts assessment integration tests when run in parallel. Reversible by removing the setting once seed is refactored to true upsert-by-stable-key.
 
 ---
 
