@@ -683,9 +683,10 @@ model AssessmentAttempt {
   startedAt     DateTime  @default(now()) @map("started_at")
   submittedAt   DateTime? @map("submitted_at")
 
-  assessment Assessment      @relation(fields: [assessmentId], references: [id])
-  student    Student         @relation(fields: [studentId], references: [id])
-  responses  AttemptResponse[]
+  assessment     Assessment           @relation(fields: [assessmentId], references: [id])
+  student        Student              @relation(fields: [studentId], references: [id])
+  responses      AttemptResponse[]
+  adaptiveState  AdaptiveSessionState?
 
   @@index([assessmentId, studentId])
   @@map("assessment_attempts")
@@ -709,6 +710,34 @@ model AttemptResponse {
   selectedOption QuestionOption?   @relation(fields: [selectedOptionId], references: [id])
 
   @@map("attempt_responses")
+}
+
+// ============================================================
+// ADAPTIVE DIFFICULTY (Phase 6)
+// Tracks within-session complexity state for PRACTICE sessions.
+// Never created for MASTERY_CHALLENGE attempts (fixed-form rule).
+// ============================================================
+
+model AdaptiveSessionState {
+  id                      String              @id @default(cuid())
+  attemptId               String              @unique @map("attempt_id")
+  /// Current target complexity level for next item selection.
+  currentComplexity       CognitiveComplexity @default(LOW) @map("current_complexity")
+  /// Consecutive correct answers at current complexity (resets on wrong or bump).
+  consecutiveCorrect      Int                 @default(0) @map("consecutive_correct")
+  /// Consecutive incorrect answers at current complexity (resets on correct or bump).
+  consecutiveIncorrect    Int                 @default(0) @map("consecutive_incorrect")
+  /// Next item to deliver is a worked example (triggered at 3 consecutive incorrect).
+  pendingWorkedExample    Boolean             @default(false) @map("pending_worked_example")
+  /// Next item is a near-transfer question (delivered after worked example).
+  pendingNearTransfer     Boolean             @default(false) @map("pending_near_transfer")
+  /// The question that triggered the worked example — used to show solution.
+  workedExampleQuestionId String?             @map("worked_example_question_id")
+  updatedAt               DateTime            @updatedAt @map("updated_at")
+
+  attempt AssessmentAttempt @relation(fields: [attemptId], references: [id])
+
+  @@map("adaptive_session_states")
 }
 
 // ============================================================

@@ -148,17 +148,19 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
-**Phase 6 — Not started**
+**Phase 7 — Not started**
 
-Phase 5 complete — Audit 5 passed 2026-05-14.
+Phase 6 complete — Audit 6 passed 2026-05-14.
 
-Next action: Begin Phase 6. Use `/plan` before implementing adaptive difficulty engine. Implement within-session 3/3 rule (3 correct → bump complexity up, 3 incorrect → bump down + worked example), worked example insertion, near-transfer item follow-up, session state reset between sessions. Mastery Challenges remain fixed-form. Target: Audit 6 (spec Section 36.7).
+Next action: Begin Phase 7. Use `/plan` before implementing reading-load ladder. Implement stimulus variant selection by level, accommodation override for ELL/below-grade-reader profiles, Source Decoder track scaffolding. Target: Audit 7 (spec Section 36.8).
 
 ---
 
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-05-14 (Phase 6):** Phase 6 complete. Audit 6 passed. Adaptive difficulty engine built. Schema: added `AdaptiveSessionState` model (migration `20260514_add_adaptive_session_state`) — unique per `attemptId`, tracks `currentComplexity`, `consecutiveCorrect`, `consecutiveIncorrect`, `pendingWorkedExample`, `pendingNearTransfer`, `workedExampleQuestionId`. Domain module `src/lib/adaptive-difficulty/` with 5 files: `transitions.ts` — pure state machine (`complexityUp/Down`, `applyCorrectAnswer`, `applyIncorrectAnswer`, `acknowledgeWorkedExample`, `applyNearTransferCorrect/Incorrect` — all pure, immutable, no DB); `session.ts` — DB CRUD for `AdaptiveSessionState` (only created for PRACTICE/DIAGNOSTIC/READINESS_CHECK, never for MASTERY_CHALLENGE); `next-item.ts` — `getNextItem()` delivers QUESTION / WORKED_EXAMPLE / NEAR_TRANSFER based on state (near-transfer exclusion: only the worked-example question itself, not full history, to avoid pool exhaustion); `answer.ts` — `submitPracticeAnswer()` grades server-side, writes `AttemptResponse`, transitions state, escalates to `assignRemediation` on near-transfer miss; `index.ts` — re-exports. API routes: `GET /api/practice/[attemptId]/next-item`, `POST /api/practice/[attemptId]/answer`. Tests: 38 unit (transitions pure) + 16 integration (all 5 Audit 6 items) = 54 new tests; 259 total (all pass). TypeScript: 0 errors. Tagged `phase-6-complete`.
 
 **Session of 2026-05-14 (Phase 5):** Phase 5 complete. Audit 5 passed. Spaced retrieval engine built in full. Domain module `src/lib/spaced-retrieval/` with 5 files: `sm2.ts` — pure SM-2 algorithm (`computeQuality`, `computeNextState`, `computeDueAt`, `halveInterval` — all pure functions matching spec Section 15.2 exactly); `drill.ts` — `getDrillQueue()` pulling due items (dueAt <= now), capped at 15, interleaved across benchmarks, alternate question selection excluding previously seen items; `review.ts` — `submitReview()` recording SpacedReviewEvent + updating SM-2 state in a `$transaction`, off-ramp halving logic (checks last 2 events for consecutive quality>=3 recovery), `gradeReviewAnswer()` server-side grading; `decay.ts` — `getDecayingBenchmarks()` per-student + `getClassDecayRates()` per-teacher-class with spike alerts; `index.ts` — public exports. API routes: `GET /api/drill` (student drill queue) and `POST /api/drill/[benchmarkId]/review` (submit answer + SM-2 update, server-side grading). Tests: 25 unit (sm2.test.ts) + 25 integration (all 9 Audit 5 items) = 50 new tests; 205 total (all pass). TypeScript: 0 errors. Tagged `phase-5-complete`.
 
