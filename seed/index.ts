@@ -19,29 +19,33 @@ import { seedMisconceptions } from './misconception_inventory'
 import { seedVocabulary } from './vocabulary'
 import { seedSampleQuestions } from './sample_questions_unit_1'
 import { seedStimuliUnit1 } from './stimuli_unit1'
+import { seedBadges } from './badges'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('🌱 Starting seed...\n')
 
-  console.log('1/6 Reporting categories')
+  console.log('1/7 Reporting categories')
   await seedReportingCategories(prisma)
 
-  console.log('2/6 Benchmarks, units, accommodations')
+  console.log('2/7 Benchmarks, units, accommodations')
   await seedBenchmarks(prisma)
 
-  console.log('3/6 Misconception inventory')
+  console.log('3/7 Misconception inventory')
   await seedMisconceptions(prisma)
 
-  console.log('4/6 Vocabulary')
+  console.log('4/7 Vocabulary')
   await seedVocabulary(prisma)
 
-  console.log('5/6 Sample questions (Unit 1)')
+  console.log('5/7 Sample questions (Unit 1)')
   await seedSampleQuestions(prisma)
 
-  console.log('6/6 Stimuli — Unit 1 reading-load variants + accommodations')
+  console.log('6/7 Stimuli — Unit 1 reading-load variants + accommodations')
   await seedStimuliUnit1(prisma)
+
+  console.log('7/7 Badges')
+  await seedBadges(prisma)
 
   console.log('\n✅ Seed complete.')
 }

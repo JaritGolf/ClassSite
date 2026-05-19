@@ -1,36 +1,103 @@
-/**
- * Student Dashboard — shell page.
- * Full UI implemented in Phase 8.
- */
-
-import { requireAuth } from '@/lib/auth'
-import { redirect } from 'next/navigation'
+import { requireAuth, getSession } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { recordActivity, getOrCreateStreak } from '@/lib/streak'
+import { getFirstUnreadBeat } from '@/lib/narrative'
+import { DashboardHero } from '@/components/student/dashboard/DashboardHero'
+import { ReadinessMeter } from '@/components/student/dashboard/ReadinessMeter'
+import { DrillCTA } from '@/components/student/dashboard/DrillCTA'
+import { StreakWidget } from '@/components/student/dashboard/StreakWidget'
+import { BadgeRack } from '@/components/student/dashboard/BadgeRack'
+import { NarrativeOverlayWrapper } from '@/components/student/layout/NarrativeOverlayWrapper'
 
 export default async function StudentDashboard() {
   const session = await requireAuth(['STUDENT'])
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="max-w-2xl w-full space-y-4">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {session.user.name ?? 'Student'}
-        </h1>
-        <p className="text-gray-600">
-          Your Republic Campaign begins in Phase 8.
-        </p>
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-          <p className="font-mono">Role: {session.user.role}</p>
-          <p className="font-mono">User ID: {session.user.userId}</p>
-        </div>
-        <form action="/api/auth/signout" method="POST">
-          <button
-            type="submit"
-            className="text-sm text-gray-500 underline hover:text-gray-700"
-          >
-            Sign out
-          </button>
-        </form>
+  const student = await prisma.student.findUnique({
+    where: { userId: session.user.userId },
+    select: { id: true },
+  })
+
+  if (!student) {
+    return (
+      <div className="p-8 text-center text-gray-500">
+        Student record not found. Please contact your teacher.
       </div>
-    </main>
+    )
+  }
+
+  const [
+    currentMission,
+    drillCount,
+    recentBadges,
+    masteredCount,
+    totalCount,
+    firstUnit,
+  ] = await Promise.all([
+    prisma.studentProgress.findFirst({
+      where: { studentId: student.id, status: 'IN_PROGRESS' },
+      include: { benchmark: { select: { code: true, title: true } } },
+      orderBy: { benchmark: { sequenceOrder: 'asc' } },
+    }).then(async (row) => {
+      if (row) return row
+      return prisma.studentProgress.findFirst({
+        where: { studentId: student.id, status: 'NOT_STARTED' },
+        include: { benchmark: { select: { code: true, title: true } } },
+        orderBy: { benchmark: { sequenceOrder: 'asc' } },
+      })
+    }),
+    prisma.spacedReviewState.count({
+      where: { studentId: student.id, dueAt: { lte: new Date() } },
+    }),
+    prisma.studentBadge.findMany({
+      where: { studentId: student.id },
+      orderBy: { awardedAt: 'desc' },
+      take: 3,
+      include: { badge: { select: { name: true, iconKey: true, description: true } } },
+    }),
+    prisma.studentProgress.count({ where: { studentId: student.id, status: 'MASTERED' } }),
+    prisma.benchmark.count(),
+    // Get the first unit (for narrative beats on the dashboard)
+    prisma.unit.findFirst({ where: { active: true }, orderBy: { sequenceOrder: 'asc' }, select: { id: true, sequenceOrder: true } }),
+  ])
+
+  const streakState = await recordActivity(student.id, new Date())
+
+  const pct = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0
+  const readinessMeter = { pct, ciLow: Math.max(0, pct - 5), ciHigh: Math.min(100, pct + 5) }
+
+  const missionData = currentMission
+    ? { benchmarkCode: currentMission.benchmark.code, title: currentMission.benchmark.title, status: currentMission.status }
+    : null
+
+  const badges = recentBadges.map((sb) => ({
+    id: sb.id,
+    name: sb.badge.name,
+    iconKey: sb.badge.iconKey,
+    description: sb.badge.description,
+  }))
+
+  // Narrative beat for the first active unit
+  let narrativeBeat: { beatKey: string; unitId: string; npcName: string; dialogue: string } | null = null
+  if (firstUnit) {
+    const unitCode = `unit-${firstUnit.sequenceOrder}`
+    const beat = await getFirstUnreadBeat(student.id, firstUnit.id, unitCode)
+    if (beat) {
+      narrativeBeat = { beatKey: beat.beatKey, unitId: firstUnit.id, npcName: beat.npcName, dialogue: beat.dialogue }
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-8 space-y-4">
+      <DashboardHero currentMission={missionData} studentName={session.user.name} />
+      <ReadinessMeter {...readinessMeter} />
+      <StreakWidget
+        currentLength={streakState.currentLength}
+        longestLength={streakState.longestLength}
+        freezeTokens={streakState.freezeTokens}
+      />
+      <DrillCTA drillCount={drillCount} />
+      <BadgeRack badges={badges} />
+      <NarrativeOverlayWrapper beat={narrativeBeat} />
+    </div>
   )
 }

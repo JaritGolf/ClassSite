@@ -38,3 +38,4 @@ next-env.d.ts
 /coverage
 /playwright-report
 /test-results
+tests/e2e/.auth/

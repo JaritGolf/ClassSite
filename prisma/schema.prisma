@@ -238,6 +238,9 @@ model Student {
   eocActualScores       EocActualScore[]
   accommodations        StudentAccommodation[]
   teacherOverrides      TeacherOverride[]
+  streakState           StreakState?
+  narrativeProgress     NarrativeProgress[]
+  uiSettings            StudentUiSettings?
 
   @@map("students")
 }
@@ -328,7 +331,8 @@ model Unit {
   reportingCategoryMix Json?   @map("reporting_category_mix")
   active               Boolean @default(true)
 
-  benchmarks Benchmark[]
+  benchmarks        Benchmark[]
+  narrativeProgress NarrativeProgress[]
 
   @@map("units")
 }
@@ -1029,4 +1033,49 @@ model AuditLog {
   actor User? @relation(fields: [actorUserId], references: [id])
 
   @@map("audit_logs")
+}
+
+// ============================================================
+// PHASE 8: GAME LAYER
+// ============================================================
+
+model StreakState {
+  id                      String    @id @default(cuid())
+  studentId               String    @unique @map("student_id")
+  currentLength           Int       @default(0) @map("current_length")
+  longestLength           Int       @default(0) @map("longest_length")
+  lastActiveDate          DateTime? @map("last_active_date") @db.Date
+  freezeTokens            Int       @default(2) @map("freeze_tokens")
+  freezeTokensGrantedWeek String?   @map("freeze_tokens_granted_week")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("streak_states")
+}
+
+model NarrativeProgress {
+  id            String   @id @default(cuid())
+  studentId     String   @map("student_id")
+  unitId        String   @map("unit_id")
+  beatsReadJson Json     @default("[]") @map("beats_read_json")
+  skipAllNpcs   Boolean  @default(false) @map("skip_all_npcs")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+  unit    Unit    @relation(fields: [unitId], references: [id])
+
+  @@unique([studentId, unitId])
+  @@map("narrative_progress")
+}
+
+model StudentUiSettings {
+  id                String  @id @default(cuid())
+  studentId         String  @unique @map("student_id")
+  pausePointMinutes Int     @default(40) @map("pause_point_minutes")
+  reduceMotion      Boolean @default(false) @map("reduce_motion")
+  skipAllNpcs       Boolean @default(false) @map("skip_all_npcs")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("student_ui_settings")
 }
