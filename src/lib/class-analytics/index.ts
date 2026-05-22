@@ -1,0 +1,41 @@
+/**
+ * Class Analytics — public API
+ *
+ * All functions require a teacher User ID. They internally resolve
+ * the teacher's roster and scope all queries to enrolled students.
+ */
+
+export { getClassStatusDistribution } from './status-distribution'
+export type { ClassStatusDistribution } from './status-distribution'
+
+export {
+  getClassMasteryByBenchmark,
+  getClassMasteryByReportingCategory,
+  getClassMasteryByUnit,
+} from './class-progress'
+export type {
+  BenchmarkMasteryRow,
+  ReportingCategoryMasteryRow,
+  UnitMasteryRow,
+} from './class-progress'
+
+export { getMostMissedQuestions, getCommonMisconceptions } from './most-missed'
+export type { MissedQuestionRow, MisconceptionRow } from './most-missed'
+
+export {
+  getStudentsNeedingAction,
+  getRemediationCompletionStatus,
+} from './needing-action'
+export type {
+  NeedingActionRow,
+  RemediationCompletionRow,
+} from './needing-action'
+
+export { getRecommendedSmallGroups } from './small-groups'
+export type { SmallGroup } from './small-groups'
+
+export { getEocReadinessTrend } from './eoc-trend'
+export type { EocTrendPoint } from './eoc-trend'
+
+export { getOffRampStudents } from './off-ramp'
+export type { OffRampRow } from './off-ramp'

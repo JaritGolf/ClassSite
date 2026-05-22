@@ -103,14 +103,14 @@ export async function getEffectiveReadingLevel(
  * Only teachers and admins may call this function. The caller's userId
  * is resolved to a Teacher record for permission checking.
  *
- * Note: AuditLog entries for accommodation changes are deferred to Phase 9
- * (teacher LMS). The grantedBy/grantedAt fields provide the essential record.
+ * Writes an AuditLog entry with action='ACCOMMODATION_SET' inside a transaction.
  */
 export async function setAccommodation(
   teacherUserId: string,
   studentId: string,
   accommodationCode: string,
-  active: boolean = true
+  active: boolean = true,
+  reason?: string
 ): Promise<{ studentAccommodationId: string; accommodationCode: string; active: boolean }> {
   // Verify caller is a Teacher
   const teacher = await prisma.teacher.findUnique({
@@ -148,26 +148,46 @@ export async function setAccommodation(
     )
   }
 
-  // Upsert on [studentId, accommodationId]
-  const record = await prisma.studentAccommodation.upsert({
-    where: {
-      studentId_accommodationId: {
+  // Upsert on [studentId, accommodationId] + write AuditLog in a single transaction
+  const { record } = await prisma.$transaction(async (tx) => {
+    const record = await tx.studentAccommodation.upsert({
+      where: {
+        studentId_accommodationId: {
+          studentId,
+          accommodationId: accommodation.id,
+        },
+      },
+      create: {
         studentId,
         accommodationId: accommodation.id,
+        grantedBy: teacherUserId,
+        active,
       },
-    },
-    create: {
-      studentId,
-      accommodationId: accommodation.id,
-      grantedBy: teacherUserId,
-      active,
-    },
-    update: {
-      active,
-      grantedBy: teacherUserId,
-      grantedAt: new Date(),
-    },
-    select: { id: true },
+      update: {
+        active,
+        grantedBy: teacherUserId,
+        grantedAt: new Date(),
+      },
+      select: { id: true },
+    })
+
+    await tx.auditLog.create({
+      data: {
+        actorUserId: teacherUserId,
+        action: 'ACCOMMODATION_SET',
+        entityType: 'StudentAccommodation',
+        entityId: record.id,
+        metadataJson: {
+          studentId,
+          accommodationCode,
+          active,
+          reason: reason ?? null,
+        },
+      },
+      select: { id: true },
+    })
+
+    return { record }
   })
 
   return {

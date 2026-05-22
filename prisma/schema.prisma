@@ -289,12 +289,13 @@ model ParentStudentLink {
 // ============================================================
 
 model Class {
-  id         String  @id @default(cuid())
-  teacherId  String  @map("teacher_id")
-  name       String
-  period     String?
-  schoolYear String  @map("school_year")
-  active     Boolean @default(true)
+  id           String  @id @default(cuid())
+  teacherId    String  @map("teacher_id")
+  name         String
+  period       String?
+  schoolYear   String  @map("school_year")
+  active       Boolean @default(true)
+  subPrepNotes String? @db.Text @map("sub_prep_notes")
 
   teacher            Teacher                  @relation(fields: [teacherId], references: [id])
   enrollments        ClassEnrollment[]
@@ -686,6 +687,7 @@ model AssessmentAttempt {
   passed        Boolean?
   startedAt     DateTime  @default(now()) @map("started_at")
   submittedAt   DateTime? @map("submitted_at")
+  voided        Boolean   @default(false)
 
   assessment     Assessment           @relation(fields: [assessmentId], references: [id])
   student        Student              @relation(fields: [studentId], references: [id])
@@ -693,6 +695,7 @@ model AssessmentAttempt {
   adaptiveState  AdaptiveSessionState?
 
   @@index([assessmentId, studentId])
+  @@index([studentId, voided])
   @@map("assessment_attempts")
 }
 

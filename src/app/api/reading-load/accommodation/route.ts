@@ -83,6 +83,7 @@ const SetAccommodationSchema = z.object({
   studentId: z.string().cuid(),
   accommodationCode: z.string().min(1).max(100),
   active: z.boolean().default(true),
+  reason: z.string().max(500).optional(),
 })
 
 export async function POST(req: NextRequest) {
@@ -117,7 +118,8 @@ export async function POST(req: NextRequest) {
       session.user.userId,
       parsed.data.studentId,
       parsed.data.accommodationCode,
-      parsed.data.active
+      parsed.data.active,
+      parsed.data.reason
     )
     return NextResponse.json(result)
   } catch (err) {
