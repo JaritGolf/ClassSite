@@ -220,7 +220,7 @@ async function selectQuestion(
 
 async function getBenchmarkId(attemptId: string): Promise<string> {
   const attempt = await prisma.assessmentAttempt.findUnique({
-    where: { id: attemptId },
+    where: { id: attemptId, voided: false },
     select: { assessment: { select: { benchmarkId: true } } },
   })
   return attempt?.assessment.benchmarkId ?? ''

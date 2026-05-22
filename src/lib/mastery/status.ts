@@ -72,6 +72,7 @@ export async function updateProgressAfterAttempt(
       studentId: true,
       score: true,
       passed: true,
+      voided: true,
       assessment: {
         select: {
           assessmentType: true,
@@ -91,6 +92,19 @@ export async function updateProgressAfterAttempt(
       'This attempt does not belong to the current student',
       'FORBIDDEN'
     )
+  }
+
+  // Skip voided attempts — they should not affect mastery status
+  if (attempt.voided) {
+    const benchmarkId = attempt.assessment.benchmarkId
+    return {
+      benchmarkId,
+      newStatus: 'IN_PROGRESS',
+      masteryScore: null,
+      remediationAssigned: false,
+      nextBenchmarkUnlocked: false,
+      offRampTriggered: false,
+    }
   }
 
   if (attempt.score === null) {

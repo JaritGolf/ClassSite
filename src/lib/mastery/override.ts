@@ -124,38 +124,42 @@ export async function applyTeacherOverride(
   }
   // For EXTEND_DEADLINE and CUSTOM — no StudentProgress change
 
-  // 3. Write TeacherOverride + AuditLog sequentially (to capture override.id)
-  const override = await prisma.teacherOverride.create({
-    data: {
-      teacherId: teacher.id,
-      studentId,
-      benchmarkId,
-      action,
-      reason,
-    },
-    select: { id: true },
-  })
-
-  const auditLog = await prisma.auditLog.create({
-    data: {
-      actorUserId: teacherUserId,
-      action: `TEACHER_OVERRIDE_${action}`,
-      entityType: 'TeacherOverride',
-      entityId: override.id,
-      metadataJson: {
-        action,
+  // 3. Write TeacherOverride + AuditLog atomically in a single $transaction
+  const { overrideId, auditLogId } = await prisma.$transaction(async (tx) => {
+    const override = await tx.teacherOverride.create({
+      data: {
+        teacherId: teacher.id,
         studentId,
         benchmarkId,
+        action,
         reason,
-        teacherId: teacher.id,
       },
-    },
-    select: { id: true },
+      select: { id: true },
+    })
+
+    const auditLog = await tx.auditLog.create({
+      data: {
+        actorUserId: teacherUserId,
+        action: `TEACHER_OVERRIDE_${action}`,
+        entityType: 'TeacherOverride',
+        entityId: override.id,
+        metadataJson: {
+          action,
+          studentId,
+          benchmarkId,
+          reason,
+          teacherId: teacher.id,
+        },
+      },
+      select: { id: true },
+    })
+
+    return { overrideId: override.id, auditLogId: auditLog.id }
   })
 
   return {
-    overrideId: override.id,
-    auditLogId: auditLog.id,
+    overrideId,
+    auditLogId,
     newProgressStatus,
   }
 }

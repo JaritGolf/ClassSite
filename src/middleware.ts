@@ -43,6 +43,20 @@ export default withAuth(
       return NextResponse.redirect(new URL('/unauthorized', req.url))
     }
 
+    // Sub-mode write gate: block mutating API calls when substitute mode is on.
+    // Exception: the toggle endpoint itself must always work.
+    // Edge-safe: reads cookie via req.cookies — no Prisma/Node imports.
+    const isMutation = ['POST', 'PATCH', 'DELETE'].includes(req.method)
+    const isGuardedApi = /^\/api\/(teacher|mastery|reading-load)\//.test(pathname)
+    const isToggleRoute = pathname === '/api/teacher/sub-mode/toggle'
+    const subMode = req.cookies.get('cq_sub_mode')?.value === '1'
+    if (isMutation && isGuardedApi && !isToggleRoute && subMode) {
+      return new NextResponse(
+        JSON.stringify({ error: 'SUB_MODE_READ_ONLY' }),
+        { status: 403, headers: { 'content-type': 'application/json' } }
+      )
+    }
+
     return NextResponse.next()
   },
   {
