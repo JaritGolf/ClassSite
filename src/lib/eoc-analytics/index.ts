@@ -2,6 +2,7 @@
  * EOC Analytics — Public API
  *
  * Slice 10a: readiness, snapshot writers, dimension breakdowns, trend, validation.
+ * Slice 10b: correlation (Pearson), score import, calibration runs, calibration approval.
  */
 
 export {
@@ -31,6 +32,22 @@ export type { TrendPoint, GranularityType } from './trend'
 
 export { validateMasteryAgainstSeed } from './validation'
 export type { SeedValidationResult } from './validation'
+
+// ── Slice 10b exports ──────────────────────────────────────────────────────────
+
+export { pearsonCorrelation, correlationByBucket } from './correlation'
+
+export { importEocScore, importEocScoresBatch, ScoreImportError } from './score-import'
+export type { EocScoreImportRow, BatchImportResult } from './score-import'
+
+export {
+  createCalibrationRun,
+  getCalibrationStatus,
+  CalibrationError,
+} from './calibration-run'
+export type { CalibrationRunResult } from './calibration-run'
+
+export { approveCalibrationRun, ApprovalError } from './calibration-approve'
 
 // ── Error Types ────────────────────────────────────────────────────────────────
 
