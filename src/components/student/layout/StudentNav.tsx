@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: '/student/dashboard', label: 'Dashboard' },
   { href: '/student/map', label: 'Mission Map' },
   { href: '/student/daily-drill', label: 'Daily Drill' },
+  { href: '/student/republic-challenge', label: 'Republic Challenge' },
   { href: '/student/badges', label: 'Badges' },
 ]
 

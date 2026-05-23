@@ -47,7 +47,8 @@ export default withAuth(
     // Exception: the toggle endpoint itself must always work.
     // Edge-safe: reads cookie via req.cookies — no Prisma/Node imports.
     const isMutation = ['POST', 'PATCH', 'DELETE'].includes(req.method)
-    const isGuardedApi = /^\/api\/(teacher|mastery|reading-load|admin)\//.test(pathname)
+    const isGuardedApi =
+      /^\/api\/(teacher|mastery|reading-load|admin|republic-challenge)\//.test(pathname)
     const isToggleRoute = pathname === '/api/teacher/sub-mode/toggle'
     const subMode = req.cookies.get('cq_sub_mode')?.value === '1'
     if (isMutation && isGuardedApi && !isToggleRoute && subMode) {

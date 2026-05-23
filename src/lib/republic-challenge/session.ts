@@ -67,7 +67,6 @@ export interface CreateSessionInput {
 
 export interface CreateSessionResult {
   assessmentId: string
-  attemptId: string
   questionCount: number
   mode: Mode
   assessmentType: 'REPUBLIC_CHALLENGE' | 'FINAL_TRIAL'
@@ -141,8 +140,10 @@ export async function createRepublicChallengeSession(
   // 5. Build a session title.
   const title = buildTitle(input.mode, input.reportingCategoryId, input.stimulusType)
 
-  // 6. Persist atomically.
-  const { assessmentId, attemptId } = await prisma.$transaction(async (tx) => {
+  // 6. Persist atomically. We create the Assessment + AssessmentQuestion
+  //    rows here; the AssessmentAttempt is created by the existing
+  //    /api/assessment/[id]/start flow when the student begins playing.
+  const { assessmentId } = await prisma.$transaction(async (tx) => {
     const assessment = await tx.assessment.create({
       data: {
         benchmarkId: null,
@@ -164,21 +165,12 @@ export async function createRepublicChallengeSession(
       })),
     })
 
-    const attempt = await tx.assessmentAttempt.create({
-      data: {
-        assessmentId: assessment.id,
-        studentId: input.studentId,
-        attemptNumber: 1,
-      },
-      select: { id: true },
-    })
-
     await tx.auditLog.create({
       data: {
         actorUserId: input.actorUserId ?? null,
         action: RC_AUDIT_ACTIONS.RC_SESSION_STARTED,
-        entityType: 'AssessmentAttempt',
-        entityId: attempt.id,
+        entityType: 'Assessment',
+        entityId: assessment.id,
         metadataJson: {
           mode: input.mode,
           assessmentType,
@@ -188,12 +180,11 @@ export async function createRepublicChallengeSession(
       },
     })
 
-    return { assessmentId: assessment.id, attemptId: attempt.id }
+    return { assessmentId: assessment.id }
   })
 
   return {
     assessmentId,
-    attemptId,
     questionCount: questionIds.length,
     mode: input.mode,
     assessmentType,

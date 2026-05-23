@@ -29,6 +29,7 @@ import {
 import {
   fetchAssessmentForStudent,
   gradeAndSubmit,
+  startAttempt,
   AssessmentError,
 } from '@/lib/assessment'
 
@@ -76,7 +77,7 @@ afterAll(async () => {
     where: {
       OR: [
         { metadataJson: { path: ['studentId'], equals: studentId } },
-        { entityType: 'AssessmentAttempt', action: 'RC_SESSION_STARTED' },
+        { action: 'RC_SESSION_STARTED' },
       ],
     },
   })
@@ -161,14 +162,13 @@ describe('Pickers', () => {
 // ── Session creation + round-trip ─────────────────────────────────────────────
 
 describe('createRepublicChallengeSession', () => {
-  it('creates an Assessment + Attempt with mode set', async () => {
+  it('creates an Assessment with mode set (no attempt yet)', async () => {
     const result = await createRepublicChallengeSession({
       studentId,
       mode: 'MIXED_MISSION',
       length: 4,
       actorUserId: studentUserId,
     })
-    expect(result.attemptId).toBeTruthy()
     expect(result.assessmentId).toBeTruthy()
     expect(result.questionCount).toBeGreaterThan(0)
     expect(result.assessmentType).toBe('REPUBLIC_CHALLENGE')
@@ -180,9 +180,15 @@ describe('createRepublicChallengeSession', () => {
     expect(a?.mode).toBe('MIXED_MISSION')
     expect(a?.benchmarkId).toBeNull()
     expect(a?.assessmentType).toBe('REPUBLIC_CHALLENGE')
+
+    // No attempt exists yet — that happens via /api/assessment/[id]/start
+    const attemptCount = await prisma.assessmentAttempt.count({
+      where: { assessmentId: result.assessmentId },
+    })
+    expect(attemptCount).toBe(0)
   })
 
-  it('writes an RC_SESSION_STARTED AuditLog', async () => {
+  it('writes an RC_SESSION_STARTED AuditLog tied to Assessment', async () => {
     const result = await createRepublicChallengeSession({
       studentId,
       mode: 'QUICK_REVIEW',
@@ -192,20 +198,21 @@ describe('createRepublicChallengeSession', () => {
     const log = await prisma.auditLog.findFirst({
       where: {
         action: 'RC_SESSION_STARTED',
-        entityType: 'AssessmentAttempt',
-        entityId: result.attemptId,
+        entityType: 'Assessment',
+        entityId: result.assessmentId,
       },
     })
     expect(log).not.toBeNull()
     expect(log?.actorUserId).toBe(studentUserId)
   })
 
-  it('round-trips through fetchAssessmentForStudent + gradeAndSubmit', async () => {
+  it('round-trips through startAttempt + fetchAssessmentForStudent + gradeAndSubmit', async () => {
     const session = await createRepublicChallengeSession({
       studentId,
       mode: 'MIXED_MISSION',
       length: 3,
     })
+    const { attemptId } = await startAttempt(session.assessmentId, studentId)
     const fetched = await fetchAssessmentForStudent(session.assessmentId, studentId)
     expect(fetched).not.toBeNull()
     expect(fetched!.questions.length).toBe(session.questionCount)
@@ -224,11 +231,8 @@ describe('createRepublicChallengeSession', () => {
       confidence: 1 as const,
       timeSeconds: 5,
     }))
-    const submitResult = await gradeAndSubmit(
-      { attemptId: session.attemptId, responses },
-      studentId
-    )
-    expect(submitResult.attemptId).toBe(session.attemptId)
+    const submitResult = await gradeAndSubmit({ attemptId, responses }, studentId)
+    expect(submitResult.attemptId).toBe(attemptId)
     // REPUBLIC_CHALLENGE is secure → feedback must be null (Audit 3 item 5)
     expect(submitResult.feedback).toBeNull()
   })
@@ -239,6 +243,7 @@ describe('createRepublicChallengeSession', () => {
       mode: 'MIXED_MISSION',
       length: 2,
     })
+    const { attemptId } = await startAttempt(session.assessmentId, studentId)
     const fetched = await fetchAssessmentForStudent(session.assessmentId, studentId)
     const responses = fetched!.questions.map((q) => ({
       questionId: q.id,
@@ -247,7 +252,7 @@ describe('createRepublicChallengeSession', () => {
       timeSeconds: 5,
     }))
     await expect(
-      gradeAndSubmit({ attemptId: session.attemptId, responses }, studentId)
+      gradeAndSubmit({ attemptId, responses }, studentId)
     ).rejects.toThrow(AssessmentError)
   })
 
