@@ -37,7 +37,12 @@ export class MasteryError extends Error {
 // ── Result Types ──────────────────────────────────────────────────────────────
 
 export interface ProgressUpdateResult {
-  benchmarkId: string
+  /**
+   * Null only for cross-benchmark assessments (REPUBLIC_CHALLENGE / FINAL_TRIAL),
+   * which do not affect StudentProgress and short-circuit at the top of
+   * updateProgressAfterAttempt.
+   */
+  benchmarkId: string | null
   newStatus: StudentProgressStatus
   masteryScore: number | null
   remediationAssigned: boolean
@@ -117,8 +122,10 @@ export async function updateProgressAfterAttempt(
 
   const { assessmentType, benchmarkId, masteryThreshold } = attempt.assessment
 
-  // 2. Only act on mastery-affecting assessment types
-  if (!MASTERY_AFFECTING_TYPES.has(assessmentType)) {
+  // 2. Only act on mastery-affecting assessment types.
+  //    Republic Challenge / Final Trial have null benchmarkId and never reach
+  //    the per-benchmark progress flow below.
+  if (!MASTERY_AFFECTING_TYPES.has(assessmentType) || benchmarkId === null) {
     return {
       benchmarkId,
       newStatus: 'IN_PROGRESS',

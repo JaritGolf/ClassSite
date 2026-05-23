@@ -152,12 +152,20 @@ export async function submitPracticeAnswer(
       state = result.state
       nextAction = 'REMEDIATION_ESCALATED'
 
-      // Escalate to remediation engine (Phase 4)
-      try {
-        const remResult = await assignRemediation(studentId, attempt.assessment.benchmarkId, attemptId)
-        remediationAssigned = remResult.count > 0
-      } catch {
-        // Non-fatal — remediation assignment failure doesn't break the session
+      // Escalate to remediation engine (Phase 4).
+      // benchmarkId is guaranteed non-null here because adaptive sessions
+      // are only created for PRACTICE assessments, which always target a benchmark.
+      if (attempt.assessment.benchmarkId) {
+        try {
+          const remResult = await assignRemediation(
+            studentId,
+            attempt.assessment.benchmarkId,
+            attemptId
+          )
+          remediationAssigned = remResult.count > 0
+        } catch {
+          // Non-fatal — remediation assignment failure doesn't break the session
+        }
       }
     }
   } else {

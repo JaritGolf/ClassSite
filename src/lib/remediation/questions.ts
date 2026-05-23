@@ -51,6 +51,9 @@ export async function fetchAlternateQuestions(
   if (!assessment) return []
 
   const { benchmarkId } = assessment
+  // Alternate-question fetch is only meaningful for per-benchmark assessments.
+  // Republic Challenge / Final Trial have null benchmarkId — no alternates.
+  if (benchmarkId === null) return []
 
   // 2. Collect all question IDs the student has already answered for this benchmark
   const seenResponses = await prisma.attemptResponse.findMany({

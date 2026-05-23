@@ -50,7 +50,8 @@ export interface StudentProfileVM {
   attempts: Array<{
     id: string
     assessmentTitle: string
-    benchmarkCode: string
+    /** Null for Republic Challenge / Final Trial attempts which span benchmarks. */
+    benchmarkCode: string | null
     attemptNumber: number
     score: number | null
     passed: boolean | null
@@ -423,7 +424,7 @@ export async function getStudentProfileForTeacher(
     attempts: attempts.map((a) => ({
       id: a.id,
       assessmentTitle: a.assessment.title,
-      benchmarkCode: a.assessment.benchmark.code,
+      benchmarkCode: a.assessment.benchmark?.code ?? null,
       attemptNumber: a.attemptNumber,
       score: a.score,
       passed: a.passed,

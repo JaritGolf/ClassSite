@@ -90,6 +90,16 @@ enum AssessmentType {
   DIAGNOSTIC
 }
 
+enum RepublicChallengeMode {
+  QUICK_REVIEW
+  CATEGORY_CHALLENGE
+  MIXED_MISSION
+  MISTAKE_REPLAY
+  SOURCE_SPRINT
+  ENDURANCE_TRIAL
+  FINAL_REPUBLIC_TRIAL
+}
+
 enum RemediationType {
   VOCABULARY_TRAINING
   MINI_LESSON_REPLAY
@@ -296,6 +306,13 @@ model Class {
   schoolYear   String  @map("school_year")
   active       Boolean @default(true)
   subPrepNotes String? @db.Text @map("sub_prep_notes")
+
+  // Phase 11 — Republic Challenge per-class configuration
+  rcSessionLengthOverride Int?    @map("rc_session_length_override")
+  rcAttemptsAllowed       Int     @default(1) @map("rc_attempts_allowed")
+  rcReviewWindow          String  @default("after_submit") @map("rc_review_window")
+  rcStaminaOverride       Int?    @map("rc_stamina_override")
+  featureEocReviewEnabled Boolean @default(true) @map("feature_eoc_review_enabled")
 
   teacher            Teacher                  @relation(fields: [teacherId], references: [id])
   enrollments        ClassEnrollment[]
@@ -603,15 +620,19 @@ model Misconception {
 // ============================================================
 
 model Assessment {
-  id               String         @id @default(cuid())
-  benchmarkId      String         @map("benchmark_id")
+  id               String                 @id @default(cuid())
+  /// Nullable for Republic Challenge / Final Trial assessments which span benchmarks (Phase 11).
+  /// All other AssessmentTypes require benchmarkId — enforced in code.
+  benchmarkId      String?                @map("benchmark_id")
   title            String
-  assessmentType   AssessmentType @map("assessment_type")
-  masteryThreshold Float          @default(0.80) @map("mastery_threshold")
-  blueprintJson    Json?          @map("blueprint_json")
-  approvalStatus   ApprovalStatus @default(DRAFT) @map("approval_status")
+  assessmentType   AssessmentType         @map("assessment_type")
+  /// Set only when assessmentType is REPUBLIC_CHALLENGE or FINAL_TRIAL.
+  mode             RepublicChallengeMode? @map("mode")
+  masteryThreshold Float                  @default(0.80) @map("mastery_threshold")
+  blueprintJson    Json?                  @map("blueprint_json")
+  approvalStatus   ApprovalStatus         @default(DRAFT) @map("approval_status")
 
-  benchmark   Benchmark            @relation(fields: [benchmarkId], references: [id])
+  benchmark   Benchmark?           @relation(fields: [benchmarkId], references: [id])
   questions   AssessmentQuestion[]
   attempts    AssessmentAttempt[]
   assignments Assignment[]
