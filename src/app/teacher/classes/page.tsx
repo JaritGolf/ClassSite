@@ -54,7 +54,15 @@ export default async function ClassesPage() {
                     <p className="text-xs text-gray-400">Period {cls.period}</p>
                   )}
                 </div>
-                <span className="text-sm text-gray-500">{cls.studentIds.length} students</span>
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-500">{cls.studentIds.length} students</span>
+                  <Link
+                    href={`/teacher/classes/${cls.id}/settings`}
+                    className="text-sm text-indigo-600 hover:underline"
+                  >
+                    Settings
+                  </Link>
+                </div>
               </div>
               {cls.studentIds.length === 0 ? (
                 <p className="px-4 py-3 text-sm text-gray-400">No enrolled students.</p>
