@@ -96,10 +96,10 @@ describe('getClassCalibrationTrend', () => {
     expect(trend.length).toBeGreaterThanOrEqual(0)
   })
 
-  it('each point has weekStart (Date) and calibrationScore (0..1)', async () => {
+  it('each point has bucketStart (Date) and calibrationScore (0..1)', async () => {
     const trend = await getClassCalibrationTrend(teacherUserId)
     for (const p of trend) {
-      expect(p.weekStart).toBeInstanceOf(Date)
+      expect(p.bucketStart).toBeInstanceOf(Date)
       expect(typeof p.calibrationScore).toBe('number')
       expect(p.calibrationScore).toBeGreaterThanOrEqual(0)
       expect(p.calibrationScore).toBeLessThanOrEqual(1)

@@ -19,6 +19,7 @@ import { prisma } from '@/lib/db'
 import { unlockNextBenchmark } from './unlock'
 import { checkOffRamp } from './off-ramp'
 import { assignRemediation } from '../remediation/assign'
+import { recordReadinessSnapshot } from '@/lib/eoc-analytics'
 import type { StudentProgressStatus } from '@prisma/client'
 
 // ── Error Types ───────────────────────────────────────────────────────────────
@@ -162,6 +163,11 @@ export async function updateProgressAfterAttempt(
 
     // Unlock the next benchmark (creates NOT_STARTED row if not already present)
     const nextUnlocked = await unlockNextBenchmark(studentId, benchmarkId)
+
+    // Phase 10: lazy readiness snapshot (non-fatal)
+    recordReadinessSnapshot(studentId).catch((err) => {
+      console.error('readiness snapshot failed', err)
+    })
 
     // Seed SpacedReviewState for this benchmark — due in 1 day
     // Use upsert with empty update so an existing row is not clobbered

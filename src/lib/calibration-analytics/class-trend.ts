@@ -2,21 +2,28 @@
  * Class-level calibration trend over time.
  *
  * Reads ConfidenceCalibrationSnapshot rows where scope='overall' for all
- * students in the teacher's roster, aggregated by calendar week.
+ * students in the teacher's roster, aggregated by calendar week (default)
+ * or calendar day (when granularity='day').
  * Falls back to live AttemptResponse data if no snapshots exist.
+ *
+ * Phase 10: Added granularity parameter ('day'|'week', default 'week' for
+ * back-compat with Phase 9 callers). CalibrationTrendPoint.weekStart renamed
+ * to bucketStart.
  */
 
 import { prisma } from '@/lib/db'
 import { resolveTeacherId, getTeacherRoster } from '@/lib/teacher-roster'
+import type { GranularityType } from '@/lib/eoc-analytics/trend'
 
 export interface CalibrationTrendPoint {
-  weekStart: Date
+  bucketStart: Date
   /** 0..1, where 1 = perfect calibration (all high-confidence answers correct) */
   calibrationScore: number
 }
 
 export async function getClassCalibrationTrend(
-  teacherUserId: string
+  teacherUserId: string,
+  granularity: GranularityType = 'week'
 ): Promise<CalibrationTrendPoint[]> {
   await resolveTeacherId(teacherUserId)
   const roster = await getTeacherRoster(teacherUserId)
@@ -39,24 +46,24 @@ export async function getClassCalibrationTrend(
   })
 
   if (snapshots.length > 0) {
-    // Aggregate by ISO week start (Monday)
-    const byWeek = new Map<string, { correct: number; total: number; weekStart: Date }>()
+    // Aggregate by bucket (ISO week start Monday, or UTC calendar day)
+    const byBucket = new Map<string, { correct: number; total: number; bucketStart: Date }>()
 
     for (const snap of snapshots) {
-      const weekStart = getWeekStart(snap.snapshotAt)
-      const key = weekStart.toISOString()
-      const entry = byWeek.get(key) ?? { correct: 0, total: 0, weekStart }
+      const bucketStart = getBucketStart(snap.snapshotAt, granularity)
+      const key = bucketStart.toISOString()
+      const entry = byBucket.get(key) ?? { correct: 0, total: 0, bucketStart }
       entry.correct += snap.highConfidenceCorrect
       entry.total += snap.highConfidenceCorrect + snap.highConfidenceIncorrect
-      byWeek.set(key, entry)
+      byBucket.set(key, entry)
     }
 
-    return Array.from(byWeek.values())
+    return Array.from(byBucket.values())
       .map((w) => ({
-        weekStart: w.weekStart,
+        bucketStart: w.bucketStart,
         calibrationScore: w.total === 0 ? 1 : w.correct / w.total,
       }))
-      .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
+      .sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime())
   }
 
   // Fallback: live AttemptResponse data
@@ -78,22 +85,22 @@ export async function getClassCalibrationTrend(
 
   if (responses.length === 0) return []
 
-  const byWeek = new Map<string, { correct: number; total: number; weekStart: Date }>()
+  const byBucket = new Map<string, { correct: number; total: number; bucketStart: Date }>()
   for (const r of responses) {
-    const weekStart = getWeekStart(r.attempt.startedAt)
-    const key = weekStart.toISOString()
-    const entry = byWeek.get(key) ?? { correct: 0, total: 0, weekStart }
+    const bucketStart = getBucketStart(r.attempt.startedAt, granularity)
+    const key = bucketStart.toISOString()
+    const entry = byBucket.get(key) ?? { correct: 0, total: 0, bucketStart }
     entry.total++
     if (r.isCorrect) entry.correct++
-    byWeek.set(key, entry)
+    byBucket.set(key, entry)
   }
 
-  return Array.from(byWeek.values())
+  return Array.from(byBucket.values())
     .map((w) => ({
-      weekStart: w.weekStart,
+      bucketStart: w.bucketStart,
       calibrationScore: w.total === 0 ? 1 : w.correct / w.total,
     }))
-    .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
+    .sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime())
 }
 
 /** Return the Monday of the ISO week containing the given date. */
@@ -104,4 +111,16 @@ function getWeekStart(date: Date): Date {
   d.setUTCDate(d.getUTCDate() + diff)
   d.setUTCHours(0, 0, 0, 0)
   return d
+}
+
+/** Return start of UTC calendar day. */
+function getDayStart(date: Date): Date {
+  const d = new Date(date)
+  d.setUTCHours(0, 0, 0, 0)
+  return d
+}
+
+/** Return bucket start based on granularity. */
+function getBucketStart(date: Date, granularity: GranularityType): Date {
+  return granularity === 'day' ? getDayStart(date) : getWeekStart(date)
 }

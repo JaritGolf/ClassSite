@@ -4,7 +4,7 @@
  * Tests:
  *   - getClassCalibrationTrend returns array of CalibrationTrendPoints
  *   - getOverconfidenceStudents returns array (may be empty without data)
- *   - Each trend point has weekStart and calibrationScore
+ *   - Each trend point has bucketStart and calibrationScore
  *   - Overconfidence row has required fields
  */
 
@@ -90,10 +90,10 @@ describe('Audit 9 Item 5 — Calibration dashboard', () => {
     expect(Array.isArray(trend)).toBe(true)
   })
 
-  it('5b. CalibrationTrendPoint has weekStart (Date) and calibrationScore (number 0..1)', async () => {
+  it('5b. CalibrationTrendPoint has bucketStart (Date) and calibrationScore (number 0..1)', async () => {
     const trend = await getClassCalibrationTrend(teacherUserId)
     for (const p of trend) {
-      expect(p.weekStart).toBeInstanceOf(Date)
+      expect(p.bucketStart).toBeInstanceOf(Date)
       expect(typeof p.calibrationScore).toBe('number')
       expect(p.calibrationScore).toBeGreaterThanOrEqual(0)
       expect(p.calibrationScore).toBeLessThanOrEqual(1)

@@ -11,7 +11,7 @@ interface Props {
 
 export function ClassCalibrationTrend({ points }: Props) {
   const chartPoints = points.map((p) => ({
-    x: p.weekStart,
+    x: p.bucketStart,
     y: Math.round(p.calibrationScore * 100),
   }))
 

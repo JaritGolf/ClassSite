@@ -47,21 +47,21 @@ export async function getCalibrationByStudent(
   let points: CalibrationTrendPoint[] = []
 
   if (snapshots.length > 0) {
-    const byWeek = new Map<string, { correct: number; total: number; weekStart: Date }>()
+    const byWeek = new Map<string, { correct: number; total: number; bucketStart: Date }>()
     for (const snap of snapshots) {
-      const weekStart = getWeekStart(snap.snapshotAt)
-      const key = weekStart.toISOString()
-      const entry = byWeek.get(key) ?? { correct: 0, total: 0, weekStart }
+      const bucketStart = getWeekStart(snap.snapshotAt)
+      const key = bucketStart.toISOString()
+      const entry = byWeek.get(key) ?? { correct: 0, total: 0, bucketStart }
       entry.correct += snap.highConfidenceCorrect
       entry.total += snap.highConfidenceCorrect + snap.highConfidenceIncorrect
       byWeek.set(key, entry)
     }
     points = Array.from(byWeek.values())
       .map((w) => ({
-        weekStart: w.weekStart,
+        bucketStart: w.bucketStart,
         calibrationScore: w.total === 0 ? 1 : w.correct / w.total,
       }))
-      .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
+      .sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime())
   } else {
     // Fallback to live responses
     const responses = await prisma.attemptResponse.findMany({
@@ -80,21 +80,21 @@ export async function getCalibrationByStudent(
       orderBy: { attempt: { startedAt: 'asc' } },
     })
 
-    const byWeek = new Map<string, { correct: number; total: number; weekStart: Date }>()
+    const byWeek = new Map<string, { correct: number; total: number; bucketStart: Date }>()
     for (const r of responses) {
-      const weekStart = getWeekStart(r.attempt.startedAt)
-      const key = weekStart.toISOString()
-      const entry = byWeek.get(key) ?? { correct: 0, total: 0, weekStart }
+      const bucketStart = getWeekStart(r.attempt.startedAt)
+      const key = bucketStart.toISOString()
+      const entry = byWeek.get(key) ?? { correct: 0, total: 0, bucketStart }
       entry.total++
       if (r.isCorrect) entry.correct++
       byWeek.set(key, entry)
     }
     points = Array.from(byWeek.values())
       .map((w) => ({
-        weekStart: w.weekStart,
+        bucketStart: w.bucketStart,
         calibrationScore: w.total === 0 ? 1 : w.correct / w.total,
       }))
-      .sort((a, b) => a.weekStart.getTime() - b.weekStart.getTime())
+      .sort((a, b) => a.bucketStart.getTime() - b.bucketStart.getTime())
   }
 
   // Overall gap: pull last 20 high-confidence responses
