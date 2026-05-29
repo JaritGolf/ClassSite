@@ -165,6 +165,28 @@ const BADGES = [
     track: 'ENGAGEMENT' as const,
     criteriaJson: { event: 'streak_days', count: 30 },
   },
+  // STRATEGY track (spec §19.2)
+  {
+    name: 'Distractor Hunter',
+    description: 'Complete the Eliminate the Distractor strategy mission.',
+    iconKey: 'scissors',
+    track: 'STRATEGY' as const,
+    criteriaJson: { event: 'strategy_mission', missionCode: 'eliminate-distractor' },
+  },
+  {
+    name: 'Evidence Tracker',
+    description: 'Complete the Evidence-Based Answers strategy mission.',
+    iconKey: 'magnifying-glass',
+    track: 'STRATEGY' as const,
+    criteriaJson: { event: 'strategy_mission', missionCode: 'evidence-based' },
+  },
+  {
+    name: 'Master Strategist',
+    description: 'Complete all 7 Test-Taking Strategy missions.',
+    iconKey: 'chess-knight',
+    track: 'STRATEGY' as const,
+    criteriaJson: { event: 'strategy_track_complete', count: 7 },
+  },
 ]
 
 export async function seedBadges(prisma: PrismaClient) {
