@@ -321,6 +321,11 @@ afterAll(async () => {
     where: { student: { user: { cleverId: { startsWith: 'test-phase4-' } } } },
   })
 
+  // ConfidenceCalibrationSnapshot rows written by the calibration hook
+  await prisma.confidenceCalibrationSnapshot.deleteMany({
+    where: { student: { user: { cleverId: { startsWith: 'test-phase4-' } } } },
+  })
+
   // Students + Users (test-phase4- prefix only)
   await prisma.student.deleteMany({
     where: { user: { cleverId: { startsWith: 'test-phase4-' } } },

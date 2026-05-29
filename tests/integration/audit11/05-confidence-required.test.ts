@@ -62,6 +62,7 @@ afterAll(async () => {
     await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: { in: ids } } })
     await prisma.assessment.deleteMany({ where: { id: { in: ids } } })
   }
+  await prisma.confidenceCalibrationSnapshot.deleteMany({ where: { studentId } })
   await prisma.student.deleteMany({
     where: { user: { cleverId: { startsWith: 'test-audit11-05-' } } },
   })

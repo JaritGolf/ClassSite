@@ -137,6 +137,10 @@ afterAll(async () => {
   await prisma.assessment.deleteMany({
     where: { id: { in: [masteryAssessmentId, practiceAssessmentId] } },
   })
+  // ConfidenceCalibrationSnapshot rows written by the calibration hook
+  await prisma.confidenceCalibrationSnapshot.deleteMany({
+    where: { student: { user: { cleverId: 'test-phase3-student-001' } } },
+  })
   // Remove the dedicated test student + user created by this suite
   await prisma.student.deleteMany({
     where: { user: { cleverId: 'test-phase3-student-001' } },

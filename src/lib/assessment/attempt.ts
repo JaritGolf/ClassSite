@@ -15,6 +15,11 @@ import {
 } from './question-fetcher'
 import { gradeResponses, computeScore } from './grader'
 import type { SubmitInput } from './index'
+import {
+  computeCalibrationBreakdown,
+  recordCalibrationSnapshot,
+  type CalibrationBreakdown,
+} from '@/lib/metacognition'
 
 // ── Error Types ───────────────────────────────────────────────────────────────
 
@@ -56,6 +61,8 @@ export interface SubmitResult {
   passed: boolean
   /** Only populated for PRACTICE assessments — null for secure modes */
   feedback: FeedbackItem[] | null
+  /** Per-confidence-level correctness, only for confidence-required types (spec §17.4) */
+  calibration: CalibrationBreakdown | null
 }
 
 // ── Secure assessment types — feedback is never returned ──────────────────────
@@ -190,6 +197,7 @@ export async function gradeAndSubmit(
     select: {
       assessmentType: true,
       masteryThreshold: true,
+      benchmark: { select: { code: true } },
     },
   })
 
@@ -283,11 +291,35 @@ export async function gradeAndSubmit(
     }))
   }
 
+  // 10. Calibration feedback (spec §17.4) — only for confidence-required types.
+  //     The snapshot write is non-fatal: the submission is already persisted.
+  let calibration: CalibrationBreakdown | null = null
+
+  if (CONFIDENCE_REQUIRED_TYPES.has(assessment.assessmentType)) {
+    calibration = computeCalibrationBreakdown(grades)
+    try {
+      await recordCalibrationSnapshot(studentId, 'overall', calibration)
+      if (assessment.benchmark?.code) {
+        await recordCalibrationSnapshot(
+          studentId,
+          `benchmark:${assessment.benchmark.code}`,
+          calibration
+        )
+      }
+    } catch (snapshotErr) {
+      console.error(
+        '[metacognition/recordCalibrationSnapshot]',
+        snapshotErr instanceof Error ? snapshotErr.message : snapshotErr
+      )
+    }
+  }
+
   return {
     attemptId: attempt.id,
     attemptNumber: attempt.attemptNumber,
     score,
     passed,
     feedback,
+    calibration,
   }
 }
