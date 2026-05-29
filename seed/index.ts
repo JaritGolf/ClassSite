@@ -20,6 +20,7 @@ import { seedVocabulary } from './vocabulary'
 import { seedSampleQuestions } from './sample_questions_unit_1'
 import { seedStimuliUnit1 } from './stimuli_unit1'
 import { seedBadges } from './badges'
+import { seedUnit1Assessments } from './assessments_unit1'
 
 const prisma = new PrismaClient()
 
@@ -44,8 +45,11 @@ async function main() {
   console.log('6/7 Stimuli — Unit 1 reading-load variants + accommodations')
   await seedStimuliUnit1(prisma)
 
-  console.log('7/7 Badges')
+  console.log('7/8 Badges')
   await seedBadges(prisma)
+
+  console.log('8/8 Unit 1 assessments (pre-check, readiness, vocab, region review)')
+  await seedUnit1Assessments(prisma)
 
   console.log('\n✅ Seed complete.')
 }

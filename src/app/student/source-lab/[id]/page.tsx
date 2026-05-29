@@ -1,0 +1,52 @@
+import { notFound } from 'next/navigation'
+import { requireAuth } from '@/lib/auth'
+import { prisma } from '@/lib/db'
+import { buildGlossaryAnnotations, type GlossaryTerm } from '@/lib/reading-load'
+import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
+
+interface PageProps {
+  params: { id: string }
+}
+
+export default async function SourceLabPage({ params }: PageProps) {
+  await requireAuth(['STUDENT'])
+
+  const stimulus = await prisma.stimulus.findUnique({
+    where: { id: params.id },
+    select: { id: true, title: true, content: true, readingLoadLevel: true },
+  })
+  if (!stimulus) notFound()
+
+  // Best-effort glossary: pull Tier 2/3 terms for the benchmark this stimulus
+  // is used in (via any question that references it).
+  const linkedQuestion = await prisma.question.findFirst({
+    where: { stimulusId: stimulus.id },
+    select: { benchmarkId: true },
+  })
+
+  let glossaryTerms: GlossaryTerm[] = []
+  if (linkedQuestion) {
+    const terms = await prisma.term.findMany({
+      where: { benchmarkId: linkedQuestion.benchmarkId, approvalStatus: 'APPROVED' },
+      select: { term: true, definition: true, tier: true },
+    })
+    glossaryTerms = terms.map((t) => ({ term: t.term, definition: t.definition, tier: t.tier }))
+  }
+
+  const resolvedLevel = stimulus.readingLoadLevel
+  const glossaryAnnotations = buildGlossaryAnnotations(stimulus.content, glossaryTerms, resolvedLevel)
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-8 space-y-4">
+      <h1 className="text-sm font-medium text-gray-500">Primary Source Quest</h1>
+      <StimulusDisplay
+        stimulusId={stimulus.id}
+        title={stimulus.title}
+        content={stimulus.content}
+        resolvedLevel={resolvedLevel}
+        fromVariant={false}
+        glossaryAnnotations={glossaryAnnotations}
+      />
+    </div>
+  )
+}

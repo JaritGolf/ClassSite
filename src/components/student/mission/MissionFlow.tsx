@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { StepIndicator } from './StepIndicator'
+import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
 
 const STEP_ORDER = [
   'pre-check',
@@ -30,6 +31,8 @@ interface MissionData {
   benchmarkTitle: string
   lessonSummary: string | null
   studentFriendlyTarget: string
+  preCheckAssessmentId: string | null
+  readinessAssessmentId: string | null
   assessmentId: string | null
   lessonSteps: LessonStep[]
 }
@@ -41,6 +44,9 @@ interface MissionFlowProps {
 export function MissionFlow({ mission }: MissionFlowProps) {
   const [currentStep, setCurrentStep] = useState<Step>('pre-check')
   const [completedSteps, setCompletedSteps] = useState<Step[]>([])
+  const [preCheckDone, setPreCheckDone] = useState(false)
+  const [readinessResult, setReadinessResult] = useState<{ passed: boolean } | null>(null)
+  const [readinessAttempt, setReadinessAttempt] = useState(0)
 
   function completeStep(step: Step) {
     setCompletedSteps((prev) => (prev.includes(step) ? prev : [...prev, step]))
@@ -60,14 +66,37 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     <div className="space-y-6">
       <StepIndicator currentStep={currentStep} completedSteps={completedSteps} />
 
-      {currentStep === 'pre-check' && (
-        <StepPanel
-          title="Mission Pre-Check"
-          description="Answer 2–3 quick questions to help us understand what you already know. This does NOT count toward your score — it's just scouting!"
-          onContinue={() => completeStep('pre-check')}
-          ctaLabel="Start Pre-Check"
-        />
-      )}
+      {currentStep === 'pre-check' &&
+        (mission.preCheckAssessmentId ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Mission Pre-Check</h2>
+              <p className="text-sm text-gray-600">
+                A few quick questions to see what you already know — this does NOT count toward
+                your score. It&apos;s just scouting!
+              </p>
+            </div>
+            <AssessmentPlayer
+              assessmentId={mission.preCheckAssessmentId}
+              onComplete={() => setPreCheckDone(true)}
+            />
+            {preCheckDone && (
+              <button
+                onClick={() => completeStep('pre-check')}
+                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+              >
+                Continue to Briefing →
+              </button>
+            )}
+          </div>
+        ) : (
+          <StepPanel
+            title="Mission Pre-Check"
+            description="Answer a few quick questions to help us understand what you already know. This does NOT count toward your score — it's just scouting!"
+            onContinue={() => completeStep('pre-check')}
+            ctaLabel="Skip Pre-Check"
+          />
+        ))}
 
       {currentStep === 'briefing' && (
         <StepPanel
@@ -117,14 +146,54 @@ export function MissionFlow({ mission }: MissionFlowProps) {
         />
       )}
 
-      {currentStep === 'readiness-check' && (
-        <StepPanel
-          title="Readiness Check"
-          description="Short formative quiz to see if you're ready for the Mastery Challenge. Pass this to unlock the final assessment."
-          onContinue={() => completeStep('readiness-check')}
-          ctaLabel="Take Readiness Check"
-        />
-      )}
+      {currentStep === 'readiness-check' &&
+        (mission.readinessAssessmentId ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Readiness Check</h2>
+              <p className="text-sm text-gray-600">
+                A short quiz to see if you&apos;re ready. Score 70% or higher to unlock the Mastery
+                Challenge.
+              </p>
+            </div>
+            <AssessmentPlayer
+              key={readinessAttempt}
+              assessmentId={mission.readinessAssessmentId}
+              onComplete={(r) => setReadinessResult({ passed: r.passed })}
+            />
+            {readinessResult?.passed && (
+              <button
+                onClick={() => completeStep('readiness-check')}
+                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+              >
+                Unlock Mastery Challenge →
+              </button>
+            )}
+            {readinessResult && !readinessResult.passed && (
+              <div className="space-y-2">
+                <p className="text-sm text-amber-700">
+                  Not quite — review the training and try the readiness check again.
+                </p>
+                <button
+                  onClick={() => {
+                    setReadinessResult(null)
+                    setReadinessAttempt((n) => n + 1)
+                  }}
+                  className="rounded-lg border border-indigo-300 px-5 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <StepPanel
+            title="Readiness Check"
+            description="Short formative quiz to see if you're ready for the Mastery Challenge."
+            onContinue={() => completeStep('readiness-check')}
+            ctaLabel="Continue"
+          />
+        ))}
 
       {currentStep === 'mastery-challenge' && (
         <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-6 space-y-4 text-center">

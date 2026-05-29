@@ -20,9 +20,11 @@ export default async function MissionPage({ params }: PageProps) {
         take: 1,
       },
       assessments: {
-        where: { assessmentType: 'MASTERY_CHALLENGE', approvalStatus: 'APPROVED' },
-        select: { id: true },
-        take: 1,
+        where: {
+          assessmentType: { in: ['PRE_CHECK', 'READINESS_CHECK', 'MASTERY_CHALLENGE'] },
+          approvalStatus: 'APPROVED',
+        },
+        select: { id: true, assessmentType: true },
       },
     },
   })
@@ -30,14 +32,17 @@ export default async function MissionPage({ params }: PageProps) {
   if (!benchmark) notFound()
 
   const lesson = benchmark.lessons[0]
-  const assessmentId = benchmark.assessments[0]?.id ?? null
+  const idForType = (t: string) =>
+    benchmark.assessments.find((a) => a.assessmentType === t)?.id ?? null
 
   const missionData = {
     benchmarkCode: benchmark.code,
     benchmarkTitle: benchmark.title,
     lessonSummary: benchmark.lessonSummary ?? null,
     studentFriendlyTarget: lesson?.studentFriendlyTarget ?? benchmark.title,
-    assessmentId,
+    preCheckAssessmentId: idForType('PRE_CHECK'),
+    readinessAssessmentId: idForType('READINESS_CHECK'),
+    assessmentId: idForType('MASTERY_CHALLENGE'),
     lessonSteps: lesson?.steps ?? [],
   }
 

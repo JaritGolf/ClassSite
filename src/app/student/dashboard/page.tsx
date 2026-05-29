@@ -32,6 +32,7 @@ export default async function StudentDashboard() {
     masteredCount,
     totalCount,
     firstUnit,
+    activeRemediation,
   ] = await Promise.all([
     prisma.studentProgress.findFirst({
       where: { studentId: student.id, status: 'IN_PROGRESS' },
@@ -58,6 +59,12 @@ export default async function StudentDashboard() {
     prisma.benchmark.count(),
     // Get the first unit (for narrative beats on the dashboard)
     prisma.unit.findFirst({ where: { active: true }, orderBy: { sequenceOrder: 'asc' }, select: { id: true, sequenceOrder: true } }),
+    // Current remediation task, if any (spec §21.3)
+    prisma.studentRemediation.findFirst({
+      where: { studentId: student.id, status: 'ASSIGNED' },
+      orderBy: { assignedAt: 'desc' },
+      include: { remediationItem: { select: { title: true } } },
+    }),
   ])
 
   const streakState = await recordActivity(student.id, new Date())
@@ -96,6 +103,18 @@ export default async function StudentDashboard() {
         freezeTokens={streakState.freezeTokens}
       />
       <DrillCTA drillCount={drillCount} />
+      {activeRemediation && (
+        <a
+          href={`/student/remediation/${activeRemediation.id}`}
+          className="block rounded-xl border border-amber-300 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Training Mission</p>
+          <p className="text-sm font-semibold text-amber-900">
+            {activeRemediation.remediationItem.title}
+          </p>
+          <p className="text-xs text-amber-700">Tap to strengthen this skill →</p>
+        </a>
+      )}
       <BadgeRack badges={badges} />
       <NarrativeOverlayWrapper beat={narrativeBeat} />
     </div>
