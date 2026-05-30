@@ -27,6 +27,8 @@ export async function GET() {
 const PatchSchema = z.object({
   pausePointMinutes: z.number().int().min(5).max(120).optional(),
   reduceMotion: z.boolean().optional(),
+  highContrast: z.boolean().optional(),
+  largeText: z.boolean().optional(),
   skipAllNpcs: z.boolean().optional(),
 })
 

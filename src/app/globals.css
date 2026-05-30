@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ============================================================
+   Phase 12 — Accessibility theming
+   Applied as classes on the student app wrapper (see student/layout.tsx),
+   driven by StudentUiSettings + active accommodations (Appendix G).
+   ============================================================ */
+
+/* Reduced motion (ACC-* none; student self-toggle / OS preference).
+   Disable transitions and animations app-wide within the wrapper. */
+.cq-reduce-motion *,
+.cq-reduce-motion *::before,
+.cq-reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Respect the OS-level reduced-motion preference too. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Large text (ACC-LARGE-TEXT / student toggle).
+   Bump the base font size; rem/Tailwind type scales reflow from here. */
+.cq-large-text {
+  font-size: 125%;
+  line-height: 1.6;
+}
+
+/* High contrast (ACC-HIGH-CONTRAST / student toggle).
+   WCAG-AAA-leaning palette: near-black on white, strong borders, visible focus.
+   Overrides common Tailwind gray text/border utilities used across the app so
+   we do not have to touch every component. */
+.cq-high-contrast {
+  background-color: #ffffff !important;
+  color: #000000;
+}
+/* Neutralize subtle background tints used as page/card backdrops. */
+.cq-high-contrast :where(.bg-gray-50, .bg-gray-100, .bg-indigo-50, .bg-amber-50, .bg-green-50, .bg-red-50, .bg-purple-50) {
+  background-color: #ffffff !important;
+}
+.cq-high-contrast :where(p, span, li, label, h1, h2, h3, h4, td, th, a, button, summary) {
+  color: #000000;
+}
+/* Neutralize low-contrast gray text utilities. */
+.cq-high-contrast :where(
+  .text-gray-300, .text-gray-400, .text-gray-500, .text-gray-600, .text-gray-700
+) {
+  color: #1a1a1a !important;
+}
+/* Strengthen borders so structure is visible without relying on subtle shades. */
+.cq-high-contrast :where(.border, .border-b, .border-t, .border-gray-100, .border-gray-200, .border-gray-300) {
+  border-color: #000000 !important;
+}
+/* Always-visible keyboard focus ring in high-contrast mode. */
+.cq-high-contrast :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #000000 !important;
+  outline-offset: 2px !important;
+}

@@ -1100,6 +1100,8 @@ model StudentUiSettings {
   studentId         String  @unique @map("student_id")
   pausePointMinutes Int     @default(40) @map("pause_point_minutes")
   reduceMotion      Boolean @default(false) @map("reduce_motion")
+  highContrast      Boolean @default(false) @map("high_contrast")
+  largeText         Boolean @default(false) @map("large_text")
   skipAllNpcs       Boolean @default(false) @map("skip_all_npcs")
 
   student Student @relation(fields: [studentId], references: [id])

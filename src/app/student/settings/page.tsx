@@ -1,17 +1,60 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface Settings {
   pausePointMinutes: number
   reduceMotion: boolean
+  highContrast: boolean
+  largeText: boolean
   skipAllNpcs: boolean
 }
 
+function Toggle({
+  label,
+  description,
+  checked,
+  onChange,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: () => void
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 flex items-start gap-4">
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-gray-700">{label}</p>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        onClick={onChange}
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+          checked ? 'bg-indigo-600 border-indigo-600' : 'bg-gray-200 border-gray-200'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${
+            checked ? 'translate-x-5' : 'translate-x-0.5'
+          }`}
+        />
+      </button>
+    </div>
+  )
+}
+
 export default function StudentSettingsPage() {
+  const router = useRouter()
   const [settings, setSettings] = useState<Settings>({
     pausePointMinutes: 40,
     reduceMotion: false,
+    highContrast: false,
+    largeText: false,
     skipAllNpcs: false,
   })
   const [saving, setSaving] = useState(false)
@@ -45,6 +88,8 @@ export default function StudentSettingsPage() {
 
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
+      // Re-render the server layout so theme classes (contrast/large-text/motion) re-apply.
+      router.refresh()
     } finally {
       setSaving(false)
     }
@@ -56,7 +101,8 @@ export default function StudentSettingsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Student Settings</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Student Settings</h1>
+      <p className="text-sm text-gray-500 mb-6">Tools turned on for you. Change them anytime.</p>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Pause-point */}
@@ -84,47 +130,33 @@ export default function StudentSettingsPage() {
           </div>
         </div>
 
-        {/* Skip NPCs */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 flex items-start gap-4">
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-700">Skip NPC dialogue</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Turn off the Founder, Skeptic, and Citizen overlays. You can turn them back on at any time.
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={settings.skipAllNpcs}
-            onClick={() => setSettings((s) => ({ ...s, skipAllNpcs: !s.skipAllNpcs }))}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              settings.skipAllNpcs ? 'bg-indigo-600 border-indigo-600' : 'bg-gray-200 border-gray-200'
-            }`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${settings.skipAllNpcs ? 'translate-x-5' : 'translate-x-0.5'}`} />
-          </button>
-        </div>
+        <Toggle
+          label="High contrast"
+          description="Switch to a high-contrast color scheme that's easier to read."
+          checked={settings.highContrast}
+          onChange={() => setSettings((s) => ({ ...s, highContrast: !s.highContrast }))}
+        />
 
-        {/* Reduce motion */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 flex items-start gap-4">
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-700">Reduce motion</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Minimize animations and transitions throughout the app.
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={settings.reduceMotion}
-            onClick={() => setSettings((s) => ({ ...s, reduceMotion: !s.reduceMotion }))}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              settings.reduceMotion ? 'bg-indigo-600 border-indigo-600' : 'bg-gray-200 border-gray-200'
-            }`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform mt-0.5 ${settings.reduceMotion ? 'translate-x-5' : 'translate-x-0.5'}`} />
-          </button>
-        </div>
+        <Toggle
+          label="Large text"
+          description="Increase the text size across the app. The layout reflows to fit."
+          checked={settings.largeText}
+          onChange={() => setSettings((s) => ({ ...s, largeText: !s.largeText }))}
+        />
+
+        <Toggle
+          label="Reduce motion"
+          description="Minimize animations and transitions throughout the app."
+          checked={settings.reduceMotion}
+          onChange={() => setSettings((s) => ({ ...s, reduceMotion: !s.reduceMotion }))}
+        />
+
+        <Toggle
+          label="Skip NPC dialogue"
+          description="Turn off the Founder, Skeptic, and Citizen overlays. You can turn them back on at any time."
+          checked={settings.skipAllNpcs}
+          onChange={() => setSettings((s) => ({ ...s, skipAllNpcs: !s.skipAllNpcs }))}
+        />
 
         <button
           type="submit"
