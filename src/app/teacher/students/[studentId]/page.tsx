@@ -3,6 +3,7 @@
  */
 
 import { requireAuth } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 import { getStudentProfileForTeacher } from '@/lib/student-profile'
 import { StudentProfileHeader } from '@/components/teacher/student/StudentProfileHeader'
 import { CalibrationTrendChart } from '@/components/teacher/student/CalibrationTrendChart'
@@ -23,6 +24,13 @@ export default async function StudentProfilePage({ params }: PageProps) {
     session.user.userId,
     params.studentId
   )
+
+  // Full accommodation catalog so the teacher can grant any code, not just
+  // ones already on record (spec Appendix G).
+  const accommodationCatalog = await prisma.accommodation.findMany({
+    orderBy: { code: 'asc' },
+    select: { code: true, name: true },
+  })
 
   return (
     <div className="space-y-6">
@@ -134,6 +142,7 @@ export default async function StudentProfilePage({ params }: PageProps) {
       <AccommodationEditor
         studentId={params.studentId}
         accommodations={profile.accommodations}
+        catalog={accommodationCatalog}
       />
     </div>
   )

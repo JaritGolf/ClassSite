@@ -295,6 +295,12 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
     { code: 'ACC-SIMPLE-LANG', name: 'Simplified Language', description: 'Defaults stimulus to reading-load level 1 where available.' },
     { code: 'ACC-T2-VOCAB', name: 'Tier-2 Vocabulary Popovers Always On', description: 'Tier-2 academic words always show glossary popover.' },
     { code: 'ACC-REDUCED-CHOICES', name: 'Reduced Answer Choices', description: '3 instead of 4 answer choices on practice (not Mastery). Phase 9+.' },
+    // Phase 12: remaining MVP accommodations (Appendix G)
+    { code: 'ACC-BREAKS', name: 'Frequent Breaks', description: 'Auto-suggests a pause every 10 minutes across all sessions.' },
+    { code: 'ACC-SCREEN-READER', name: 'Screen Reader Optimized', description: 'Ensures all controls have ARIA labels and a logical tab order.' },
+    { code: 'ACC-HIGH-CONTRAST', name: 'High Contrast Mode', description: 'Switches the color palette to a high-contrast scheme.' },
+    { code: 'ACC-LARGE-TEXT', name: 'Large Text', description: 'Bumps the base font size; layout reflows.' },
+    { code: 'ACC-CONTEXT-BOOST', name: 'Background Context Cards', description: 'Optional 30-60s context cards before unfamiliar references. (Cards wired in a later phase.)' },
     // Phase 7: reading-load accommodation codes used by getEffectiveReadingLevel
     { code: 'ELL', name: 'English Language Learner', description: 'Defaults stimulus content to reading-load level 1 for practice. Tier-2 glossary and sentence-chunking enabled by default.' },
     { code: 'BELOW-GRADE-READER', name: 'Below-Grade Reader', description: 'Defaults stimulus content to reading-load level 1. Read-aloud and sentence-chunking enabled by default.' },
