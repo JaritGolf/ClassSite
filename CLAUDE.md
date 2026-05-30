@@ -148,18 +148,68 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
-**Phase 12 — Not started** (spec-gap repairs to Phases 3–11 landed 2026-05-29)
+**Phase 12 — Code landed, verification PENDING (not yet tagged complete)**
 
-Phase 11 complete — Audit 11 passed 2026-05-23. A spec-audit repair pass (see ADR 0004) closed
-Section-A gaps and the cheap Section-B items on 2026-05-29.
+All Phase 12 code committed across `feat(phase-12a..d)` (theming, accommodation
+catalog, stimulus a11y on assessment + source-decoder, axe e2e + audit-12 docs +
+ADR 0005). `tsc --noEmit` passes 0 errors. **Jest, production build, and the axe
+e2e run were NOT executed** on the build machine due to a local npm install env
+issue (node_modules entries dumped to `.ignored` after install; jest cannot start
+as a result). Disk was at 91% capacity, which may be a contributing factor.
 
-Next action: Begin Phase 12 (accessibility & equity polish). Use `/plan` before implementing if the scope touches accommodations wiring. Target: Audit 12 (spec Section 36.13).
+**Do NOT tag `phase-12-complete` until** the verification chain is green:
+  npx tsc --noEmit                              # already known: 0 errors
+  npx jest                                       # not yet run
+  npm run build                                  # not yet run
+  npm run dev  &&  npx playwright test tests/e2e/a11y.test.ts   # not yet run
+Plus the manual items in `docs/audits/audit-12-checklist.md` (keyboard,
+VoiceOver, ACC-HIGH-CONTRAST flow-through, 200% zoom).
+
+Phase 11 complete — Audit 11 passed 2026-05-23. Spec-audit repair pass (ADR
+0004) closed Section-A gaps and the cheap Section-B items on 2026-05-29.
+
+Next action: free up disk space (Mac was at 91%), reinstall node_modules with
+a clean `npm install`, then run the four verification commands above. If green,
+tag `phase-12-complete` and move on to Phase 13 (Calibration Loop, §36.14).
 
 ---
 
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-05-29 (Phase 12 — code landed, verification PENDING):** Phase 12
+accessibility & equity code committed across four slices. Migration
+`20260530120000_phase12_ui_accessibility_settings` applied to local DB
+(StudentUiSettings.highContrast + largeText). **12a — theming:** new CSS classes
+`.cq-high-contrast` / `.cq-large-text` / `.cq-reduce-motion` in `globals.css`
+applied via wrapping div in RSC `src/app/student/layout.tsx` (single application
+point so all student pages inherit); GET/PATCH /api/student/settings + settings
+page gained the two new toggles + `reduceMotion` now actually wired; layout
+OR-merges UI settings with active accommodations. **12b — accommodation catalog:**
+seed/benchmarks.ts adds 5 missing codes (ACC-BREAKS, ACC-SCREEN-READER,
+ACC-HIGH-CONTRAST, ACC-LARGE-TEXT, ACC-CONTEXT-BOOST) → 13 total;
+AccommodationEditor now surfaces full catalog merged with active set so teachers
+can grant any code; ACC-HIGH-CONTRAST / ACC-LARGE-TEXT grants force the theme on
+without further action (Appendix-G "set once, flows everywhere"); ACC-BREAKS
+clamps pausePointMinutes to ≤10; ACC-CONTEXT-BOOST seeded but card feature
+deferred (owner). **12c — stimulus a11y:** GET /api/assessment/[id] now resolves
+the student and passes studentId to fetchAssessmentForStudent (previously studentId
+was never passed, so assessments rendered NO stimulus at all because AssessmentPlayer
+read a non-existent `stimulusContent` field); AssessmentPlayer now uses
+StimulusDisplay (read-aloud + chunking + glossary); SourceDecoderMission renders
+passages via StimulusDisplay too. **12d — axe + docs:** added
+`@axe-core/playwright` devDep (owner-approved); `tests/e2e/a11y.test.ts` (zero
+WCAG 2.0/2.1 A/AA violations on dashboard/mission/assessment/settings);
+`docs/audits/audit-12-checklist.md` (10 items, automated + manual procedures);
+`docs/adrs/0005-accessibility-theming-and-accommodation-flow.md`.
+**Verification status:** `tsc --noEmit` 0 errors confirmed. `jest`,
+`npm run build`, and the axe e2e were NOT run — `npm install` on this machine
+silently dumped 600+ packages into `node_modules/.ignored` (disk at 91% capacity;
+likely contributing). Jest cannot start without a working node_modules. Phase 12
+is NOT tagged complete — see "Current Build Phase" section above for the
+verification gate. Commits: `feat(phase-12a)`, `feat(phase-12b)`,
+`feat(phase-12c)`, `feat(phase-12d)`. **No tag yet.** Build-decisions added.
 
 **Session of 2026-05-29 (Spec-gap repair, Phases 3–11):** Audited completed phases 0–11 against the build spec and fixed all Section-A gaps plus cheap Section-B items (see ADR 0004). 17 new tests (771 total, all pass — up from 754); TypeScript 0 errors; production build clean. Migration `20260529120000_phase11_repair_assessment_types` adds `PRE_CHECK`, `VOCAB_CHECK`, `UNIT_REVIEW` to the `AssessmentType` enum (BEFORE clauses keep DB enum order aligned; applied via `migrate deploy` since `migrate dev` is non-interactive in this harness). **Slice 1 — calibration loop:** new `src/lib/metacognition/` (`breakdown.ts` pure `computeCalibrationBreakdown`, `snapshot.ts` `recordCalibrationSnapshot`, `index.ts`); `gradeAndSubmit` returns a `calibration` field + writes `ConfidenceCalibrationSnapshot` (overall + per-benchmark) non-fatally for confidence-required types; `AssessmentPlayer` renders a per-confidence "Very/Pretty/Not sure → X of Y right" card. Added `ConfidenceCalibrationSnapshot` cleanup to assessment/mastery/republic/audit11-05 test afterAll blocks (FK). **Slice 2 — mission loop:** `seed/assessments_unit1.ts` (wired into `seed/index.ts` step 8) seeds PRACTICE/PRE_CHECK/READINESS_CHECK/VOCAB_CHECK/MASTERY_CHALLENGE per Unit 1 benchmark + one Unit-1 UNIT_REVIEW, idempotent by `(benchmarkId, assessmentType)`; mission page fetches PRE_CHECK/READINESS_CHECK/MASTERY ids; `AssessmentPlayer` gained optional `onComplete` (suppresses standalone Map CTA); `MissionFlow` embeds the player for pre-check (ungraded) and readiness (gates mastery on pass, with retry). **Slice 3 — reachable student pages:** `/student/source-decoder` (+ `SourceDecoderTrack` client wrapper), `/student/remediation/[id]` (+ `RemediationActivity`), dashboard now surfaces the current ASSIGNED remediation. **Slice 4 — teacher pages:** `/teacher/reporting-categories`, `/teacher/eoc-readiness`, `/teacher/questions` (+ `GET /api/teacher/questions`); TeacherNav links added; all reuse existing analytics libs. **Slice 5 — tag validation:** new `src/lib/eoc-alignment/` (`validateQuestionTags`, `getBlueprintCoverage`/`computeBlueprintCoverage`); question bank flags under-tagged rows; integration guard test asserts every seeded Unit 1 question is fully tagged (rule #3). **Slice 6 — strategy track + source-lab:** new `src/lib/strategy-track/` (7 missions), `/api/strategy/{progress,[missionCode]/complete}`, `/student/strategy` (+ `StrategyTrackList`), 3 STRATEGY badges in `seed/badges.ts` (26 total); `/student/source-lab/[id]` reuses `StimulusDisplay`; StudentNav adds Source Decoder + Strategy. Deferred per phase-order rule #7: class-Republic build (needs district sign-off), context boost (P12), L1 glosses (P16), admin curriculum/eoc-alignment + background queue (P17). NOT manually walked through a browser — verification was tests + tsc + production build only. Commits: `fix(phase-3)`, `fix(phase-8)`, `fix(phase-9)`, `fix(phase-11)`.
 
@@ -228,6 +278,10 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-05-23] Final Trial date gate (Phase 11c): the hub disables the Final Trial card before April 1. Gate is computed in `/api/republic-challenge/config` (`now >= April 1 of current UTC year`) and is teacher-overridable only by toggling `featureEocReviewEnabled`. Hard date gate keeps the simulation honest as a year-end check; reversible by adding a `rcFinalTrialOpenDate` Class field if districts need an earlier window.
 - [2026-05-23] Source Sprint pool may be small (Phase 11b): seed currently has stimuli only for EXCERPT across Unit 1 benchmarks. Source Sprint picker uses a runtime cast (`stimulusType as any` against the StimulusType enum) since route validation already pre-filters with `ALLOWED_STIMULUS_TYPES`. Empty pools surface as HTTP 422 EMPTY_POOL to the student. Reversible without code changes once seed data fills out the other stimulus types.
 - [2026-05-23] Mistake Replay returns empty for clean students (Phase 11c, audit11/01): the audit test seeds a single missed AttemptResponse so MISTAKE_REPLAY has a pool. In production, students always have prior attempts by the time they reach Republic Challenge. Picker returns an empty array (caller throws EMPTY_POOL via createRepublicChallengeSession) — intentional.
+- [2026-05-29] Theming via CSS classes on the student shell, not a client context (Phase 12a): `src/app/student/layout.tsx` (RSC) reads StudentUiSettings + active accommodations once and applies `.cq-high-contrast` / `.cq-large-text` / `.cq-reduce-motion` to a wrapping div. Single application point so all student pages inherit; SSR avoids the flash-of-un-themed-UI a client provider would have. Trade-off: settings page calls `router.refresh()` after save so the server layout re-applies. Reversible by introducing a client provider if a future feature needs to toggle modes without a round-trip.
+- [2026-05-29] Accommodations OR-merged with self-serve settings (Phase 12a/b): the layout forces `.cq-high-contrast` / `.cq-large-text` on if either StudentUiSettings flag OR the corresponding ACC-* accommodation is active, and clamps the pause interval to ≤10 min when ACC-BREAKS is active. Models the Appendix-G "teacher grant flows through everywhere" requirement without giving the teacher grant a way to be turned off by a student preference. Reversible by changing OR to a precedence rule if teachers later need student opt-out.
+- [2026-05-29] Context Boost cards deferred (Phase 12b): ACC-CONTEXT-BOOST seeded as a catalog code so teachers can grant it and AuditLog is consistent, but the card-rendering feature itself is deferred to a later phase (owner decision). Reversible by implementing the feature when scheduled; no schema change required.
+- [2026-05-29] Phase 12 NOT tagged complete despite code landing (Phase 12 closeout): `tsc --noEmit` confirmed 0 errors but `jest`, `npm run build`, and the axe e2e were NOT run on the build machine — `npm install` silently dumped 600+ packages into `node_modules/.ignored` (likely disk-pressure related — disk was at 91%). Phase 11 discipline is "do not begin Phase N until Phase N-1 audit passes," so Phase 12 stays in "code landed, verification pending" until the env is fixed and the four verification commands run green. Reversible/recoverable simply by running them.
 
 ---
 
