@@ -20,6 +20,7 @@
 
 import { useState } from 'react'
 import type { SourceDecoderMission as MissionDef } from '@/lib/reading-load'
+import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
 
 interface SourceDecoderMissionProps {
   mission: MissionDef
@@ -72,11 +73,16 @@ export function SourceDecoderMission({
         </p>
       </div>
 
-      {/* Stimulus passage (if provided) */}
+      {/* Stimulus passage (if provided) — rendered with read-aloud + chunking */}
       {stimulusContent && (
-        <div className="rounded-md bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
-          {stimulusContent}
-        </div>
+        <StimulusDisplay
+          stimulusId={`source-decoder-l${mission.level}`}
+          title="Passage"
+          content={stimulusContent}
+          resolvedLevel={2}
+          fromVariant={false}
+          glossaryAnnotations={[]}
+        />
       )}
 
       {/* Instructions */}

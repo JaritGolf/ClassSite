@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { ConfidenceSelector } from './ConfidenceSelector'
+import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
+import type { GlossaryAnnotation } from '@/lib/reading-load'
 
 interface Option {
   id: string
@@ -9,11 +11,20 @@ interface Option {
   position: number
 }
 
+interface StimulusData {
+  stimulusId: string
+  stimulusTitle: string
+  resolvedContent: string
+  resolvedLevel: number
+  fromVariant: boolean
+  glossaryAnnotations: GlossaryAnnotation[]
+}
+
 interface Question {
   questionId: string
   prompt: string
   itemType: string
-  stimulusContent?: string | null
+  stimulus?: StimulusData | null
   options: Option[]
 }
 
@@ -170,10 +181,15 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-        {currentQ.stimulusContent && (
-          <blockquote className="border-l-4 border-indigo-300 pl-4 py-2 bg-indigo-50 rounded-r-lg text-sm text-gray-700 italic">
-            {currentQ.stimulusContent}
-          </blockquote>
+        {currentQ.stimulus && (
+          <StimulusDisplay
+            stimulusId={currentQ.stimulus.stimulusId}
+            title={currentQ.stimulus.stimulusTitle}
+            content={currentQ.stimulus.resolvedContent}
+            resolvedLevel={currentQ.stimulus.resolvedLevel}
+            fromVariant={currentQ.stimulus.fromVariant}
+            glossaryAnnotations={currentQ.stimulus.glossaryAnnotations}
+          />
         )}
         <p className="text-gray-800 font-medium leading-relaxed">{currentQ.prompt}</p>
 
