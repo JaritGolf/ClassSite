@@ -12,13 +12,27 @@ This ledger records verification steps deferred to CI / a healthy Node environme
 - ✅ **`./node_modules/.bin/tsc --noEmit` → 0 errors** (2026-06-11). Use the local bin or
   `npm run typecheck` — never `npx tsc` (resolves to a bogus package that can wipe
   `node_modules`).
+- ✅ **`jest` GREEN locally (2026-06-11).** The multi-phase "jest hangs at bootstrap" issue
+  was **root-caused and fixed** this session: `jest-haste-map` was crawling ~2000
+  `package.json` files across 5 abandoned agent worktrees under `.claude/worktrees/*`
+  (each carrying a full `node_modules.nosync` copy), freezing startup before any test ran.
+  Fix: `modulePathIgnorePatterns` in `jest.config.ts` ignores `.claude/`, `.next/`,
+  `.nosync/`, and `node_modules N` dirs. Pure unit test now runs in ~0.3s.
+  - Phase 14 drivers (`audit14/01–04`) + unit (`parent-summary/fields-allowlist`): **12/12 pass.**
+  - **Full suite: 95 suites / 806 tests pass** in ~10s (one stale Phase-13 assertion,
+    `audit13/05` 6b, was corrected — it demanded the blueprint midpoints sum to ~1.0; they
+    legitimately sum to ~0.95 and the engine normalizes by totalWeight).
+  - Tests need `DATABASE_URL` in the env (no `.env`, only `.env.local`, which Prisma does
+    not auto-load): `export DATABASE_URL=$(grep ^DATABASE_URL= .env.local | sed ...)`.
+
+D1 (jest drivers) and D2 (full suite) are therefore **CLEARED**. Remaining Tier-3 below.
 
 ## Deferred (run in CI / healthy env)
 
 | # | Item | Status | Notes |
 |---|------|--------|-------|
-| D1 | `jest` Phase 14 drivers (`tests/integration/audit14/01–04`) + unit (`tests/unit/parent-summary/fields-allowlist.test.ts`) | ⛔ Blocked locally | Same jest harness bootstrap hang as Phases 12–13: a bounded run (70s) of the pure unit test produced **zero output** before being reaped — reaped before any test executes. Environmental, not code. NOT claimed as passed. |
-| D2 | Full `jest` suite (regression) | ⛔ Blocked locally | Run in CI. |
+| ~~D1~~ | ~~`jest` Phase 14 drivers + unit~~ | ✅ **PASS** (2026-06-11) | 12/12 green via real config. |
+| ~~D2~~ | ~~Full `jest` suite (regression)~~ | ✅ **PASS** (2026-06-11) | 806/806 green. |
 | D3 | `npm run build` | ⏳ Not run | Run in CI. |
 | D4 | axe e2e (parent-summary page) | ⏳ Not run | Add page to `tests/e2e/a11y.test.ts`; run in CI. |
 | D5 | Manual a11y (keyboard, 200% zoom, VoiceOver) + manual "Save as PDF" check | ⏳ Owner-pending | Procedures in `docs/audits/audit-14-checklist.md`. |

@@ -148,7 +148,20 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
-**Phase 14 — COMPLETE (tagged `phase-14-complete`, 2026-06-11) under the tiered gate (ADR 0006). Tier 1 `tsc` GREEN; jest/build/e2e deferred to CI — see `docs/audits/deferred/phase-14.md`.**
+**Phase 14 — COMPLETE (tagged `phase-14-complete`, 2026-06-11) under the tiered gate (ADR 0006). Tier 1 `tsc` GREEN + Tier 2 jest GREEN (the bootstrap hang is FIXED — see below). Only Tier-3 (build, axe e2e, manual a11y) deferred — see `docs/audits/deferred/phase-14.md`.**
+
+**MAJOR: the multi-phase "jest hangs at bootstrap" blocker is ROOT-CAUSED AND FIXED
+(2026-06-11).** It was never a Node/ABI/disk problem (those were red herrings). Cause:
+`jest-haste-map` crawled ~2000 `package.json` files across 5 abandoned agent worktrees
+under `.claude/worktrees/*` (each with a full `node_modules.nosync`), freezing startup
+before any test ran. Fix: `modulePathIgnorePatterns` in `jest.config.ts` ignoring
+`.claude/`, `.next/`, `.nosync/`, `node_modules N`. **Full suite now 95 suites / 806 tests
+GREEN in ~10s.** Running locally needs `DATABASE_URL` exported from `.env.local` (Prisma
+doesn't auto-load `.env.local`; no `.env`; `dotenv` not installed). See memory
+[[jest-bootstrap-hang-root-cause]]. This clears the jest items in the Phase 12/13/14
+deferred ledgers. One stale Phase-13 assertion (`audit13/05` 6b) was corrected in passing
+(it demanded blueprint midpoints sum to ~1.0; they sum to ~0.95 and the engine normalizes
+by totalWeight — the weights constant was NOT changed).
 
 Phase 14 (Parent Progress Summary, §36.15 / spec §23 Phase 1) builds **Phase 1 of the
 parent portal**: a *teacher-generated*, print-to-PDF student progress summary. True parent

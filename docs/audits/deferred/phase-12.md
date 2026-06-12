@@ -5,6 +5,13 @@
 **Phase tagged complete on:** Tier 1 code signal (`tsc --noEmit` = 0 errors) + full
 Phase 12 implementation landed across `feat(phase-12a..d)`.
 
+> **UPDATE 2026-06-11 — jest blocker CLEARED.** The "jest hangs at bootstrap" issue (D1)
+> was root-caused and fixed (haste-map crawling `.claude/worktrees` node_modules; fixed via
+> `modulePathIgnorePatterns` in `jest.config.ts`). The **full suite is now 806/806 green**.
+> The Phase 12 jest items (D1) pass as part of that suite. Remaining Phase 12 deferred items
+> are Tier-3 only: `next build` (D2), axe e2e (D3), manual a11y/VoiceOver (D4–D7).
+> See memory `jest-bootstrap-hang-root-cause`.
+
 This ledger records the verification steps that are **outstanding** for Phase 12 and the
 **honest reason** each could not be completed on the build machine. Per ADR 0006 these are
 **non-blocking** for starting Phase 13, but must be cleared (with owner sign-off) in a

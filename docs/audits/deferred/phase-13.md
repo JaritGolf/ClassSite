@@ -3,6 +3,13 @@
 **Created:** 2026-06-06
 **Governing decision:** ADR 0006 (Tiered Verification Gate)
 
+> **UPDATE 2026-06-11 — jest D1/D2 CLEARED.** The "jest hangs at bootstrap" blocker was
+> root-caused and fixed (haste-map crawling `.claude/worktrees` node_modules; fixed via
+> `modulePathIgnorePatterns` in `jest.config.ts`). The **full suite is now 806/806 green**,
+> including `audit13/01–06` (a stale assertion in `audit13/05` 6b was corrected — blueprint
+> midpoints sum to ~0.95, not ~1.0). D3 (`npm run build`) still pending in CI.
+> See memory `jest-bootstrap-hang-root-cause`.
+
 Phase 13 (Calibration Loop) closes the calibration feedback loop: admin-approved
 calibration weights now drive readiness scoring (ADR 0007). This ledger records the
 verification steps deferred to CI / a healthy Node environment.
