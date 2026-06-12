@@ -14,13 +14,17 @@ complete**. This ledger tracks what remains.
 - ✅ All 36 SS.7.CG benchmarks loaded (item 1).
 - ✅ Reusable seeder + audit-15 harness + remediation pipeline.
 - ✅ Unit 2 benchmark **SS.7.CG.1.7** authored to the full 30 (the proven template).
+- ✅ **Unit 1 backfill complete** — all 6 benchmarks (SS.7.CG.1.1–1.6) now at 30/benchmark
+  (`seed/questions/unit1_backfill.ts`: +15 each, Tier C / NEEDS_REVIEW, authored to
+  complement the original 15 so combined 30 = reading 9/15/6 · complexity 6/17/7).
 
 ## Remaining content (per unit — repeat the template)
 
 | Item | Status |
 |---|---|
+| Unit 1 SS.7.CG.1.1–1.6 → 30 each | ✅ DONE (backfill) |
+| Unit 2 SS.7.CG.1.7 → 30 | ✅ DONE |
 | Unit 2 SS.7.CG.1.8–1.11 (×30 each) | ⏳ TODO — append to `seed/questions/unit2.ts` + `UNIT2_COMPLETE_BENCHMARKS` |
-| Unit 1 backfill 15 → 30 per benchmark | ⏳ TODO |
 | Units 3–7 question banks (×30 each) | ⏳ TODO — new `seed/questions/unitN.ts` using `seedQuestionDefs` |
 | Owner bulk-approval of NEEDS_REVIEW drafts | ⏳ Owner action — flips Tier C drafts to APPROVED (closes item 2 "approved") |
 

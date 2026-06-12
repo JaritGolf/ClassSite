@@ -166,9 +166,16 @@ inline (no Stimulus rows needed). (4) **Remediation** `seed/remediation_items.ts
 `UNIT2_COMPLETE_BENCHMARKS`) + pure `tests/unit/seed/unit2-category-mix.test.ts`.
 Docs: `audit-15-checklist.md`, ADR 0009, `deferred/phase-15.md`. Schema-free; no new deps.
 
-**Remaining (per-unit, repeat the template):** Unit 2 SS.7.CG.1.8–1.11, Unit 1 backfill
-15→30, Units 3–7 banks, and the **owner bulk-approval** of NEEDS_REVIEW drafts. Tag
-`phase-15-complete` only when the full course meets audit 15. See `docs/audits/deferred/phase-15.md`.
+**Update (2026-06-12, same session):** **Unit 1 backfill COMPLETE** — all 6 benchmarks
+(1.1–1.6) now at 30/benchmark via `seed/questions/unit1_backfill.ts` (+15 each, Tier C /
+NEEDS_REVIEW, authored to complement the original 15 → combined reading 9/15/6, complexity
+6/17/7). Remediation seeder rewritten to derive (benchmark, skill_tag) pairs from the DB
+(auto-covers all units). audit-15 harness now DB-validates Unit 1 + Unit 2-complete. Full
+suite **884/884 green**. Owner will approve all NEEDS_REVIEW drafts after the build.
+
+**Remaining (per-unit, repeat the template):** Unit 2 SS.7.CG.1.8–1.11, Units 3–7 banks,
+and the **owner bulk-approval** of NEEDS_REVIEW drafts. Tag `phase-15-complete` only when
+the full course meets audit 15. See `docs/audits/deferred/phase-15.md`.
 
 ---
 

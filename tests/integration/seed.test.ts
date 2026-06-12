@@ -200,14 +200,15 @@ describe('seedVocabulary', () => {
 // ── Sample Questions ──────────────────────────────────────────────────────────
 
 describe('seedSampleQuestions', () => {
-  it('seeds exactly 90 Unit 1 questions', async () => {
-    const count = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' } } })
+  it('seeds exactly 90 original (Tier B) Unit 1 questions', async () => {
+    // Unit 1 backfill (Tier C) adds 90 more; scope to the original Tier-B set.
+    const count = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } })
     expect(count).toBe(90)
   })
 
-  it('seeds exactly 360 Unit 1 question options (4 per question)', async () => {
+  it('seeds exactly 360 original (Tier B) Unit 1 question options (4 per question)', async () => {
     const count = await prisma.questionOption.count({
-      where: { question: { benchmark: { unitId: 'unit-1' } } },
+      where: { question: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } },
     })
     expect(count).toBe(360)
   })
@@ -244,14 +245,16 @@ describe('seedSampleQuestions', () => {
     }
   })
 
-  it('each benchmark has exactly 15 questions', async () => {
+  it('each benchmark has exactly 15 original (Tier B) questions', async () => {
+    // Unit 1 backfill (Tier C) brings each benchmark to 30; scope to the
+    // original Tier-B set this describe block is about.
     const benchmarkCodes = [
       'SS.7.CG.1.1', 'SS.7.CG.1.2', 'SS.7.CG.1.3',
       'SS.7.CG.1.4', 'SS.7.CG.1.5', 'SS.7.CG.1.6',
     ]
     for (const code of benchmarkCodes) {
       const bm = await prisma.benchmark.findUnique({ where: { code } })
-      const count = await prisma.question.count({ where: { benchmarkId: bm!.id } })
+      const count = await prisma.question.count({ where: { benchmarkId: bm!.id, sourceTier: 'B' } })
       expect(count).toBe(15)
     }
   })
@@ -263,9 +266,10 @@ describe('seedSampleQuestions', () => {
     ]
     for (const code of benchmarkCodes) {
       const bm = await prisma.benchmark.findUnique({ where: { code } })
-      const low = await prisma.question.count({ where: { benchmarkId: bm!.id, cognitiveComplexity: 'LOW' } })
-      const mod = await prisma.question.count({ where: { benchmarkId: bm!.id, cognitiveComplexity: 'MODERATE' } })
-      const high = await prisma.question.count({ where: { benchmarkId: bm!.id, cognitiveComplexity: 'HIGH' } })
+      const w = { benchmarkId: bm!.id, sourceTier: 'B' as const }
+      const low = await prisma.question.count({ where: { ...w, cognitiveComplexity: 'LOW' } })
+      const mod = await prisma.question.count({ where: { ...w, cognitiveComplexity: 'MODERATE' } })
+      const high = await prisma.question.count({ where: { ...w, cognitiveComplexity: 'HIGH' } })
       expect(low).toBe(3)
       expect(mod).toBe(9)
       expect(high).toBe(3)
@@ -279,31 +283,29 @@ describe('seedSampleQuestions', () => {
     ]
     for (const code of benchmarkCodes) {
       const bm = await prisma.benchmark.findUnique({ where: { code } })
-      const l1 = await prisma.question.count({ where: { benchmarkId: bm!.id, readingLoadLevel: 1 } })
-      const l2 = await prisma.question.count({ where: { benchmarkId: bm!.id, readingLoadLevel: 2 } })
-      const l3 = await prisma.question.count({ where: { benchmarkId: bm!.id, readingLoadLevel: 3 } })
+      const w = { benchmarkId: bm!.id, sourceTier: 'B' as const }
+      const l1 = await prisma.question.count({ where: { ...w, readingLoadLevel: 1 } })
+      const l2 = await prisma.question.count({ where: { ...w, readingLoadLevel: 2 } })
+      const l3 = await prisma.question.count({ where: { ...w, readingLoadLevel: 3 } })
       expect(l1).toBe(5)
       expect(l2).toBe(7)
       expect(l3).toBe(3)
     }
   })
 
-  it('all Unit 1 questions have sourceTier B and approvalStatus APPROVED', async () => {
-    // Unit 2+ banks are AI-drafted (Tier C / NEEDS_REVIEW), so scope to Unit 1.
-    const wrongTier = await prisma.question.count({
-      where: { benchmark: { unitId: 'unit-1' }, NOT: { sourceTier: 'B' } },
-    })
+  it('all original (Tier B) Unit 1 questions are APPROVED', async () => {
+    // The original 15/benchmark are Tier B / APPROVED; the backfill is Tier C /
+    // NEEDS_REVIEW (owner approves later). Assert the Tier-B set is all APPROVED.
     const wrongStatus = await prisma.question.count({
-      where: { benchmark: { unitId: 'unit-1' }, NOT: { approvalStatus: 'APPROVED' } },
+      where: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B', NOT: { approvalStatus: 'APPROVED' } },
     })
-    expect(wrongTier).toBe(0)
     expect(wrongStatus).toBe(0)
   })
 
-  it('is idempotent — second run produces same Unit 1 counts', async () => {
+  it('is idempotent — second run produces same original Unit 1 counts', async () => {
     await seedSampleQuestions(prisma)
-    const qCount = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' } } })
-    const oCount = await prisma.questionOption.count({ where: { question: { benchmark: { unitId: 'unit-1' } } } })
+    const qCount = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } })
+    const oCount = await prisma.questionOption.count({ where: { question: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } } })
     expect(qCount).toBe(90)
     expect(oCount).toBe(360)
   })

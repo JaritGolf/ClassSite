@@ -15,16 +15,24 @@ import { PrismaClient } from '@prisma/client'
 import { seedReportingCategories } from '../../../seed/reporting_categories'
 import { seedBenchmarks } from '../../../seed/benchmarks'
 import { seedMisconceptions } from '../../../seed/misconception_inventory'
+import { seedSampleQuestions } from '../../../seed/sample_questions_unit_1'
+import { seedUnit1Backfill, UNIT1_COMPLETE_BENCHMARKS } from '../../../seed/questions/unit1_backfill'
 import { seedUnit2Questions, UNIT2_COMPLETE_BENCHMARKS } from '../../../seed/questions/unit2'
 import { seedRemediationItems } from '../../../seed/remediation_items'
 import { validateQuestionTags } from '@/lib/eoc-alignment'
 
 const prisma = new PrismaClient()
 
+// Benchmarks validated at the DB level (count, reading, complexity, tagging,
+// remediation). Unit 1 = original 15 (Tier B) + backfill 15 (Tier C) = 30.
+const DB_VALIDATED_BENCHMARKS = [...UNIT1_COMPLETE_BENCHMARKS, ...UNIT2_COMPLETE_BENCHMARKS]
+
 beforeAll(async () => {
   await seedReportingCategories(prisma)
   await seedBenchmarks(prisma)
   await seedMisconceptions(prisma)
+  await seedSampleQuestions(prisma)
+  await seedUnit1Backfill(prisma)
   await seedUnit2Questions(prisma)
   await seedRemediationItems(prisma)
 }, 60000)
@@ -53,12 +61,12 @@ describe('Audit 15 — Item 1: all SS.7.CG benchmarks loaded', () => {
   })
 })
 
-describe('Audit 15 — Items 2–6 for completed Unit 2 benchmarks', () => {
+describe('Audit 15 — Items 2–6 for completed benchmarks (Unit 1 + Unit 2)', () => {
   it('has at least one completed benchmark to validate', () => {
-    expect(UNIT2_COMPLETE_BENCHMARKS.length).toBeGreaterThanOrEqual(1)
+    expect(DB_VALIDATED_BENCHMARKS.length).toBeGreaterThanOrEqual(1)
   })
 
-  for (const code of UNIT2_COMPLETE_BENCHMARKS) {
+  for (const code of DB_VALIDATED_BENCHMARKS) {
     describe(code, () => {
       // Item 2 — count
       it('has ≥30 questions', async () => {
