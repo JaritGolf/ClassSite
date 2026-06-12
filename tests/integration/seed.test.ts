@@ -66,12 +66,14 @@ describe('seedBenchmarks (units)', () => {
     expect(count).toBe(7)
   })
 
-  it('Unit 1 is active; Units 2–7 are inactive', async () => {
+  it('Units 1–2 are active; Units 3–7 are inactive (Phase 15)', async () => {
     const unit1 = await prisma.unit.findUnique({ where: { id: 'unit-1' } })
     expect(unit1?.active).toBe(true)
+    const unit2 = await prisma.unit.findUnique({ where: { id: 'unit-2' } })
+    expect(unit2?.active).toBe(true)
 
     const inactiveCount = await prisma.unit.count({ where: { active: false } })
-    expect(inactiveCount).toBe(6)
+    expect(inactiveCount).toBe(5)
   })
 
   it('is idempotent — second run produces same unit count', async () => {
@@ -135,7 +137,7 @@ describe('seedBenchmarks (benchmarks)', () => {
   it('is idempotent — second run produces same benchmark count', async () => {
     await seedBenchmarks(prisma)
     const count = await prisma.benchmark.count()
-    expect(count).toBe(6)
+    expect(count).toBe(36) // full SS.7.CG course (Phase 15)
   })
 })
 
@@ -198,13 +200,15 @@ describe('seedVocabulary', () => {
 // ── Sample Questions ──────────────────────────────────────────────────────────
 
 describe('seedSampleQuestions', () => {
-  it('seeds exactly 90 questions', async () => {
-    const count = await prisma.question.count()
+  it('seeds exactly 90 Unit 1 questions', async () => {
+    const count = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' } } })
     expect(count).toBe(90)
   })
 
-  it('seeds exactly 360 question options (4 per question)', async () => {
-    const count = await prisma.questionOption.count()
+  it('seeds exactly 360 Unit 1 question options (4 per question)', async () => {
+    const count = await prisma.questionOption.count({
+      where: { question: { benchmark: { unitId: 'unit-1' } } },
+    })
     expect(count).toBe(360)
   })
 
@@ -229,8 +233,11 @@ describe('seedSampleQuestions', () => {
     }
   })
 
-  it('all questions have a valid externalKey', async () => {
-    const questions = await prisma.question.findMany({ select: { externalKey: true } })
+  it('all Unit 1 questions have a valid externalKey', async () => {
+    const questions = await prisma.question.findMany({
+      where: { benchmark: { unitId: 'unit-1' } },
+      select: { externalKey: true },
+    })
     const pattern = /^q-SS7CG1[1-6]-\d{3}$/
     for (const q of questions) {
       expect(q.externalKey).toMatch(pattern)
@@ -281,17 +288,22 @@ describe('seedSampleQuestions', () => {
     }
   })
 
-  it('all questions have sourceTier B and approvalStatus APPROVED', async () => {
-    const wrongTier = await prisma.question.count({ where: { NOT: { sourceTier: 'B' } } })
-    const wrongStatus = await prisma.question.count({ where: { NOT: { approvalStatus: 'APPROVED' } } })
+  it('all Unit 1 questions have sourceTier B and approvalStatus APPROVED', async () => {
+    // Unit 2+ banks are AI-drafted (Tier C / NEEDS_REVIEW), so scope to Unit 1.
+    const wrongTier = await prisma.question.count({
+      where: { benchmark: { unitId: 'unit-1' }, NOT: { sourceTier: 'B' } },
+    })
+    const wrongStatus = await prisma.question.count({
+      where: { benchmark: { unitId: 'unit-1' }, NOT: { approvalStatus: 'APPROVED' } },
+    })
     expect(wrongTier).toBe(0)
     expect(wrongStatus).toBe(0)
   })
 
-  it('is idempotent — second run produces same counts', async () => {
+  it('is idempotent — second run produces same Unit 1 counts', async () => {
     await seedSampleQuestions(prisma)
-    const qCount = await prisma.question.count()
-    const oCount = await prisma.questionOption.count()
+    const qCount = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' } } })
+    const oCount = await prisma.questionOption.count({ where: { question: { benchmark: { unitId: 'unit-1' } } } })
     expect(qCount).toBe(90)
     expect(oCount).toBe(360)
   })

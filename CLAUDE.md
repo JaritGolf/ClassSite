@@ -148,6 +148,30 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**Phase 15 — IN PROGRESS (NOT tagged) — Full Course Expansion (§36.16).** Lands
+incrementally per unit under the tiered gate. This session: **scaffold + Unit 2 benchmark
+SS.7.CG.1.7** as the proven template. **Tier 1 `tsc` GREEN + Tier 2 jest GREEN (822/822).**
+
+Done so far: (1) **All 36 SS.7.CG benchmarks loaded** (`seed/benchmarks.ts` — Units 2–7
+converted from stubs to full records, category mapping 1.x→Origins, 2.1–2.5→Citizens,
+2.6–2.10→Policies, 3.x→Organization; Unit 1 preserved). (2) **Reusable question seeder**
+`seed/questions/_seeder.ts` (`seedQuestionDefs`, question inherits its benchmark's category).
+(3) **Unit 2 SS.7.CG.1.7 authored to 30** (`seed/questions/unit2.ts`) — AI-drafted,
+**sourceTier C / approvalStatus NEEDS_REVIEW** (Trust Tier C, never auto-approved; owner
+bulk-approves via `/teacher/content` to close audit item 2's "approved"). §13.2 category mix
+(4/4/8/4/3/3/4), reading-load 9/15/6, complexity 6/17/7; source/chart content embedded
+inline (no Stimulus rows needed). (4) **Remediation** `seed/remediation_items.ts` derives
+≥1 `RemediationItem` per (benchmark, skill_tag) from the banks. (5) **Audit-15 harness**
+`tests/integration/audit15/01-course-expansion.test.ts` (item 1 course-wide; items 2–6 over
+`UNIT2_COMPLETE_BENCHMARKS`) + pure `tests/unit/seed/unit2-category-mix.test.ts`.
+Docs: `audit-15-checklist.md`, ADR 0009, `deferred/phase-15.md`. Schema-free; no new deps.
+
+**Remaining (per-unit, repeat the template):** Unit 2 SS.7.CG.1.8–1.11, Unit 1 backfill
+15→30, Units 3–7 banks, and the **owner bulk-approval** of NEEDS_REVIEW drafts. Tag
+`phase-15-complete` only when the full course meets audit 15. See `docs/audits/deferred/phase-15.md`.
+
+---
+
 **Phase 14 — COMPLETE (tagged `phase-14-complete`, 2026-06-11) under the tiered gate (ADR 0006). Tier 1 `tsc` GREEN + Tier 2 jest GREEN (the bootstrap hang is FIXED — see below). Only Tier-3 (build, axe e2e, manual a11y) deferred — see `docs/audits/deferred/phase-14.md`.**
 
 **MAJOR: the multi-phase "jest hangs at bootstrap" blocker is ROOT-CAUSED AND FIXED
@@ -240,6 +264,23 @@ the tiered gate. Separately, when a CI/healthy env is available, clear the Phase
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-06-12 (Phase 15 — Full Course Expansion, scaffold + first benchmark):**
+First, **fixed the multi-phase jest bootstrap hang** (root cause: `jest-haste-map` crawling
+~2000 package.json files across 5 abandoned `.claude/worktrees/*` node_modules copies; fix =
+`modulePathIgnorePatterns` in `jest.config.ts`; also made `npm test` auto-load `.env.local`
+via Node's `--env-file-if-exists`). Full suite now runs in ~10s (see
+[[jest-bootstrap-hang-root-cause]]); removed the 5 worktree dirs (~1G). Then **began Phase
+15**: loaded all 36 SS.7.CG benchmarks (`seed/benchmarks.ts`), built the reusable seeder
+(`seed/questions/_seeder.ts`), authored **Unit 2 SS.7.CG.1.7** to the full 30 questions
+(`seed/questions/unit2.ts`, Tier C / NEEDS_REVIEW), derived per-skill-tag remediation
+(`seed/remediation_items.ts`), and built the audit-15 harness. Tightened pre-existing
+seed/bulk-approve tests that assumed a Unit-1-only DB (scoped counts to `unitId='unit-1'`;
+made the empty-match test deterministic). **Verification:** `tsc` 0 errors; `npm run db:seed`
+clean (36 benchmarks, Unit 2 30 Q, 2 remediation items); **`npm test` 822/822 green** (97
+suites). Decisions in ADR 0009. **Phase 15 is NOT tagged** — Unit 2 1.8–1.11, Unit 1
+backfill, Units 3–7, and owner bulk-approval remain. Commit:
+`feat(phase-15): course scaffold + Unit 2 SS.7.CG.1.7 (AI-draft, NEEDS_REVIEW)`.
 
 **Session of 2026-06-11 (Phase 14 — Parent Progress Summary, complete):** Built Phase 1 of
 the parent portal — a teacher-generated, print-to-PDF student progress summary. **New

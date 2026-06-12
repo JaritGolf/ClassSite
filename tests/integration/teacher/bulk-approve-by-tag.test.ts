@@ -107,9 +107,12 @@ describe('bulkApproveByTag', () => {
   })
 
   it('returns empty list and writes audit log when no items match', async () => {
+    // Filter by a benchmark that has no pending items so the result is
+    // deterministic regardless of other NEEDS_REVIEW content in the DB
+    // (e.g. AI-drafted Unit 2+ banks).
     const result = await bulkApproveByTag(teacherUserId, {
       entityType: 'QUESTION',
-      ids: [],
+      benchmarkId: 'nonexistent-benchmark-id-for-empty-match',
     })
 
     expect(result.approvedCount).toBe(0)
