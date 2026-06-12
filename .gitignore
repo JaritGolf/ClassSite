@@ -3,9 +3,17 @@
 /.pnp
 .pnp.js
 
+# macOS iCloud/cloud-sync duplicates (e.g. "node_modules 2", "*.nosync")
+*.nosync
+/node_modules *
+
 # next.js
-/.next/
+/.next
+/.next*
 /out/
+
+# local agent / tooling dirs
+/.claude/
 
 # production
 /build
