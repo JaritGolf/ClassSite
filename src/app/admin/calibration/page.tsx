@@ -10,10 +10,11 @@
  */
 
 import { prisma } from '@/lib/db'
-import { getCalibrationStatus } from '@/lib/eoc-analytics'
+import { getCalibrationStatus, getActiveWeightSource } from '@/lib/eoc-analytics'
 import { CalibrationStatusBanner } from '@/components/admin/calibration/CalibrationStatusBanner'
 import { RunCalibrationButton } from '@/components/admin/calibration/RunCalibrationButton'
 import { CalibrationRunCard } from '@/components/admin/calibration/CalibrationRunCard'
+import { ActiveWeightsPanel } from '@/components/admin/calibration/ActiveWeightsPanel'
 
 function currentSchoolYear(): string {
   const now = new Date()
@@ -26,13 +27,14 @@ function currentSchoolYear(): string {
 export default async function CalibrationPage() {
   const schoolYear = currentSchoolYear()
 
-  const [calibrationStatus, runs] = await Promise.all([
+  const [calibrationStatus, runs, activeWeightSource] = await Promise.all([
     getCalibrationStatus(schoolYear),
     prisma.eocCalibrationRun.findMany({
       where: { schoolYear },
       orderBy: { runAt: 'desc' },
       take: 10,
     }),
+    getActiveWeightSource(),
   ])
 
   const canRun =
@@ -53,6 +55,8 @@ export default async function CalibrationPage() {
         status={calibrationStatus.status}
         scoreCount={calibrationStatus.scoreCount}
       />
+
+      <ActiveWeightsPanel source={activeWeightSource} />
 
       {canRun && (
         <div className="flex items-center justify-between">

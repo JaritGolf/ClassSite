@@ -49,6 +49,16 @@ export type { CalibrationRunResult } from './calibration-run'
 
 export { approveCalibrationRun, ApprovalError } from './calibration-approve'
 
+// ── Phase 13: Calibration loop closure (dynamic active weights) ──────────────────
+
+export {
+  getActiveCategoryWeights,
+  getActiveWeightSource,
+  resolveCategoryWeight,
+  weightsFromRecommendedChanges,
+} from './active-weights'
+export type { ActiveWeightSource } from './active-weights'
+
 // ── Error Types ────────────────────────────────────────────────────────────────
 
 export class EocAnalyticsError extends Error {

@@ -148,6 +148,27 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**Phase 13 — COMPLETE (tagged `phase-13-complete`, 2026-06-06) under the tiered gate (ADR 0006). Tier 1 `tsc` GREEN; jest/build deferred to CI — see `docs/audits/deferred/phase-13.md`.**
+
+Phase 13 (Calibration Loop, §36.14) **closes the calibration feedback loop**: admin-approved
+calibration weights now drive readiness scoring (ADR 0007). Most of §36.14's audit items
+(tables, consent-gated import, Pearson correlation, admin dashboard, no-auto-apply,
+year-one banner) were already built in Phase 10; Phase 13 adds the loop closure.
+New `src/lib/eoc-analytics/active-weights.ts` (`getActiveWeightSource` /
+`getActiveCategoryWeights` / `resolveCategoryWeight`) reads the latest `applied=true`
+`EocCalibrationRun` and feeds its `recommendedWeightChanges` into
+`computeStudentReadiness` / `computeClassReadiness`, falling back to the immutable
+`REPORTING_CATEGORY_WEIGHTS` blueprint baseline when nothing is approved. **NEVER
+auto-applies** — only admin-approved runs are read; the constant is never mutated. Admin
+calibration page gains an `ActiveWeightsPanel`. Drivers: `tests/integration/audit13/01–06`
++ `tests/unit/eoc-analytics/active-weights.test.ts`. Docs: `audit-13-checklist.md`,
+ADR 0007. **Tier 1 GREEN** (`./node_modules/.bin/tsc --noEmit` = 0 errors). jest still
+hangs locally (same harness issue) → deferred to CI per `docs/audits/deferred/phase-13.md`.
+Bonus env fix: broadened `tsconfig.json` `exclude` so tsc ignores the stray
+`node_modules 2/3/.nosync` duplicate dirs (cloud-sync cruft) that were polluting typecheck.
+
+---
+
 **Phase 12 — COMPLETE (tagged `phase-12-complete`, 2026-06-06) under the tiered gate (ADR 0006). Tier-3 items deferred to CI — see `docs/audits/deferred/phase-12.md`.**
 
 All Phase 12 code committed across `feat(phase-12a..d)` (theming, accommodation
@@ -175,15 +196,43 @@ tests passed — they are explicitly deferred.
 Phase 11 complete — Audit 11 passed 2026-05-23. Spec-audit repair pass (ADR
 0004) closed Section-A gaps and the cheap Section-B items on 2026-05-29.
 
-Next action: **Phase 13 (Calibration Loop, §36.14)** is now unblocked. Begin under
-the tiered gate. Separately, when a CI/healthy env is available, clear the Phase 12
-deferred ledger (run the jest suite to reconfirm the 771+ green, plus build + e2e).
+Next action: **Phase 14 (Parent Progress Summary, §36.15)** is now unblocked. Begin under
+the tiered gate. Separately, when a CI/healthy env is available, clear the Phase 12 + 13
+deferred ledgers (run the jest suite to reconfirm green, plus build + e2e).
 
 ---
 
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-06-06 (Phase 13 — Calibration Loop, complete):** Closed the EOC
+calibration feedback loop. Phase 10 had built the calibration infrastructure (import,
+correlation, runs, approval, admin UI, year-one banner) but left the loop OPEN — approved
+weights sat in `EocCalibrationRun.recommendedWeightChanges` while readiness scoring used
+the hard-coded `REPORTING_CATEGORY_WEIGHTS` constant. **New `src/lib/eoc-analytics/active-weights.ts`**:
+`getActiveWeightSource()` (latest `applied=true` run → `{source,weights,runId,schoolYear,appliedAt}`,
+else default blueprint), `getActiveCategoryWeights()`, `resolveCategoryWeight()`,
+`weightsFromRecommendedChanges()`. Wired into `computeStudentReadiness` /
+`computeClassReadiness` (`readiness.ts`) — they now load active weights and resolve against
+them. **Compliance:** only admin-approved (`applied=true`) runs are read; the blueprint
+constant is never mutated → satisfies "never auto-apply." Admin `/admin/calibration` page
+gains `ActiveWeightsPanel` (calibrated vs. default indicator + weight table). Exported new
+API from `eoc-analytics/index.ts`. Tests: `tests/unit/eoc-analytics/active-weights.test.ts`
+(pure) + `tests/integration/audit13/01–06` (tables, consent gate, synthetic correlation,
+no-auto-apply, year-one default, loop closure). Docs: `docs/audits/audit-13-checklist.md`,
+`docs/adrs/0007-calibration-loop-dynamic-weights.md`, `docs/audits/deferred/phase-13.md`.
+**Verification:** Tier 1 GREEN — `./node_modules/.bin/tsc --noEmit` = 0 errors. **jest still
+hangs at bootstrap on this machine** (45s timeout, zero output) even after a fresh `npm ci`
+→ deferred to CI per the tiered gate, NOT claimed as passed. **Env notes (gotchas saved to
+memory):** (1) `node_modules` got wiped mid-session when `npx tsc` resolved+installed a bogus
+`tsc@2.0.4` package — **use `./node_modules/.bin/tsc` or `npm run typecheck`, never `npx tsc`**;
+(2) broadened `tsconfig.json` `exclude` to `["node_modules","node_modules*","node_modules */**"]`
+so tsc stops scanning the stray `node_modules 2/3/.nosync` cloud-sync duplicate dirs (also
+disk cruft — ~491M in `node_modules.nosync`, candidates for deletion). **Git commit/tag used
+the `git update-ref --no-deref` workaround** (see [[git-writes-hang-workaround]] — the Claude
+desktop app's git panel polls the repo and stalls normal commits). Tagged `phase-13-complete`.
+**Phase 14 (Parent Progress Summary, §36.15) is now unblocked.**
 
 **Session of 2026-06-06 (Phase 12 unblocked + tagged; tiered gate adopted):** Broke the
 multi-session Phase 12 verification deadlock by diagnosing it as **environmental, not

@@ -8,6 +8,7 @@
  */
 
 import { prisma } from '@/lib/db'
+import { getActiveCategoryWeights, resolveCategoryWeight } from './active-weights'
 
 // ── Blueprint Weights ──────────────────────────────────────────────────────────
 
@@ -97,6 +98,10 @@ export function weightForCategoryName(name: string): number {
  * Per category: masteredCount / totalBenchmarks → readinessPercent.
  */
 export async function computeStudentReadiness(studentId: string): Promise<StudentReadiness> {
+  // Resolve the currently active blueprint weights (admin-approved calibration run
+  // if one exists, else the canonical blueprint baseline). Closes the Phase 13 loop.
+  const activeWeights = await getActiveCategoryWeights()
+
   // Load all reporting categories with their benchmarks
   const categories = await prisma.reportingCategory.findMany({
     select: {
@@ -133,7 +138,7 @@ export async function computeStudentReadiness(studentId: string): Promise<Studen
     const totalBenchmarks = rc.benchmarks.length
     const masteredCount = masteredByRC.get(rc.id)?.size ?? 0
     const wi = wilsonInterval(masteredCount, totalBenchmarks)
-    const weight = weightForCategoryName(rc.name)
+    const weight = resolveCategoryWeight(rc.name, activeWeights)
     return {
       reportingCategoryId: rc.id,
       name: rc.name,
@@ -182,6 +187,9 @@ export async function computeClassReadiness(classId: string): Promise<ClassReadi
   const studentIds = enrollments.map((e) => e.studentId)
   const studentCount = studentIds.length
 
+  // Resolve active blueprint weights (admin-approved calibration run, else baseline).
+  const activeWeights = await getActiveCategoryWeights()
+
   // Load all reporting categories
   const categories = await prisma.reportingCategory.findMany({
     select: {
@@ -194,7 +202,7 @@ export async function computeClassReadiness(classId: string): Promise<ClassReadi
 
   if (studentCount === 0) {
     const byCategory: ReadinessByCategory[] = categories.map((rc) => {
-      const weight = weightForCategoryName(rc.name)
+      const weight = resolveCategoryWeight(rc.name, activeWeights)
       return {
         reportingCategoryId: rc.id,
         name: rc.name,
@@ -236,7 +244,7 @@ export async function computeClassReadiness(classId: string): Promise<ClassReadi
     const totalPossible = totalBenchmarks * studentCount
     const masteredPairs = masteredPairsByRC.get(rc.id) ?? 0
     const wi = wilsonInterval(masteredPairs, totalPossible)
-    const weight = weightForCategoryName(rc.name)
+    const weight = resolveCategoryWeight(rc.name, activeWeights)
     return {
       reportingCategoryId: rc.id,
       name: rc.name,
