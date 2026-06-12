@@ -22,8 +22,9 @@ This ledger records verification steps deferred to CI / a healthy Node environme
   - **Full suite: 95 suites / 806 tests pass** in ~10s (one stale Phase-13 assertion,
     `audit13/05` 6b, was corrected — it demanded the blueprint midpoints sum to ~1.0; they
     legitimately sum to ~0.95 and the engine normalizes by totalWeight).
-  - Tests need `DATABASE_URL` in the env (no `.env`, only `.env.local`, which Prisma does
-    not auto-load): `export DATABASE_URL=$(grep ^DATABASE_URL= .env.local | sed ...)`.
+  - `npm test` now auto-loads `.env.local` via Node's `--env-file-if-exists` flag (no
+    `.env`; Prisma doesn't auto-load `.env.local`; `dotenv` not installed). Just run
+    `npm test` with local Postgres up (`brew services list` → `postgresql@16`).
 
 D1 (jest drivers) and D2 (full suite) are therefore **CLEARED**. Remaining Tier-3 below.
 
