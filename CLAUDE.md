@@ -148,6 +148,27 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**Phase 14 — COMPLETE (tagged `phase-14-complete`, 2026-06-11) under the tiered gate (ADR 0006). Tier 1 `tsc` GREEN; jest/build/e2e deferred to CI — see `docs/audits/deferred/phase-14.md`.**
+
+Phase 14 (Parent Progress Summary, §36.15 / spec §23 Phase 1) builds **Phase 1 of the
+parent portal**: a *teacher-generated*, print-to-PDF student progress summary. True parent
+login stays deferred to Phase 18. New `src/lib/parent-summary/` (`getParentSummary` builds
+an **allowlist** VM — only parent-appropriate fields per spec §23; `shareParentSummary`
+writes a `PARENT_SUMMARY_SHARED` `AuditLog` with `fieldsIncluded`). The VM is composed
+fresh (NOT subtracted from the teacher profile VM) so calibration / decay / overrides /
+accommodations / item-level data **cannot leak** — enforced by tests. Authorization is
+`assertStudentInTeacherClass` (roster scope → "no other students"). New page
+`/teacher/students/[id]/parent-summary` (print-optimized; `window.print()` "Save as PDF",
+no PDF library — ADR 0008) + `ParentSummaryActions` toolbar + a "Parent Summary" link on
+the student profile page. API: `POST /api/teacher/students/[id]/parent-summary/share`.
+Drivers: `tests/integration/audit14/01–04` + `tests/unit/parent-summary/fields-allowlist.test.ts`.
+Docs: `audit-14-checklist.md`, ADR 0008, `deferred/phase-14.md`. **Tier 1 GREEN**
+(`./node_modules/.bin/tsc --noEmit` = 0 errors). jest still hangs at bootstrap locally
+(same harness issue, bounded 70s run = zero output) → deferred to CI, NOT claimed passed.
+Audit-log catalog addition: `PARENT_SUMMARY_SHARED`. No schema change.
+
+---
+
 **Phase 13 — COMPLETE (tagged `phase-13-complete`, 2026-06-06) under the tiered gate (ADR 0006). Tier 1 `tsc` GREEN; jest/build deferred to CI — see `docs/audits/deferred/phase-13.md`.**
 
 Phase 13 (Calibration Loop, §36.14) **closes the calibration feedback loop**: admin-approved
@@ -196,15 +217,47 @@ tests passed — they are explicitly deferred.
 Phase 11 complete — Audit 11 passed 2026-05-23. Spec-audit repair pass (ADR
 0004) closed Section-A gaps and the cheap Section-B items on 2026-05-29.
 
-Next action: **Phase 14 (Parent Progress Summary, §36.15)** is now unblocked. Begin under
-the tiered gate. Separately, when a CI/healthy env is available, clear the Phase 12 + 13
-deferred ledgers (run the jest suite to reconfirm green, plus build + e2e).
+Next action: **Phase 15 (Full Course Expansion, §36.16)** is now unblocked — all SS.7.CG
+benchmarks + 30 approved questions each, distributions per spec §13.2 / §7.4. Begin under
+the tiered gate. Separately, when a CI/healthy env is available, clear the Phase 12 + 13 +
+14 deferred ledgers (run the jest suite to reconfirm green, plus build + e2e).
 
 ---
 
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-06-11 (Phase 14 — Parent Progress Summary, complete):** Built Phase 1 of
+the parent portal — a teacher-generated, print-to-PDF student progress summary. **New
+`src/lib/parent-summary/`**: `summary.ts` (`getParentSummary(teacherUserId, studentId)`
+authorizes via `assertStudentInTeacherClass`, then composes an **allowlist** `ParentSummaryVM`
+— student, currentMission (friendly status label), mastery {mastered, needsReview},
+remediation {assigned/inProgress/completed + active titles}, recentAssessments {score% +
+pass/fail + date ONLY}, eocReadiness (reuses `computeStudentReadiness`), suggestedReview
+(needsReview + due spaced-review titles), positiveIndicators (badges + milestones);
+`PARENT_SUMMARY_FIELDS` constant lists the shared sections); `share.ts`
+(`shareParentSummary` writes one `PARENT_SUMMARY_SHARED` `AuditLog` — actor=teacher,
+entity=Student/studentId, `metadataJson={studentId, fieldsIncluded, sharedAt}`); `index.ts`.
+**Privacy is the headline:** the VM is built fresh, NOT subtracted from the teacher profile
+VM, so calibration/decay/overrides/accommodations/distractor data can't leak; asserted by
+`audit14/02` (top-level keys == allowlist; deep-serialization has zero forbidden tokens even
+with calibration snapshots on record) + the pure unit test. **API:** `POST /api/teacher/students/[studentId]/parent-summary/share`
+(`requireAuth(['TEACHER','ADMIN'])`, maps `RosterError`→403/404; sub-mode write-gate already
+covers `/api/teacher/*`). **UI:** new RSC page `/teacher/students/[id]/parent-summary`
+(print-optimized, `print:` utilities), client `ParentSummaryActions` ("Save as PDF" →
+`window.print()`, "Mark as shared" → POST), and a "Parent Summary" link added to the student
+profile page. **PDF = browser print, no library** (ADR 0008 — matches `teacher/reports`;
+server-side export stays Phase 17). **Schema-free.** Tests: `tests/unit/parent-summary/fields-allowlist.test.ts`
++ `tests/integration/audit14/01-04` (generate+roster-reject, forbidden-field exclusion, PDF
+print-path static check, share-writes-audit-log + non-roster refusal writes nothing). Docs:
+`audit-14-checklist.md`, ADR 0008, `deferred/phase-14.md`. **Verification:** Tier 1 GREEN —
+`./node_modules/.bin/tsc --noEmit` = 0 errors (one fix mid-build: `computeStudentReadiness`
+was missing from the `Promise.all`). **jest still hangs at bootstrap** on this machine (one
+bounded 70s run of the pure unit test = zero output, reaped pre-execution — same documented
+harness issue) → deferred to CI per the tiered gate, NOT claimed passed. Commit/tag use the
+`git update-ref --no-deref` workaround. Tagged `phase-14-complete`. **Phase 15 (Full Course
+Expansion, §36.16) is now unblocked.**
 
 **Session of 2026-06-06 (Phase 13 — Calibration Loop, complete):** Closed the EOC
 calibration feedback loop. Phase 10 had built the calibration infrastructure (import,
