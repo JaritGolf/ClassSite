@@ -14,16 +14,23 @@
 
 import { useState, useRef, useEffect, type ReactNode } from 'react'
 
+/** Display names for L1 gloss languages. */
+const L1_LABEL: Record<string, string> = { es: 'Español', ht: 'Kreyòl' }
+
 interface GlossaryPopoverProps {
   /** The glossary term's definition */
   definition: string
   /** Whether this is a tier-2 (academic) or tier-3 (civics) term */
   tier: 'TIER_2' | 'TIER_3'
+  /** Approved first-language gloss, when available for the active language */
+  l1Definition?: string
+  /** Language code of the L1 gloss (e.g. 'es', 'ht') */
+  l1Language?: string
   /** The text content (the word/phrase) that triggers the popover */
   children: ReactNode
 }
 
-export function GlossaryPopover({ definition, tier, children }: GlossaryPopoverProps) {
+export function GlossaryPopover({ definition, tier, l1Definition, l1Language, children }: GlossaryPopoverProps) {
   const [isOpen, setIsOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLSpanElement>(null)
@@ -96,6 +103,14 @@ export function GlossaryPopover({ definition, tier, children }: GlossaryPopoverP
             {tier === 'TIER_2' ? 'Academic term' : 'Civics term'}
           </span>
           {definition}
+          {l1Definition && (
+            <span className="mt-1.5 block border-t border-gray-100 pt-1.5 dark:border-gray-700">
+              <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                {(l1Language && L1_LABEL[l1Language]) || 'L1'}
+              </span>
+              <span lang={l1Language}>{l1Definition}</span>
+            </span>
+          )}
         </span>
       )}
     </span>

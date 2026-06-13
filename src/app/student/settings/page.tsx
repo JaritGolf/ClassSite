@@ -9,6 +9,7 @@ interface Settings {
   highContrast: boolean
   largeText: boolean
   skipAllNpcs: boolean
+  l1Language: string | null
 }
 
 function Toggle({
@@ -56,6 +57,7 @@ export default function StudentSettingsPage() {
     highContrast: false,
     largeText: false,
     skipAllNpcs: false,
+    l1Language: null,
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -157,6 +159,28 @@ export default function StudentSettingsPage() {
           checked={settings.skipAllNpcs}
           onChange={() => setSettings((s) => ({ ...s, skipAllNpcs: !s.skipAllNpcs }))}
         />
+
+        {/* L1 (first-language) glosses */}
+        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-2">
+          <label htmlFor="l1-language" className="block text-sm font-semibold text-gray-700">
+            Translated word help (first language)
+          </label>
+          <p className="text-xs text-gray-500">
+            Show an approved translation when you hover or tap a civics term.
+          </p>
+          <select
+            id="l1-language"
+            value={settings.l1Language ?? ''}
+            onChange={(e) =>
+              setSettings((s) => ({ ...s, l1Language: e.target.value === '' ? null : e.target.value }))
+            }
+            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+          >
+            <option value="">Off</option>
+            <option value="es">Español (Spanish)</option>
+            <option value="ht">Kreyòl Ayisyen (Haitian Creole)</option>
+          </select>
+        </div>
 
         <button
           type="submit"

@@ -17,6 +17,7 @@ import { seedReportingCategories } from './reporting_categories'
 import { seedBenchmarks } from './benchmarks'
 import { seedMisconceptions } from './misconception_inventory'
 import { seedVocabulary } from './vocabulary'
+import { seedTermTranslations } from './term_translations'
 import { seedSampleQuestions } from './sample_questions_unit_1'
 import { seedUnit1Backfill } from './questions/unit1_backfill'
 import { seedUnit2Questions } from './questions/unit2'
@@ -41,6 +42,9 @@ async function main() {
 
   console.log('4/7 Vocabulary')
   await seedVocabulary(prisma)
+
+  console.log('4b/7 L1 term translations (Spanish all tier-3 + Haitian Creole sample)')
+  await seedTermTranslations(prisma)
 
   console.log('5/11 Sample questions (Unit 1, original 15/benchmark)')
   await seedSampleQuestions(prisma)

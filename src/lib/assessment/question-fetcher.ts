@@ -16,9 +16,12 @@
 import { prisma } from '@/lib/db'
 import {
   getEffectiveReadingLevel,
+  getStudentAccommodations,
   fetchStimulusForQuestion,
   type StimulusAttachment,
+  type GlossaryTerm,
 } from '@/lib/reading-load'
+import { resolveL1Language, getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
 
 /** Safe question shape — no isCorrect, no feedback on options */
 export interface SafeOption {
@@ -80,6 +83,7 @@ export async function fetchAssessmentForStudent(
               itemType: true,
               cognitiveComplexity: true,
               readingLoadLevel: true,
+              benchmarkId: true,
               options: {
                 select: {
                   id: true,
@@ -100,8 +104,9 @@ export async function fetchAssessmentForStudent(
 
   const isMasteryChallenge = assessment.assessmentType === 'MASTERY_CHALLENGE'
 
-  // Resolve effective reading level if studentId provided
+  // Resolve effective reading level + L1 gloss language if studentId provided
   let effectiveLevel = 2 // default
+  let glossaryByBenchmark = new Map<string | null, GlossaryTerm[]>()
   if (studentId) {
     const levelResult = await getEffectiveReadingLevel(
       studentId,
@@ -109,6 +114,25 @@ export async function fetchAssessmentForStudent(
       isMasteryChallenge
     )
     effectiveLevel = levelResult.effectiveLevel
+
+    // L1 (first-language) gloss language: profile field or an ACC-L1-* grant.
+    const [student, accommodations] = await Promise.all([
+      prisma.student.findUnique({ where: { id: studentId }, select: { l1Language: true } }),
+      getStudentAccommodations(studentId),
+    ])
+    const activeCodes = accommodations.filter((a) => a.active).map((a) => a.code)
+    const languageCode = resolveL1Language(student?.l1Language ?? null, activeCodes)
+
+    // Prefetch glossary terms once per distinct benchmark (with L1 glosses attached).
+    const benchmarkIds = [...new Set(assessment.questions.map((aq) => aq.question.benchmarkId))]
+    glossaryByBenchmark = new Map(
+      await Promise.all(
+        benchmarkIds.map(
+          async (bid) =>
+            [bid, await getGlossaryTermsForBenchmark(bid, languageCode)] as [string | null, GlossaryTerm[]]
+        )
+      )
+    )
   }
 
   // Attach stimulus content to each question (parallel fetch)
@@ -116,7 +140,8 @@ export async function fetchAssessmentForStudent(
     assessment.questions.map(async (aq) => {
       let stimulus: StimulusAttachment | null = null
       if (studentId) {
-        stimulus = await fetchStimulusForQuestion(aq.question.id, effectiveLevel, [])
+        const glossaryTerms = glossaryByBenchmark.get(aq.question.benchmarkId) ?? []
+        stimulus = await fetchStimulusForQuestion(aq.question.id, effectiveLevel, glossaryTerms)
       }
       return {
         id: aq.question.id,

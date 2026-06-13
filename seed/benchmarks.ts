@@ -873,6 +873,10 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
     { code: 'ACC-CONTEXT-BOOST', name: 'Background Context Cards', description: 'Optional 30-60s context cards before unfamiliar references. (Cards wired in a later phase.)' },
     { code: 'ELL', name: 'English Language Learner', description: 'Defaults stimulus content to reading-load level 1 for practice. Tier-2 glossary and sentence-chunking enabled by default.' },
     { code: 'BELOW-GRADE-READER', name: 'Below-Grade Reader', description: 'Defaults stimulus content to reading-load level 1. Read-aloud and sentence-chunking enabled by default.' },
+    // Phase 16: L1 gloss accommodations (Appendix G). Resolve to a gloss language
+    // in src/lib/l1-glosses; honored alongside the student's l1_language field.
+    { code: 'ACC-L1-SPANISH', name: 'Spanish Glosses', description: 'Tier-3 civics terms display an approved Spanish gloss on hover/tap.' },
+    { code: 'ACC-L1-CREOLE', name: 'Haitian Creole Glosses', description: 'Tier-3 civics terms display an approved Haitian Creole gloss on hover/tap.' },
   ]
   for (const acc of accommodations) {
     await prisma.accommodation.upsert({

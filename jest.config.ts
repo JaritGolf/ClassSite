@@ -3,6 +3,12 @@ import type { Config } from 'jest'
 const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'node',
+  // Bound the Prisma connection pool so a full serial run can't approach
+  // Postgres max_connections (see tests/jest.setup.ts).
+  setupFiles: ['<rootDir>/tests/jest.setup.ts'],
+  // Integration suites seed real data in beforeAll; give DB hooks/tests headroom
+  // (the bounded connection pool makes heavy seeds a bit slower than the 5s default).
+  testTimeout: 30000,
   testMatch: [
     '<rootDir>/tests/unit/**/*.test.ts',
     '<rootDir>/tests/integration/**/*.test.ts',

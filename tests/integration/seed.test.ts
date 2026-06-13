@@ -127,11 +127,12 @@ describe('seedBenchmarks (benchmarks)', () => {
     expect(count).toBe(6)
   })
 
-  it('seeds 13 accommodations', async () => {
+  it('seeds 15 accommodations', async () => {
     // 6 original + 2 Phase 7 (ELL, BELOW-GRADE-READER) + 5 Phase 12 (BREAKS,
-    // SCREEN-READER, HIGH-CONTRAST, LARGE-TEXT, CONTEXT-BOOST)
+    // SCREEN-READER, HIGH-CONTRAST, LARGE-TEXT, CONTEXT-BOOST) + 2 Phase 16
+    // (ACC-L1-SPANISH, ACC-L1-CREOLE)
     const count = await prisma.accommodation.count()
-    expect(count).toBe(13)
+    expect(count).toBe(15)
   })
 
   it('is idempotent — second run produces same benchmark count', async () => {

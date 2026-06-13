@@ -91,6 +91,10 @@ async function resolveItemIds(
     QUESTION: () => prisma.question.findMany({ where: baseWhere, select: { id: true } }),
     LESSON: () => prisma.lesson.findMany({ where: baseWhere, select: { id: true } }),
     TERM: () => prisma.term.findMany({ where: baseWhere, select: { id: true } }),
+    TERM_TRANSLATION: () => prisma.termTranslation.findMany({
+      where: { approvalStatus: { in: ['DRAFT', 'NEEDS_REVIEW', 'NEEDS_REVISION'] } },
+      select: { id: true },
+    }),
     RESOURCE: () => prisma.resource.findMany({ where: baseWhere, select: { id: true } }),
     REMEDIATION_ITEM: () => prisma.remediationItem.findMany({ where: baseWhere, select: { id: true } }),
     STIMULUS: () => prisma.stimulus.findMany({
@@ -119,6 +123,8 @@ function buildUpdateMany(
       tx.lesson.updateMany({ where: { id: { in: ids } }, data: { approvalStatus: 'APPROVED' } }),
     TERM: (tx, ids) =>
       tx.term.updateMany({ where: { id: { in: ids } }, data: { approvalStatus: 'APPROVED' } }),
+    TERM_TRANSLATION: (tx, ids) =>
+      tx.termTranslation.updateMany({ where: { id: { in: ids } }, data: { approvalStatus: 'APPROVED' } }),
     RESOURCE: (tx, ids) =>
       tx.resource.updateMany({ where: { id: { in: ids } }, data: { approvalStatus: 'APPROVED' } }),
     REMEDIATION_ITEM: (tx, ids) =>

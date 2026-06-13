@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { buildGlossaryAnnotations, type GlossaryTerm } from '@/lib/reading-load'
+import { buildGlossaryAnnotations, getStudentAccommodations, type GlossaryTerm } from '@/lib/reading-load'
+import { resolveL1Language, getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
 import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
 
 interface PageProps {
@@ -9,7 +10,7 @@ interface PageProps {
 }
 
 export default async function SourceLabPage({ params }: PageProps) {
-  await requireAuth(['STUDENT'])
+  const session = await requireAuth(['STUDENT'])
 
   const stimulus = await prisma.stimulus.findUnique({
     where: { id: params.id },
@@ -17,20 +18,22 @@ export default async function SourceLabPage({ params }: PageProps) {
   })
   if (!stimulus) notFound()
 
-  // Best-effort glossary: pull Tier 2/3 terms for the benchmark this stimulus
-  // is used in (via any question that references it).
-  const linkedQuestion = await prisma.question.findFirst({
-    where: { stimulusId: stimulus.id },
-    select: { benchmarkId: true },
-  })
+  // Pull Tier 2/3 terms for the benchmark this stimulus is used in (via any
+  // question that references it), with the student's approved L1 gloss attached.
+  const [linkedQuestion, student] = await Promise.all([
+    prisma.question.findFirst({ where: { stimulusId: stimulus.id }, select: { benchmarkId: true } }),
+    prisma.student.findUnique({ where: { userId: session.user.userId }, select: { id: true, l1Language: true } }),
+  ])
 
   let glossaryTerms: GlossaryTerm[] = []
   if (linkedQuestion) {
-    const terms = await prisma.term.findMany({
-      where: { benchmarkId: linkedQuestion.benchmarkId, approvalStatus: 'APPROVED' },
-      select: { term: true, definition: true, tier: true },
-    })
-    glossaryTerms = terms.map((t) => ({ term: t.term, definition: t.definition, tier: t.tier }))
+    let languageCode: string | null = null
+    if (student) {
+      const accommodations = await getStudentAccommodations(student.id)
+      const activeCodes = accommodations.filter((a) => a.active).map((a) => a.code)
+      languageCode = resolveL1Language(student.l1Language ?? null, activeCodes)
+    }
+    glossaryTerms = await getGlossaryTermsForBenchmark(linkedQuestion.benchmarkId, languageCode)
   }
 
   const resolvedLevel = stimulus.readingLoadLevel

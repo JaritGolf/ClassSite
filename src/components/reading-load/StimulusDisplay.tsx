@@ -278,6 +278,8 @@ function renderAnnotatedText(
           key={i}
           definition={annotation.definition}
           tier={annotation.tier}
+          l1Definition={annotation.l1Definition}
+          l1Language={annotation.l1Language}
         >
           {part}
         </GlossaryPopover>

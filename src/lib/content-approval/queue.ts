@@ -70,7 +70,7 @@ export async function listApprovalQueue(
 
   const entityTypes: ApprovableEntity[] = entityType
     ? [entityType]
-    : ['QUESTION', 'LESSON', 'TERM', 'RESOURCE', 'REMEDIATION_ITEM', 'STIMULUS', 'MISCONCEPTION']
+    : ['QUESTION', 'LESSON', 'TERM', 'TERM_TRANSLATION', 'RESOURCE', 'REMEDIATION_ITEM', 'STIMULUS', 'MISCONCEPTION']
 
   for (const et of entityTypes) {
     if (et === 'QUESTION') {
@@ -142,6 +142,27 @@ export async function listApprovalQueue(
           label: t.term,
           status: t.approvalStatus,
           benchmarkCode: t.benchmark?.code,
+        })
+      }
+    } else if (et === 'TERM_TRANSLATION') {
+      // L1 glosses (Phase 16). Benchmark reachable via the parent term.
+      const trs = await prisma.termTranslation.findMany({
+        where: benchmarkId ? { term: { benchmarkId } } : {},
+        select: {
+          id: true,
+          languageCode: true,
+          approvalStatus: true,
+          term: { select: { term: true, benchmark: { select: { code: true } } } },
+        },
+        orderBy: { id: 'asc' },
+      })
+      for (const tr of trs) {
+        items.push({
+          entityType: 'TERM_TRANSLATION',
+          id: tr.id,
+          label: `${tr.term.term} (${tr.languageCode})`,
+          status: tr.approvalStatus,
+          benchmarkCode: tr.term.benchmark?.code,
         })
       }
     } else if (et === 'RESOURCE') {

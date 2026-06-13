@@ -9,6 +9,7 @@ export type ApprovableEntity =
   | 'QUESTION'
   | 'LESSON'
   | 'TERM'
+  | 'TERM_TRANSLATION'
   | 'RESOURCE'
   | 'REMEDIATION_ITEM'
   | 'STIMULUS'
@@ -38,6 +39,11 @@ export const ENTITY_MAP: Record<ApprovableEntity, EntityMapEntry> = {
     prismaModel: 'term',
     auditEntityType: 'Term',
     benchmarkPath: 'benchmarkId',
+  },
+  TERM_TRANSLATION: {
+    prismaModel: 'termTranslation',
+    auditEntityType: 'TermTranslation',
+    // Benchmark is reachable via term.benchmarkId; no direct path.
   },
   RESOURCE: {
     prismaModel: 'resource',

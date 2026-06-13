@@ -148,6 +148,35 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**Phase 16 — COMPLETE (code; owner Spanish-approval pending) — L1 Glosses (§36.17).**
+**Tier 1 `tsc` GREEN + Tier 2 jest GREEN (896/896, stable across 4 runs).** Done out of
+strict numeric order — the owner chose to proceed to Phase 16 while Phase 15's Units 2–7
+question banks remain unwritten (Phase 15 content is partial; see below).
+
+L1 (first-language) glosses for tier-3 civics terms. **Schema-free** (reuses `Term` /
+`TermTranslation` / `Student.l1Language`). **Spanish for all 53 tier-3 terms** +
+**Haitian Creole pipeline** with an 8-term proof sample (`seed/term_translations.ts`),
+AI-drafted → **NEEDS_REVIEW** (display gated to APPROVED — ADR 0010). New
+`src/lib/l1-glosses/` (`resolveL1Language` honors `Student.l1Language` or
+`ACC-L1-SPANISH`/`ACC-L1-CREOLE`, gated by `FEATURE_L1_GLOSSES` — **opt-in**, set "true";
+`getGlossaryTermsForBenchmark` attaches the APPROVED L1 gloss). Pure `GlossaryTerm`/
+`GlossaryAnnotation` carry `l1Definition`/`l1Language`; `GlossaryPopover` renders the L1
+line. **Fixed the assessment glossary gap** (`question-fetcher.ts` passed `[]` → now sources
+benchmark terms incl. L1; display-only, grading untouched). Student settings gains an L1
+selector (`/api/student/settings` writes `Student.l1Language`). Approval via new
+`TERM_TRANSLATION` content-approval entity. 2 new accommodations (now **15**). Drivers:
+`tests/integration/audit16/01` + `tests/unit/l1-glosses/`. Docs: `audit-16-checklist.md`,
+ADR 0010, `deferred/phase-16.md`. **Owner action:** review + bulk-approve Spanish glosses
+in `/teacher/content` (closes audit item 3) and set `FEATURE_L1_GLOSSES=true` to enable.
+
+**Test-infra fix (this session):** the added DB load exposed latent Postgres connection
+exhaustion across the 100-suite serial run (66 files each `new PrismaClient()`,
+max_connections=100) → nondeterministic cross-suite failures. Fixed by capping Prisma's pool
+(`tests/jest.setup.ts` adds `connection_limit=3`) + `testTimeout: 30000` in `jest.config.ts`.
+Suite now **896/896 green, stable across 4 consecutive runs**.
+
+---
+
 **Phase 15 — IN PROGRESS (NOT tagged) — Full Course Expansion (§36.16).** Lands
 incrementally per unit under the tiered gate. This session: **scaffold + Unit 2 benchmark
 SS.7.CG.1.7** as the proven template. **Tier 1 `tsc` GREEN + Tier 2 jest GREEN (822/822).**
@@ -271,6 +300,28 @@ the tiered gate. Separately, when a CI/healthy env is available, clear the Phase
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-06-12 (Phase 16 — L1 Glosses):** Built L1 glosses — Spanish for all 53
+tier-3 terms + a functional Haitian Creole pipeline (8-term proof sample). Schema-free
+(reused `Term`/`TermTranslation`/`Student.l1Language`). New `src/lib/l1-glosses/`
+(`feature.isL1GlossesEnabled` opt-in via `FEATURE_L1_GLOSSES=true`; `language.resolveL1Language`
+= profile `l1_language` else `ACC-L1-SPANISH`/`ACC-L1-CREOLE`; `glossary-terms.getGlossaryTermsForBenchmark`
+attaches APPROVED translations). Extended pure `GlossaryTerm`/`GlossaryAnnotation` +
+`buildGlossaryAnnotations` with `l1Definition`/`l1Language`; `GlossaryPopover` renders the L1
+line (`lang` attr). **Fixed the long-standing assessment glossary gap** — `question-fetcher.ts`
+passed `[]`, so NO popovers showed during assessments; now sources benchmark terms (incl. L1)
+per distinct benchmark; display-only, grading untouched. Source Lab routed through the same
+helper. Student settings + `/api/student/settings` now read/write `Student.l1Language`
+(selector: Off/Español/Kreyòl). Content-approval gained a `TERM_TRANSLATION` entity
+(entity-map/queue/bulk-approve/approve) so the owner approves glosses in `/teacher/content`.
+2 new accommodations (ACC-L1-SPANISH/CREOLE → 15). Seed `term_translations.ts` (NEEDS_REVIEW)
+wired after vocabulary. Tests: `tests/unit/l1-glosses/` + `tests/integration/audit16/01`.
+**Test-infra:** diagnosed nondeterministic full-suite failures as Postgres connection
+exhaustion (66 PrismaClients vs max_connections=100, amplified by the new DB load); fixed via
+`connection_limit=3` (`tests/jest.setup.ts`) + `testTimeout: 30000`. **Verification:** `tsc`
+0 errors; `npm run db:seed` clean (es 53/53, ht 8); **`npm test` 896/896 green, stable across
+4 runs**. Docs: `audit-16-checklist.md`, ADR 0010, `deferred/phase-16.md`. Owner approves
+Spanish later + sets `FEATURE_L1_GLOSSES=true`. Commit `feat(phase-16): L1 glosses`.
 
 **Session of 2026-06-12 (Phase 15 — Full Course Expansion, scaffold + first benchmark):**
 First, **fixed the multi-phase jest bootstrap hang** (root cause: `jest-haste-map` crawling

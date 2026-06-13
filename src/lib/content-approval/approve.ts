@@ -55,6 +55,7 @@ async function updateApprovalStatus(
     QUESTION: (id, s) => tx.question.update({ where: { id }, data: { approvalStatus: s } }),
     LESSON: (id, s) => tx.lesson.update({ where: { id }, data: { approvalStatus: s } }),
     TERM: (id, s) => tx.term.update({ where: { id }, data: { approvalStatus: s } }),
+    TERM_TRANSLATION: (id, s) => tx.termTranslation.update({ where: { id }, data: { approvalStatus: s } }),
     RESOURCE: (id, s) => tx.resource.update({ where: { id }, data: { approvalStatus: s } }),
     REMEDIATION_ITEM: (id, s) => tx.remediationItem.update({ where: { id }, data: { approvalStatus: s } }),
     STIMULUS: (id, s) => tx.stimulus.update({ where: { id }, data: { approvalStatus: s } }),
