@@ -49,7 +49,7 @@ export default async function MissionPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-6">
-        <p className="text-xs font-mono text-gray-400">{benchmark.code}</p>
+        <p className="text-xs font-mono text-gray-600">{benchmark.code}</p>
         <h1 className="text-2xl font-bold text-gray-900">{benchmark.title}</h1>
       </div>
       <MissionFlow mission={missionData} />

@@ -34,9 +34,9 @@ D1 (jest drivers) and D2 (full suite) are therefore **CLEARED**. Remaining Tier-
 |---|------|--------|-------|
 | ~~D1~~ | ~~`jest` Phase 14 drivers + unit~~ | ✅ **PASS** (2026-06-11) | 12/12 green via real config. |
 | ~~D2~~ | ~~Full `jest` suite (regression)~~ | ✅ **PASS** (2026-06-11) | 806/806 green. |
-| D3 | `npm run build` | ⏳ Not run | Run in CI. |
-| D4 | axe e2e (parent-summary page) | ⏳ Not run | Add page to `tests/e2e/a11y.test.ts`; run in CI. |
-| D5 | Manual a11y (keyboard, 200% zoom, VoiceOver) + manual "Save as PDF" check | ⏳ Owner-pending | Procedures in `docs/audits/audit-14-checklist.md`. |
+| ~~D3~~ | ~~`npm run build`~~ | ✅ **PASS** (2026-06-19) | Exit 0, 75 pages. |
+| ~~D4~~ | ~~axe e2e (parent-summary page)~~ | ✅ **PASS** (2026-06-19) | New `tests/e2e/a11y-staff.test.ts` audits `/teacher/students/[id]/parent-summary` (teacher session) → zero WCAG A/AA violations. Fixed `text-gray-400` contrast in the page + shared `EmptyState`. |
+| D5 | Manual a11y (keyboard, 200% zoom, VoiceOver) + manual "Save as PDF" check | ⏳ Owner-pending | Not machine-runnable. Procedures in `docs/audits/audit-14-checklist.md`. |
 
 ## How to clear
 

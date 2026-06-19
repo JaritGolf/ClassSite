@@ -13,9 +13,9 @@
 
 | # | Item | Status |
 |---|---|---|
-| D1 | `npm run build` (Next production build) | ⏳ Not run |
-| D2 | axe e2e on `/admin/audit` + `/admin/retention` + `/teacher/reports` | ⏳ Not run |
-| D3 | Manual export sanity (download CSVs, confirm no PII in URL, no answer-key columns) | ⏳ Not run |
+| ~~D1~~ | ~~`npm run build` (Next production build)~~ | ✅ **PASS** (2026-06-19) — exit 0, 75 pages. |
+| ~~D2~~ | ~~axe e2e on `/admin/audit` + `/admin/retention` + `/teacher/reports`~~ | ✅ **PASS** (2026-06-19) — `tests/e2e/a11y-staff.test.ts` (admin + teacher sessions) → zero WCAG A/AA violations. Fixed `text-gray-400` contrast on the audit table + nav sign-out. |
+| D3 | Manual export sanity (download CSVs, confirm no PII in URL, no answer-key columns) | ⏳ Owner-pending — the no-answer-key part is covered by the automated forbidden-field guard (`audit17/02`); a manual download spot-check remains. |
 
 ## Operational (deferred by design)
 

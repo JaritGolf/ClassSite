@@ -42,7 +42,7 @@ export function TeacherNav() {
       </div>
       <div className="ml-4 flex items-center gap-4 shrink-0">
         <form action="/api/auth/signout" method="POST">
-          <button type="submit" className="text-sm text-gray-400 hover:text-gray-600">
+          <button type="submit" className="text-sm text-gray-600 hover:text-gray-900">
             Sign out
           </button>
         </form>

@@ -94,7 +94,7 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
     load()
   }, [assessmentId])
 
-  if (loading) return <div className="py-12 text-center text-gray-400">Loading assessment…</div>
+  if (loading) return <div className="py-12 text-center text-gray-600">Loading assessment…</div>
   if (error) return <div className="py-12 text-center text-red-500">{error}</div>
   if (!meta || !attemptId) return null
 

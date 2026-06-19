@@ -98,7 +98,7 @@ export default function StudentSettingsPage() {
   }
 
   if (loading) {
-    return <div className="mx-auto max-w-md px-4 py-8 text-center text-gray-400">Loading settings…</div>
+    return <div className="mx-auto max-w-md px-4 py-8 text-center text-gray-600">Loading settings…</div>
   }
 
   return (

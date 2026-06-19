@@ -326,14 +326,42 @@ SS.7.CG.1.8–1.11 + Units 3–7 question banks (30 each) + owner bulk-approval;
 `phase-15-complete` when the full course meets audit 15. (b) **Phase 18 (Parent Login, §36.19)**
 — blocked on district parent-identity-verification policy (spec §37). Also: owner to close
 Phase 17 audit items 4 & 5 (hosting + OAuth-scope district sign-off, `docs/hosting-plan.md` /
-`docs/oauth-scopes.md`). Separately, when a CI/healthy env is available, clear the Phase 12–17
-Tier-3 deferred ledgers (build + axe e2e).
+`docs/oauth-scopes.md`). **The Phase 12–17 Tier-3 build + axe-e2e ledger items were cleared
+2026-06-19** (`next build` green; axe zero-violations on student + teacher + admin pages;
+Phase 13 ledger fully closed/removed). Only **manual a11y** (keyboard/VoiceOver/zoom/color) and
+the **district sign-offs** remain owner-pending.
 
 ---
 
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-06-19 (Tier-3 ledger clearing — `next build` + axe e2e):** Cleared the
+machine-runnable Tier-3 deferred items across Phases 12–17. **`next build` now passes (exit 0,
+75 pages)** — first successful production build; the only blocker was an environment one (`.next`
+was a dangling symlink to a deleted `.next.nosync` target — recreated the dir, the macOS
+cloud-sync-exclusion convention). **axe e2e now passes with zero WCAG 2.0/2.1 A/AA violations**
+on student (dashboard/mission/assessment/settings), teacher (`/teacher/reports`, parent-summary),
+and admin (`/admin/audit`, `/admin/retention`) pages. Getting axe to run at all required fixing
+the **long-broken e2e auth harness**: `tests/e2e/global-setup.ts` posted to the wrong NextAuth
+callback (`/api/auth/callback/credentials` → `/mock-credentials`; the provider id is
+`mock-credentials`) so e2e had **never** actually authenticated; `test:e2e` now loads `.env.local`;
+Playwright timeouts raised (this machine's on-demand route compile is ~90s first-hit); chromium
+reinstalled (build 1223). Extended setup to create teacher+admin sessions + a teacher roster
+(new `a11y-staff.test.ts`), with a new **`global-teardown.ts`** that removes the mock-user data
+afterwards — necessary because jest + e2e share the dev DB and `auth.test.ts` wipes all `mock-*`
+users (the now-working e2e left assessment attempts/enrollments that FK-blocked that wipe).
+**Real a11y fixes:** `color-contrast` failures — `text-gray-400` on light backgrounds in the nav
+sign-out buttons (Student/Teacher/Admin), mission `StepIndicator` (+ removed an `opacity-70` dim
+on inactive steps) / benchmark-code, settings + assessment loaders, the audit table, parent-summary,
+and the shared `EmptyState` — all bumped to `text-gray-600`. **Verification:** `tsc` 0 errors;
+`npm test` **919/919 green even after a full e2e cycle** (teardown leaves 0 mock users);
+`npm run build` exit 0; `playwright` a11y 8/8. Updated all deferred ledgers (12,14,15,16,17) to mark
+build+axe PASS and **deleted the fully-cleared phase-13 ledger** (checked off `audit-13-checklist`).
+**Remaining Tier-3 = manual a11y only** (keyboard-only, VoiceOver/screen-reader, 200% zoom,
+color-only) + the Phase 15/16/17 owner/district sign-offs — none machine-runnable, none
+self-certified. Commit: `chore(audits): clear Tier-3 build + axe ledgers (phases 12–17)`.
 
 **Session of 2026-06-19 (Phase 17 — District Readiness):** Built the district-readiness
 code + docs (§36.18). **Schema-free, no new deps** (ADR 0011). (1) **Exports:** new

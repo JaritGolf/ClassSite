@@ -117,7 +117,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
           <tbody>
             {entries.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={5} className="px-4 py-8 text-center text-gray-600">
                   No audit entries match these filters.
                 </td>
               </tr>
@@ -131,7 +131,7 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
                   <td className="px-4 py-2 text-gray-600">
                     {e.entityType}
                     {e.entityId ? (
-                      <span className="block font-mono text-xs text-gray-400">{e.entityId}</span>
+                      <span className="block font-mono text-xs text-gray-600">{e.entityId}</span>
                     ) : null}
                   </td>
                   <td className="px-4 py-2 font-mono text-xs text-gray-500">

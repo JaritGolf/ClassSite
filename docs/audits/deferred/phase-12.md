@@ -12,6 +12,22 @@ Phase 12 implementation landed across `feat(phase-12a..d)`.
 > are Tier-3 only: `next build` (D2), axe e2e (D3), manual a11y/VoiceOver (D4–D7).
 > See memory `jest-bootstrap-hang-root-cause`.
 
+> **UPDATE 2026-06-19 — D2 + D3 CLEARED.**
+> - **D2 `npm run build`** → ✅ PASS (exit 0; "Compiled successfully", 75 pages). Needed one
+>   env fix: `.next` was a dangling symlink to a deleted `.next.nosync` target — recreated the
+>   target dir (the macOS cloud-sync-exclusion convention). No code change for the build itself.
+> - **D3 axe e2e** → ✅ PASS. `tests/e2e/a11y.test.ts` (student dashboard/mission/assessment/
+>   settings) reports **zero WCAG 2.0/2.1 A/AA violations**. Fixing this surfaced (and fixed)
+>   real `color-contrast` failures — `text-gray-400` on light backgrounds in the nav sign-out
+>   buttons, mission `StepIndicator`/benchmark code, settings/assessment loaders — bumped to
+>   `text-gray-600` and removed an `opacity-70` dim on inactive steps.
+>   - Harness fixes required to run it at all: `global-setup.ts` posted to the wrong NextAuth
+>     callback (`/credentials` → `/mock-credentials`) so e2e auth never worked; `test:e2e`
+>     now loads `.env.local`; Playwright timeouts raised for this machine's slow on-demand
+>     compile; chromium reinstalled.
+> - **D4–D7 manual a11y** (keyboard-only, VoiceOver, 200% zoom, color-only) remain
+>   **owner-attested** — not machine-runnable, not self-certified.
+
 This ledger records the verification steps that are **outstanding** for Phase 12 and the
 **honest reason** each could not be completed on the build machine. Per ADR 0006 these are
 **non-blocking** for starting Phase 13, but must be cleared (with owner sign-off) in a

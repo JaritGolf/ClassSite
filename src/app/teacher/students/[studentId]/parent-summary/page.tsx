@@ -35,7 +35,7 @@ export default async function ParentSummaryPage({ params }: PageProps) {
     <div className="mx-auto max-w-3xl space-y-8 print:max-w-none print:space-y-6 print:p-0">
       {/* Breadcrumb + toolbar — screen only */}
       <div className="space-y-4 print:hidden">
-        <div className="flex items-center gap-2 text-sm text-gray-400">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
           <Link href="/teacher/classes" className="hover:text-indigo-600">
             Classes
           </Link>
@@ -127,7 +127,7 @@ export default async function ParentSummaryPage({ params }: PageProps) {
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-gray-700">
             Missions Mastered{' '}
-            <span className="text-gray-400">({summary.mastery.mastered.length})</span>
+            <span className="text-gray-600">({summary.mastery.mastered.length})</span>
           </h2>
           {summary.mastery.mastered.length === 0 ? (
             <p className="mt-2 text-sm text-gray-500">None mastered yet — that's okay!</p>
@@ -145,7 +145,7 @@ export default async function ParentSummaryPage({ params }: PageProps) {
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <h2 className="text-sm font-semibold text-gray-700">
             Needs Review{' '}
-            <span className="text-gray-400">({summary.mastery.needsReview.length})</span>
+            <span className="text-gray-600">({summary.mastery.needsReview.length})</span>
           </h2>
           {summary.mastery.needsReview.length === 0 ? (
             <p className="mt-2 text-sm text-gray-500">Nothing flagged for review.</p>
@@ -170,15 +170,15 @@ export default async function ParentSummaryPage({ params }: PageProps) {
         <div className="mt-2 grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
             <p className="text-xl font-bold text-gray-700">{summary.remediation.assignedCount}</p>
-            <p className="text-xs text-gray-400">Assigned</p>
+            <p className="text-xs text-gray-600">Assigned</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
             <p className="text-xl font-bold text-indigo-700">{summary.remediation.inProgressCount}</p>
-            <p className="text-xs text-gray-400">In progress</p>
+            <p className="text-xs text-gray-600">In progress</p>
           </div>
           <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
             <p className="text-xl font-bold text-emerald-600">{summary.remediation.completedCount}</p>
-            <p className="text-xs text-gray-400">Completed</p>
+            <p className="text-xs text-gray-600">Completed</p>
           </div>
         </div>
       </section>
@@ -193,7 +193,7 @@ export default async function ParentSummaryPage({ params }: PageProps) {
         ) : (
           <table className="mt-2 w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 text-left text-gray-400">
+              <tr className="border-b border-gray-100 text-left text-gray-600">
                 <th className="pb-2 font-medium">Assessment</th>
                 <th className="pb-2 text-right font-medium">Score</th>
                 <th className="pb-2 text-right font-medium">Result</th>
@@ -253,7 +253,7 @@ export default async function ParentSummaryPage({ params }: PageProps) {
         </section>
       )}
 
-      <footer className="border-t border-gray-200 pt-4 text-xs text-gray-400">
+      <footer className="border-t border-gray-200 pt-4 text-xs text-gray-600">
         This summary reflects your student's progress in Civics Quest. It does not
         include test questions or answer keys. Questions? Contact your student's teacher.
       </footer>

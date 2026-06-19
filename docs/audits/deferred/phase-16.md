@@ -20,8 +20,9 @@ L1 glosses (Spanish all tier-3 + Haitian Creole pipeline). Schema-free.
 |---|---|
 | Review + bulk-approve Spanish `TERM_TRANSLATION` glosses (closes audit item 3) | ⏳ Owner action — `/teacher/content` |
 | Bulk Haitian Creole translation content (pipeline already works) | ⏳ Deferred (subsequent phase, per audit item 4) |
-| `next build` | ⏳ Tier-3, run in CI |
-| axe e2e + manual a11y on a gloss popover (keyboard, screen-reader `lang`) | ⏳ Tier-3 |
+| `next build` | ✅ **PASS** (2026-06-19) — exit 0, 75 pages. |
+| axe e2e on student pages that host `StimulusDisplay`/`GlossaryPopover` (mission/settings) | ✅ **PASS** (2026-06-19) — zero WCAG A/AA violations. |
+| Manual a11y on an **expanded** gloss popover (keyboard focus, screen-reader `lang`) | ⏳ Owner-pending — the popover-expanded interactive state is genuinely manual; not self-certified. |
 
 ## Notes
 

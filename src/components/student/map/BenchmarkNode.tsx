@@ -46,7 +46,7 @@ export function BenchmarkNode({ code, title, status, masteryScore }: BenchmarkNo
       }`}
     >
       <div className="flex-1">
-        <p className="text-xs font-mono text-gray-400">{code}</p>
+        <p className="text-xs font-mono text-gray-600">{code}</p>
         <p className="text-sm font-medium text-gray-800">{title}</p>
       </div>
       <div className="flex flex-col items-end gap-1">

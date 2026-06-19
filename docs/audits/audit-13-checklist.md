@@ -49,4 +49,7 @@ live in `tests/integration/audit13/` (+ a pure unit test in
   the most recent `applied=true` run and falls back to `REPORTING_CATEGORY_WEIGHTS`.
 - Per the tiered verification gate (ADR 0006), the jest run for these drivers is a
   blocking Tier-1/2 item to be executed in CI / a healthy Node environment; `tsc` is
-  green locally. See `docs/audits/deferred/phase-13.md` if any tier is deferred.
+  green locally.
+- **VERIFIED 2026-06-19 — all tiers green.** `tsc` 0 errors; `npm test` 919/919 (incl.
+  `audit13/01–06`); `npm run build` exit 0. Phase 13 has no manual-a11y items, so the
+  deferred ledger `docs/audits/deferred/phase-13.md` is fully cleared and was removed.

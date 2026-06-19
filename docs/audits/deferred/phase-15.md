@@ -32,8 +32,8 @@ complete**. This ledger tracks what remains.
 
 | # | Item | Status |
 |---|---|---|
-| D1 | `npm run build` | ⏳ Not run |
-| D2 | e2e smoke on a Unit 2 mission/assessment | ⏳ Not run |
+| ~~D1~~ | ~~`npm run build`~~ | ✅ **PASS** (2026-06-19) — exit 0, 75 pages. |
+| D2 | e2e smoke on a Unit 2 mission/assessment | ⏳ Pending — the Unit 2 (1.8–1.11) and Units 3–7 banks are not authored yet, so there is no Unit 2 mission to smoke. The a11y e2e does cover a Unit 1 mission + assessment. Revisit when the content track lands. |
 
 ## How to extend (next session)
 
