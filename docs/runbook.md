@@ -69,13 +69,25 @@ npm run db:studio
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local` for local development. Required at minimum:
+Copy `.env.example` to `.env.local` for local development. Full inventory:
 
-- `DATABASE_URL` — PostgreSQL connection string
-- `MOCK_AUTH="true"` — enables mock auth in dev (never in production)
-- `NODE_ENV="development"`
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `SESSION_SECRET` | Yes (prod) | Signs JWT session cookies (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | Yes (dev) | NextAuth base URL |
+| `APP_BASE_URL` | Yes | App base URL |
+| `NODE_ENV` | Yes | `development` / `production` |
+| `CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET` / `CLEVER_REDIRECT_URI` | Prod SSO | Clever OAuth (primary) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Prod fallback | Google OAuth (staff) |
+| `FEATURE_L1_GLOSSES` | No | Enables L1 glosses (Phase 16); `"true"` to opt in |
+| `FEATURE_PARENT_PORTAL` / `FEATURE_EOC_REVIEW` / `FEATURE_LEADERBOARDS` / `FEATURE_AI_DRAFTING` | No | Reserved flags (not yet wired) |
+| `AUDIT_LOG_RETENTION_DAYS` | No | Retention threshold for audit logs; `0`/unset = keep forever (Phase 17) |
+| `VOIDED_ATTEMPT_RETENTION_DAYS` | No | Retention threshold for voided attempts; `0`/unset = keep forever (Phase 17) |
+| `MOCK_AUTH` | Dev only | Enables mock auth; **never** in production |
 
-See `.env.example` for the full variable list with descriptions.
+See `.env.example` for descriptions and defaults, and `docs/data-retention.md` for the
+retention variables.
 
 ---
 

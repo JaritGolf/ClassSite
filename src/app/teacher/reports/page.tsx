@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth'
 import { getTeacherRoster } from '@/lib/teacher-roster'
 import { getClassMasteryByBenchmark, getClassMasteryByReportingCategory } from '@/lib/class-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ReportActions } from '@/components/teacher/reports/ReportActions'
 
 export default async function ReportsPage() {
   const session = await requireAuth(['TEACHER', 'ADMIN'])
@@ -15,28 +16,7 @@ export default async function ReportsPage() {
     <div className="space-y-8 print:p-0">
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-        <div className="flex gap-3">
-          <button
-            disabled
-            title="Coming in Phase 17"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
-          >
-            Export PDF (Phase 17)
-          </button>
-          <button
-            disabled
-            title="Coming in Phase 17"
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-400 cursor-not-allowed"
-          >
-            Export CSV (Phase 17)
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 print:hidden"
-          >
-            Print
-          </button>
-        </div>
+        <ReportActions />
       </div>
 
       {!hasData ? (

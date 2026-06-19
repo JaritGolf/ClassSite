@@ -148,6 +148,37 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**Phase 17 — COMPLETE (code; owner/district sign-off pending) — District Readiness (§36.18).**
+**Tier 1 `tsc` GREEN + Tier 2 jest GREEN (919/919, 106 suites).** Done after Phase 16; Phase
+15's Units 2–7 question banks remain unwritten/untagged (separate track — see below; nothing
+in Phase 17 depended on it).
+
+District-readiness polish. **Schema-free, no new deps** (ADR 0011). Three code areas + docs:
+(1) **Exports** — new `src/lib/export/` with hand-rolled RFC-4180 CSV (`csv.ts`, formula-
+injection guard) + report builders (`reports.ts`, column-**allowlisted**: no answer keys /
+item-level data). Audit-log CSV via `src/lib/audit/export.ts` (`exportAuditLogsCsv`). New
+admin viewer `/admin/audit` + `GET /api/admin/audit/export`; teacher `/teacher/reports` CSV
+buttons wired (`GET /api/teacher/reports/export?type=class|eoc`) + per-student CSV
+(`GET /api/teacher/students/[id]/report/export`); **PDF stays `window.print()`** (ADR 0008).
+Extracted `ReportActions` client component (also fixed a latent `onClick`-in-RSC bug on the
+reports page). (2) **Retention** — new `src/lib/retention/` (`policy.ts` env→thresholds:
+`AUDIT_LOG_RETENTION_DAYS` / `VOIDED_ATTEMPT_RETENTION_DAYS`, default 0 = keep forever;
+`purge.ts` `purgeExpiredData` deletes only aged audit logs + aged **voided** attempts,
+children-first in a txn, writes `RETENTION_PURGE` log, dry-run default). Admin `/admin/retention`
++ `POST /api/admin/retention/purge` + `npm run retention:purge` (**no cron** — deferred).
+(3) **Docs** — `privacy-review.md`, `hosting-plan.md`, `oauth-scopes.md`, `data-retention.md`,
+updated `runbook.md` env table + `.env.example` (+2 retention vars), `architecture.md`, ADR 0011,
+`audit-17-checklist.md`, `deferred/phase-17.md`. Audit-log catalog +3: `REPORT_EXPORTED`,
+`AUDIT_LOG_EXPORTED`, `RETENTION_PURGE`. Tests: `tests/unit/export/csv` +
+`tests/unit/retention/policy` + `tests/integration/audit17/01–04` (incl. forbidden-field guard
+on exports + static no-analytics guard). **Owner/district actions (audit items 4 & 5, do NOT
+block tag — ADR 0006):** review `hosting-plan.md` for district sign-off; verify Clever/Google
+scopes vs PBCSD policy; set production retention windows; execute district privacy agreement.
+**Verification:** `tsc` 0 errors; `npm test` **919/919 green** (106 suites). Not yet tagged
+`phase-17-complete` — see Last Action.
+
+---
+
 **Phase 16 — COMPLETE (code; owner Spanish-approval pending) — L1 Glosses (§36.17).**
 **Tier 1 `tsc` GREEN + Tier 2 jest GREEN (896/896, stable across 4 runs).** Done out of
 strict numeric order — the owner chose to proceed to Phase 16 while Phase 15's Units 2–7
@@ -290,16 +321,50 @@ tests passed — they are explicitly deferred.
 Phase 11 complete — Audit 11 passed 2026-05-23. Spec-audit repair pass (ADR
 0004) closed Section-A gaps and the cheap Section-B items on 2026-05-29.
 
-Next action: **Phase 15 (Full Course Expansion, §36.16)** is now unblocked — all SS.7.CG
-benchmarks + 30 approved questions each, distributions per spec §13.2 / §7.4. Begin under
-the tiered gate. Separately, when a CI/healthy env is available, clear the Phase 12 + 13 +
-14 deferred ledgers (run the jest suite to reconfirm green, plus build + e2e).
+Next action: two outstanding tracks. (a) **Phase 15 (Full Course Expansion, §36.16)** — Unit 2
+SS.7.CG.1.8–1.11 + Units 3–7 question banks (30 each) + owner bulk-approval; tag
+`phase-15-complete` when the full course meets audit 15. (b) **Phase 18 (Parent Login, §36.19)**
+— blocked on district parent-identity-verification policy (spec §37). Also: owner to close
+Phase 17 audit items 4 & 5 (hosting + OAuth-scope district sign-off, `docs/hosting-plan.md` /
+`docs/oauth-scopes.md`). Separately, when a CI/healthy env is available, clear the Phase 12–17
+Tier-3 deferred ledgers (build + axe e2e).
 
 ---
 
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-06-19 (Phase 17 — District Readiness):** Built the district-readiness
+code + docs (§36.18). **Schema-free, no new deps** (ADR 0011). (1) **Exports:** new
+`src/lib/export/` — `csv.ts` (hand-rolled RFC-4180 + formula-injection guard + `csvResponse`)
+and `reports.ts` (`buildStudentReportCsv`/`buildClassReportCsv`/`buildEocReadinessReportCsv`,
+composed from existing `eoc-analytics` + `class-analytics`, **column-allowlisted** so no answer
+keys / item-level data leak). Audit export `src/lib/audit/export.ts` (`exportAuditLogsCsv`,
+paginates `listAuditLogs`). New `/admin/audit` viewer + `GET /api/admin/audit/export`; wired the
+formerly-disabled `/teacher/reports` buttons via new `ReportActions` client component →
+`GET /api/teacher/reports/export?type=class|eoc` (roster-scoped) + per-student
+`GET /api/teacher/students/[id]/report/export`; PDF = `window.print()` (ADR 0008). Fixed a latent
+`onClick`-in-RSC bug on the reports page in passing. (2) **Retention:** new `src/lib/retention/`
+— `policy.ts` (`resolveRetentionConfig`/`cutoffDate`, env `AUDIT_LOG_RETENTION_DAYS` /
+`VOIDED_ATTEMPT_RETENTION_DAYS`, default 0 = retain forever) + `purge.ts` (`purgeExpiredData`,
+deletes only aged audit logs + aged **voided** attempts, children-first in a `$transaction`,
+writes `RETENTION_PURGE`, dry-run default). Admin `/admin/retention` (live dry-run preview +
+guarded run button) + `POST /api/admin/retention/purge` + `npm run retention:purge` script.
+**No cron** (deferred). Added Audit Log + Retention to `AdminNav`. (3) **Docs:**
+`privacy-review.md`, `hosting-plan.md`, `oauth-scopes.md`, `data-retention.md`; updated
+`runbook.md` (full env table), `.env.example` (+2 retention vars), `architecture.md`; ADR 0011;
+`audit-17-checklist.md`; `deferred/phase-17.md`. Audit-log catalog +3: `REPORT_EXPORTED`,
+`AUDIT_LOG_EXPORTED`, `RETENTION_PURGE`. **Tests:** `tests/unit/export/csv` (8) +
+`tests/unit/retention/policy` (8) + `tests/integration/audit17/01–04` (audit export, report
+exports + **forbidden-field guard**, retention dry-run/apply, **static no-analytics guard**).
+**Verification:** `tsc` 0 errors; **`npm test` 919/919 green (106 suites, exit 0)** — was 896,
++23. **Owner/district actions remain** (audit items 4 & 5, non-blocking per ADR 0006): hosting
+sign-off, OAuth-scope verification vs PBCSD, set production retention windows, district privacy
+agreement. Will commit `feat(phase-17): district readiness — exports, audit viewer, configurable
+retention`; tag `phase-17-complete` per the tiered gate. **Phase 18 (Parent Login, §36.19) is
+next in numeric order but blocked on district parent-identity policy; Phase 15 course content
+also remains outstanding.**
 
 **Session of 2026-06-12 (Phase 16 — L1 Glosses):** Built L1 glosses — Spanish for all 53
 tier-3 terms + a functional Haitian Creole pipeline (8-term proof sample). Schema-free

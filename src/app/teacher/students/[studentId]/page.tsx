@@ -40,9 +40,15 @@ export default async function StudentProfilePage({ params }: PageProps) {
         </Link>
         <span aria-hidden="true">/</span>
         <span className="text-gray-600">{profile.student.displayName}</span>
+        <a
+          href={`/api/teacher/students/${params.studentId}/report/export`}
+          className="ml-auto rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+        >
+          Download Report (CSV)
+        </a>
         <Link
           href={`/teacher/students/${params.studentId}/parent-summary`}
-          className="ml-auto rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+          className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
         >
           Parent Summary
         </Link>

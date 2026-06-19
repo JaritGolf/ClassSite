@@ -25,9 +25,22 @@ This document is updated at each phase boundary per spec Section 35.5.
 - **PostgreSQL local via Homebrew:** Developer choice (2026-05-09). No Docker or hosted DB. Reversible — any PostgreSQL 14+ instance will work.
 - **next-auth v4:** Stable, well-documented, supports Clever OAuth and Google OAuth out of the box. Evaluate upgrade to v5/Auth.js at Phase 2 implementation.
 
+### Phase 17 — District Readiness
+
+- **Exports** (`src/lib/export/`): hand-rolled RFC-4180 CSV (`csv.ts`, no library) + report
+  builders (`reports.ts`) composing existing analytics into column-allowlisted CSVs. PDF =
+  browser `window.print()` (ADR 0008). Routes: `/api/admin/audit/export`,
+  `/api/teacher/reports/export`, `/api/teacher/students/[id]/report/export`.
+- **Audit viewer**: `/admin/audit` over `listAuditLogs`; export via `exportAuditLogsCsv`.
+- **Retention** (`src/lib/retention/`): env-configurable thresholds (`policy.ts`) + purge
+  runner (`purge.ts`) for aged audit logs and voided attempts. Admin UI `/admin/retention`,
+  API `POST /api/admin/retention/purge`, script `npm run retention:purge`. No cron deployed.
+- **Audit-log catalog additions**: `REPORT_EXPORTED`, `AUDIT_LOG_EXPORTED`, `RETENTION_PURGE`.
+- See ADR 0011 and `docs/{privacy-review,hosting-plan,oauth-scopes,data-retention}.md`.
+
 ### ADRs
 
-See `docs/adrs/` directory. None yet — first non-trivial decisions expected at Phase 1 (schema) and Phase 2 (auth).
+See `docs/adrs/` directory (0001–0011).
 
 ---
 
