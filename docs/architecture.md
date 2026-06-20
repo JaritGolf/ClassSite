@@ -38,9 +38,21 @@ This document is updated at each phase boundary per spec Section 35.5.
 - **Audit-log catalog additions**: `REPORT_EXPORTED`, `AUDIT_LOG_EXPORTED`, `RETENTION_PURGE`.
 - See ADR 0011 and `docs/{privacy-review,hosting-plan,oauth-scopes,data-retention}.md`.
 
+### Phase 18 — Parent Login
+
+- **Parent portal** (`src/lib/parent-portal/`): `feature.ts` (`isParentPortalEnabled`),
+  `authorize.ts` (verified-link gate, `ParentAccessError`), `summary.ts`
+  (`getParentSummaryForParent` → reuses the extracted `buildParentSummaryVM`), `admin.ts`
+  (admin provisioning: create/link/verify), `login.ts` (`recordParentLoginEvent`).
+- **Admin-provisioned, flag-gated** (ADR 0012); only VERIFIED `ParentStudentLink`s show data.
+- Pages: real `/parent/dashboard` + `/parent/students/[id]` (shared `ParentSummaryView`,
+  extracted from the Phase 14 teacher page); admin `/admin/parents` + `/api/admin/parents/*`.
+- NextAuth `events.signIn` writes `PARENT_LOGIN`. Audit-log catalog +4 (PARENT_LOGIN,
+  PARENT_ACCOUNT_CREATED, PARENT_LINK_CREATED, PARENT_LINK_STATUS_CHANGED). Schema-free.
+
 ### ADRs
 
-See `docs/adrs/` directory (0001–0011).
+See `docs/adrs/` directory (0001–0012).
 
 ---
 

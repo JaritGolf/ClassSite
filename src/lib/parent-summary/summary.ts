@@ -103,13 +103,26 @@ function missionStatusLabel(status: StudentProgressStatus): string {
 
 // ── Main ────────────────────────────────────────────────────────────────────
 
+/**
+ * Teacher-scoped: a teacher may generate a summary only for a student on their
+ * own roster (satisfies "no other students").
+ */
 export async function getParentSummary(
   teacherUserId: string,
   studentId: string
 ): Promise<ParentSummaryVM> {
-  // Authorization first — roster scope guarantees "own students only".
   await assertStudentInTeacherClass(teacherUserId, studentId)
+  return buildParentSummaryVM(studentId)
+}
 
+/**
+ * Builds the allowlist VM for one student. **Authorization is the caller's
+ * responsibility** — `getParentSummary` (teacher roster scope) or
+ * `getParentSummaryForParent` (verified parent link). The VM is composed fresh
+ * from primitive rows, never from the teacher profile VM, so calibration /
+ * decay / overrides / item-level data cannot leak.
+ */
+export async function buildParentSummaryVM(studentId: string): Promise<ParentSummaryVM> {
   const now = new Date()
 
   const [student, progressRows, attempts, remediations, badges, dueReviews, readiness] =

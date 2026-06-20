@@ -22,6 +22,7 @@ import type { UserRole } from '@prisma/client'
 import { UserRole as UserRoleEnum } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { cleverProvider } from './providers/clever'
+import { recordParentLoginEvent } from '@/lib/parent-portal/login'
 
 // ── Mock Auth (dev only) ──────────────────────────────────────────────────────
 
@@ -224,6 +225,20 @@ export const authOptions: NextAuthOptions = {
       session.user.userId = token.userId
       session.user.role = token.role
       return session
+    },
+  },
+
+  events: {
+    // Audit parent login events (audit §36.19 item 4). Non-fatal.
+    async signIn({ user }) {
+      try {
+        await recordParentLoginEvent((user as User).userId)
+      } catch (err) {
+        console.error(
+          '[auth] PARENT_LOGIN audit error:',
+          err instanceof Error ? err.message : String(err)
+        )
+      }
     },
   },
 }

@@ -1,35 +1,65 @@
 /**
- * Parent Dashboard — shell page.
- * Full parent portal implemented in Phase 14/18.
+ * Parent Dashboard (Phase 18, spec §23 Phase 2).
+ *
+ * Lists the children this parent is VERIFIED-linked to. Gated by
+ * FEATURE_PARENT_PORTAL; when off, shows a "not available" panel. Only verified
+ * links appear — pending/rejected links and non-linked students surface nothing.
  */
 
+import Link from 'next/link'
 import { requireAuth } from '@/lib/auth'
+import { isParentPortalEnabled, getVerifiedLinkedStudents } from '@/lib/parent-portal'
 
 export default async function ParentDashboard() {
   const session = await requireAuth(['PARENT'])
 
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-8">
-      <div className="max-w-2xl w-full space-y-4">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Parent Dashboard
-        </h1>
-        <p className="text-gray-600">
-          Student progress summary coming in Phase 14.
+  if (!isParentPortalEnabled()) {
+    return (
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <h1 className="text-2xl font-bold text-gray-900">Family Portal</h1>
+        <p className="mt-2 text-sm text-gray-600">
+          The family portal isn't available yet. Please check back later or contact your
+          student's school.
         </p>
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
-          <p className="font-mono">Role: {session.user.role}</p>
-          <p className="font-mono">User ID: {session.user.userId}</p>
-        </div>
-        <form action="/api/auth/signout" method="POST">
-          <button
-            type="submit"
-            className="text-sm text-gray-500 underline hover:text-gray-700"
-          >
-            Sign out
-          </button>
-        </form>
       </div>
-    </main>
+    )
+  }
+
+  const students = await getVerifiedLinkedStudents(session.user.userId)
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="text-2xl font-bold text-gray-900">Your Students</h1>
+        <p className="mt-1 text-sm text-gray-600">
+          View each child's Civics Quest progress. Reports never include test questions or
+          answer keys.
+        </p>
+      </header>
+
+      {students.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-8 text-center">
+          <p className="text-sm font-medium text-gray-700">No students linked yet</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Ask your child's school to link and verify your account.
+          </p>
+        </div>
+      ) : (
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {students.map((s) => (
+            <li key={s.studentId}>
+              <Link
+                href={`/parent/students/${s.studentId}`}
+                className="block rounded-xl border border-gray-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40"
+              >
+                <p className="text-lg font-semibold text-gray-900">{s.displayName}</p>
+                <p className="mt-1 text-sm capitalize text-gray-600">{s.relationship}</p>
+                <p className="mt-3 text-sm font-medium text-indigo-700">View progress →</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

@@ -148,6 +148,34 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**Phase 18 — COMPLETE (code; owner/district sign-off pending) — Parent Login (§36.19).**
+**Tier 1 `tsc` GREEN + Tier 2 jest GREEN (934/934, 111 suites).** Real parent login, built
+**behind `FEATURE_PARENT_PORTAL` (default off)** so the unconfirmed district parent-identity
+policy does NOT block the build (owner directive — see memory `district-verification-deferred`).
+**Schema-free, no new deps** (ADR 0012; `Parent`/`ParentStudentLink`/`ParentVerifiedStatus`
+already existed).
+
+**Admin-only provisioning** (chosen by owner): an admin creates the parent account by email
+(`/admin/parents`), links student(s), and sets the link **VERIFIED**; only VERIFIED links ever
+show data (PENDING/REJECTED/non-linked → nothing). Works because Google sign-in upserts by
+email + new Google users default TEACHER/INACTIVE, so a PARENT role requires admin pre-creation.
+New `src/lib/parent-portal/` (`feature.isParentPortalEnabled`; `authorize` verified-link gate +
+`ParentAccessError`; `summary.getParentSummaryForParent` → reuses the **extracted**
+`buildParentSummaryVM` from parent-summary; `admin` create/link/verify; `login.recordParentLoginEvent`).
+Real `/parent/dashboard` + `/parent/students/[id]` render the shared `ParentSummaryView`
+(extracted from the Phase 14 teacher page — both surfaces now use it). Admin UI `/admin/parents`
++ `ParentManager` + `POST /api/admin/parents{,/link,/verify}`. NextAuth `events.signIn` writes
+`PARENT_LOGIN`. Audit-log catalog +4: `PARENT_LOGIN`, `PARENT_ACCOUNT_CREATED`,
+`PARENT_LINK_CREATED`, `PARENT_LINK_STATUS_CHANGED`. Tests: `tests/unit/parent-portal/feature` +
+`tests/integration/audit18/01–04` (provisioning/idempotency, verified-gate + isolation,
+forbidden-field guard, login audit). Docs: `parent-identity-policy.md` (district gate, owner-
+pending), ADR 0012, `audit-18-checklist.md`, `deferred/phase-18.md`; `FEATURE_PARENT_PORTAL`
+wired into `.env.example`/runbook. **Owner action (audit item 1, does NOT block tag — ADR 0006):**
+confirm district parent-identity policy + complete `docs/parent-identity-policy.md`, then set
+`FEATURE_PARENT_PORTAL=true`. **Verification:** `tsc` 0 errors; `npm test` **934/934 green**.
+
+---
+
 **Phase 17 — COMPLETE (code; owner/district sign-off pending) — District Readiness (§36.18).**
 **Tier 1 `tsc` GREEN + Tier 2 jest GREEN (919/919, 106 suites).** Done after Phase 16; Phase
 15's Units 2–7 question banks remain unwritten/untagged (separate track — see below; nothing
@@ -321,10 +349,12 @@ tests passed — they are explicitly deferred.
 Phase 11 complete — Audit 11 passed 2026-05-23. Spec-audit repair pass (ADR
 0004) closed Section-A gaps and the cheap Section-B items on 2026-05-29.
 
-Next action: two outstanding tracks. (a) **Phase 15 (Full Course Expansion, §36.16)** — Unit 2
+Next action: **Phase 18 is now code-complete** (behind `FEATURE_PARENT_PORTAL`). The main
+remaining build track is (a) **Phase 15 (Full Course Expansion, §36.16)** — Unit 2
 SS.7.CG.1.8–1.11 + Units 3–7 question banks (30 each) + owner bulk-approval; tag
-`phase-15-complete` when the full course meets audit 15. (b) **Phase 18 (Parent Login, §36.19)**
-— blocked on district parent-identity-verification policy (spec §37). Also: owner to close
+`phase-15-complete` when the full course meets audit 15. Owner/district sign-offs still pending:
+Phase 18 parent-identity policy (`docs/parent-identity-policy.md`) + set `FEATURE_PARENT_PORTAL=true`;
+Phase 16 Spanish-gloss approval + `FEATURE_L1_GLOSSES=true`. Also: owner to close
 Phase 17 audit items 4 & 5 (hosting + OAuth-scope district sign-off, `docs/hosting-plan.md` /
 `docs/oauth-scopes.md`). **The Phase 12–17 Tier-3 build + axe-e2e ledger items were cleared
 2026-06-19** (`next build` green; axe zero-violations on student + teacher + admin pages;
@@ -336,6 +366,26 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-06-19 (Phase 18 — Parent Login):** Built real parent login behind
+`FEATURE_PARENT_PORTAL` (default off) so the unconfirmed district parent-identity policy
+doesn't block the build (owner directive). **Admin-only provisioning** (owner's choice):
+`/admin/parents` → create parent by email, link student(s) PENDING, set VERIFIED; only
+VERIFIED links surface data. New `src/lib/parent-portal/` (feature flag, verified-link
+authorize + `ParentAccessError`, `getParentSummaryForParent`, admin create/link/verify,
+`recordParentLoginEvent`). Extracted `buildParentSummaryVM` from `parent-summary/summary.ts`
+and a shared `ParentSummaryView` component (teacher + parent pages both use it). Real
+`/parent/dashboard` + `/parent/students/[id]`; `POST /api/admin/parents{,/link,/verify}`;
+NextAuth `events.signIn` → `PARENT_LOGIN`. Audit catalog +4. **Schema-free** (Parent/
+ParentStudentLink/ParentVerifiedStatus already existed). Tests: unit feature flag +
+`audit18/01–04`. Docs: `parent-identity-policy.md` (district gate), ADR 0012, audit-18
+checklist + deferred ledger; flag wired into `.env.example`/runbook/architecture.
+**Verification:** `tsc` 0 errors; **`npm test` 934/934 green (111 suites)** — was 919, +15.
+Will commit `feat(phase-18): parent login` + tag `phase-18-complete`. **Owner action (item 1,
+non-blocking):** confirm district policy + set `FEATURE_PARENT_PORTAL=true`. Tier-3 (build,
+axe on parent pages, manual a11y) deferred — `docs/audits/deferred/phase-18.md`. **All numbered
+phases 0–18 now have code complete; remaining work = Phase 15 course content + owner/district
+sign-offs.**
 
 **Session of 2026-06-19 (Tier-3 ledger clearing — `next build` + axe e2e):** Cleared the
 machine-runnable Tier-3 deferred items across Phases 12–17. **`next build` now passes (exit 0,
