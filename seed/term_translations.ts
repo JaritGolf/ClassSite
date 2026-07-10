@@ -2,15 +2,17 @@
  * Seed: L1 Term Translations (Phase 16, §36.17).
  *
  * Spanish ('es') glosses for ALL tier-3 civics terms + a small Haitian Creole
- * ('ht') proof sample. AI-drafted → approvalStatus NEEDS_REVIEW (Trust Tier C
- * pattern, ADR 0009): display is gated to APPROVED, so nothing reaches students
- * until the owner (or a language-proficient reviewer) approves it in
- * /teacher/content. Idempotent: upsert by [termId, languageCode].
+ * ('ht') proof sample. Spanish seeds APPROVED under the owner's directive
+ * (ADR 0013 — see seed/approval_mode.ts); the owner reviews post-hoc in
+ * /teacher/content. Haitian Creole remains NEEDS_REVIEW (proof sample pending
+ * a language-proficient reviewer, per ADR 0010). Display stays gated to
+ * APPROVED. Idempotent: upsert by [termId, languageCode].
  *
  * Keys below are the exact English term strings from seed/vocabulary.ts.
  */
 
 import type { PrismaClient } from '@prisma/client'
+import { CONTENT_APPROVAL } from './approval_mode'
 
 // ── Spanish (es) — all 53 tier-3 terms ───────────────────────────────────────
 const ES: Record<string, string> = {
@@ -35,6 +37,18 @@ const ES: Record<string, string> = {
   principle: 'Una verdad o regla fundamental que guía el pensamiento o la acción.',
   monarchy: 'Forma de gobierno en la que un solo gobernante (rey o reina) tiene el poder supremo, a menudo de forma hereditaria.',
   oligarchy: 'Forma de gobierno en la que un grupo pequeño de personas tiene todo el poder.',
+  'town meeting': 'Reunión de Nueva Inglaterra en la que los miembros de la comunidad debatían y votaban directamente sobre asuntos locales; una forma temprana de democracia directa.',
+  'common law': 'Derecho desarrollado con el tiempo a partir de las decisiones de los jueces y las costumbres, en lugar de leyes escritas; una tradición inglesa llevada a la América colonial.',
+  'salutary neglect': 'La política británica de aplicar las leyes en las colonias de manera poco estricta, lo que permitió que se desarrollara el autogobierno colonial.',
+  boycott: 'Una negativa organizada a comprar ciertos productos como forma de protesta; los colonos boicotearon los productos británicos para oponerse a los impuestos sin representación.',
+  petition: 'Una solicitud formal por escrito dirigida a quienes tienen el poder; los colonos enviaron peticiones al rey y al Parlamento antes de recurrir a una resistencia más fuerte.',
+  repeal: 'Cancelar oficialmente una ley; los boicots coloniales presionaron al Parlamento para derogar la Ley del Timbre en 1766.',
+  'taxation without representation': 'Ser gravado con impuestos por un gobierno en el que no se tiene voz electa; la objeción principal de los colonos a los impuestos británicos después de 1763.',
+  'unalienable rights': 'Derechos que no pueden quitarse ni cederse; la Declaración nombra la vida, la libertad y la búsqueda de la felicidad.',
+  confederation: 'Una alianza flexible de estados independientes que conservan la mayor parte de su poder, con un gobierno central débil.',
+  "Shays' Rebellion": 'Un levantamiento de agricultores de Massachusetts (1786–87) que expuso la incapacidad del gobierno nacional para mantener el orden bajo los Artículos de la Confederación.',
+  Federalists: 'Partidarios de ratificar la Constitución, que favorecían un gobierno nacional más fuerte con controles y equilibrios.',
+  'Anti-Federalists': 'Opositores a la ratificación de la Constitución, que temían el poder nacional y exigían una carta de derechos.',
   // Citizens
   citizen: 'Persona que pertenece legalmente a un país y tiene derechos y responsabilidades dentro de él.',
   naturalization: 'El proceso legal por el cual una persona que no es ciudadana se convierte en ciudadana de un país.',
@@ -100,8 +114,13 @@ export async function seedTermTranslations(prisma: PrismaClient): Promise<void> 
     if (esDef) {
       await prisma.termTranslation.upsert({
         where: { termId_languageCode: { termId: t.id, languageCode: 'es' } },
-        create: { termId: t.id, languageCode: 'es', definitionTranslated: esDef, approvalStatus: 'NEEDS_REVIEW' },
-        update: { definitionTranslated: esDef },
+        create: {
+          termId: t.id,
+          languageCode: 'es',
+          definitionTranslated: esDef,
+          approvalStatus: CONTENT_APPROVAL.approvalStatus,
+        },
+        update: { definitionTranslated: esDef, approvalStatus: CONTENT_APPROVAL.approvalStatus },
       })
       esCount++
     } else {
@@ -122,5 +141,7 @@ export async function seedTermTranslations(prisma: PrismaClient): Promise<void> 
   if (missingEs.length > 0) {
     console.warn(`  ⚠ Missing Spanish gloss for tier-3 terms: ${missingEs.join(', ')}`)
   }
-  console.log(`  ✓ Term translations seeded (es: ${esCount}/${tier3.length} tier-3, ht sample: ${htCount}; NEEDS_REVIEW)`)
+  console.log(
+    `  ✓ Term translations seeded (es: ${esCount}/${tier3.length} tier-3 ${CONTENT_APPROVAL.approvalStatus} per ADR 0013; ht sample: ${htCount} NEEDS_REVIEW)`
+  )
 }

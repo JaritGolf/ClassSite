@@ -80,7 +80,7 @@ Copy `.env.example` to `.env.local` for local development. Full inventory:
 | `NODE_ENV` | Yes | `development` / `production` |
 | `CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET` / `CLEVER_REDIRECT_URI` | Prod SSO | Clever OAuth (primary) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Prod fallback | Google OAuth (staff) |
-| `FEATURE_L1_GLOSSES` | No | Enables L1 glosses (Phase 16); `"true"` to opt in |
+| `FEATURE_L1_GLOSSES` | No | Enables L1 glosses (Phase 16); `"true"` to opt in. Spanish glosses are owner-approved (ADR 0013); Haitian Creole remains a NEEDS_REVIEW sample |
 | `FEATURE_PARENT_PORTAL` | No | Enables parent login (Phase 18); `"true"` only after district identity-policy sign-off (`docs/parent-identity-policy.md`) |
 | `FEATURE_EOC_REVIEW` / `FEATURE_LEADERBOARDS` / `FEATURE_AI_DRAFTING` | No | Reserved flags (not yet wired) |
 | `AUDIT_LOG_RETENTION_DAYS` | No | Retention threshold for audit logs; `0`/unset = keep forever (Phase 17) |

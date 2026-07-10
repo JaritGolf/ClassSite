@@ -18,13 +18,14 @@ import { seedBenchmarks } from './benchmarks'
 import { seedMisconceptions } from './misconception_inventory'
 import { seedVocabulary } from './vocabulary'
 import { seedTermTranslations } from './term_translations'
+import { seedLessons } from './lessons'
 import { seedSampleQuestions } from './sample_questions_unit_1'
 import { seedUnit1Backfill } from './questions/unit1_backfill'
 import { seedUnit2Questions } from './questions/unit2'
 import { seedRemediationItems } from './remediation_items'
 import { seedStimuliUnit1 } from './stimuli_unit1'
 import { seedBadges } from './badges'
-import { seedUnit1Assessments } from './assessments_unit1'
+import { seedMissionAssessments } from './assessments'
 
 const prisma = new PrismaClient()
 
@@ -43,29 +44,32 @@ async function main() {
   console.log('4/7 Vocabulary')
   await seedVocabulary(prisma)
 
-  console.log('4b/7 L1 term translations (Spanish all tier-3 + Haitian Creole sample)')
+  console.log('4b/12 L1 term translations (Spanish all tier-3 + Haitian Creole sample)')
   await seedTermTranslations(prisma)
 
-  console.log('5/11 Sample questions (Unit 1, original 15/benchmark)')
+  console.log('5/12 Lessons (guided instruction per benchmark — ADR 0013)')
+  await seedLessons(prisma)
+
+  console.log('6/12 Sample questions (Unit 1, original 15/benchmark)')
   await seedSampleQuestions(prisma)
 
-  console.log('6/11 Unit 1 backfill (→ 30/benchmark, Tier C / NEEDS_REVIEW)')
+  console.log('7/12 Unit 1 backfill (→ 30/benchmark, APPROVED per ADR 0013)')
   await seedUnit1Backfill(prisma)
 
-  console.log('7/11 Unit 2 question bank (Phase 15, Tier C / NEEDS_REVIEW)')
+  console.log('8/12 Unit 2 question bank (Phase 15, Tier C / NEEDS_REVIEW)')
   await seedUnit2Questions(prisma)
 
-  console.log('8/11 Remediation items (≥1 per skill_tag — derived from all questions)')
+  console.log('9/12 Remediation items (≥1 per skill_tag — derived from all questions)')
   await seedRemediationItems(prisma)
 
-  console.log('9/11 Stimuli — Unit 1 reading-load variants + accommodations')
+  console.log('10/12 Stimuli — Unit 1 reading-load variants + accommodations')
   await seedStimuliUnit1(prisma)
 
-  console.log('10/11 Badges')
+  console.log('11/12 Badges')
   await seedBadges(prisma)
 
-  console.log('11/11 Unit 1 assessments (pre-check, readiness, vocab, region review)')
-  await seedUnit1Assessments(prisma)
+  console.log('12/12 Mission assessments (pre-check, readiness, vocab, mastery, region reviews)')
+  await seedMissionAssessments(prisma)
 
   console.log('\n✅ Seed complete.')
 }

@@ -1,17 +1,23 @@
 /**
- * Seed: Remediation Items (Phase 15).
+ * Seed: Remediation Items (Phase 15 + ADR 0013).
  *
  * Audit §36.16 item 6: "Each benchmark has at least one remediation activity per
  * major skill_tag." This seeder reads the DISTINCT (benchmark, skill_tag) pairs
  * from the seeded questions in the database and creates one RemediationItem per
- * pair — so coverage is guaranteed in sync for every unit (Unit 1 + backfill +
- * Unit 2 + future units) with no per-bank wiring.
+ * pair — so coverage is guaranteed in sync for every unit with no per-bank wiring.
  *
- * MUST run AFTER all question seeders. AI-drafted scaffolds → NEEDS_REVIEW.
- * Idempotent: upsert by a deterministic id.
+ * Authored reteach content (seed/remediation/) wins where it exists: real
+ * concept + examples/non-examples + try-it JSON, seeded under the owner's
+ * approval directive (seed/approval_mode.ts). Unauthored pairs keep the
+ * generated placeholder scaffold at NEEDS_REVIEW, so coverage never regresses
+ * while authoring catches up unit by unit.
+ *
+ * MUST run AFTER all question seeders. Idempotent: upsert by deterministic id.
  */
 
 import type { PrismaClient, RemediationType } from '@prisma/client'
+import { CONTENT_APPROVAL } from './approval_mode'
+import { REMEDIATION_CONTENT, remediationKey } from './remediation/_content'
 
 /** Pick a remediation activity type from the skill tag (heuristic; owner can revise). */
 function remediationTypeFor(skillTag: string): RemediationType {
@@ -38,27 +44,48 @@ export async function seedRemediationItems(prisma: PrismaClient): Promise<void> 
     if (!pairs.has(key)) pairs.set(key, { benchmarkId: q.benchmarkId, code: q.benchmark.code, skillTag: q.skillTag })
   }
 
-  let count = 0
+  let authored = 0
+  let placeholders = 0
   for (const { benchmarkId, code, skillTag } of pairs.values()) {
     const id = `remitem-${code.replace(/\./g, '')}-${skillTag}`
-    const remediationType = remediationTypeFor(skillTag)
-    await prisma.remediationItem.upsert({
-      where: { id },
-      create: {
-        id,
-        benchmarkId,
-        title: `Reteach: ${titleCase(skillTag)}`,
-        remediationType,
+    const def = REMEDIATION_CONTENT.get(remediationKey(code, skillTag))
+
+    if (def) {
+      const data = {
+        title: def.title,
+        remediationType: def.remediationType,
         skillTag,
-        content:
-          `Targeted review for the "${titleCase(skillTag)}" skill on ${code}. ` +
-          `Revisits the core idea with a short explanation and guided examples before reassessment.`,
-        approvalStatus: 'NEEDS_REVIEW',
-      },
-      update: { title: `Reteach: ${titleCase(skillTag)}`, remediationType, skillTag },
-    })
-    count++
+        content: JSON.stringify(def.content),
+        approvalStatus: CONTENT_APPROVAL.approvalStatus,
+      }
+      await prisma.remediationItem.upsert({
+        where: { id },
+        create: { id, benchmarkId, ...data },
+        update: data,
+      })
+      authored++
+    } else {
+      const remediationType = remediationTypeFor(skillTag)
+      await prisma.remediationItem.upsert({
+        where: { id },
+        create: {
+          id,
+          benchmarkId,
+          title: `Reteach: ${titleCase(skillTag)}`,
+          remediationType,
+          skillTag,
+          content:
+            `Targeted review for the "${titleCase(skillTag)}" skill on ${code}. ` +
+            `Revisits the core idea with a short explanation and guided examples before reassessment.`,
+          approvalStatus: 'NEEDS_REVIEW',
+        },
+        update: { title: `Reteach: ${titleCase(skillTag)}`, remediationType, skillTag },
+      })
+      placeholders++
+    }
   }
 
-  console.log(`  ✓ Remediation items seeded (${count}, ≥1 per skill_tag, NEEDS_REVIEW)`)
+  console.log(
+    `  ✓ Remediation items seeded (${authored} authored ${CONTENT_APPROVAL.approvalStatus}, ${placeholders} placeholder NEEDS_REVIEW)`
+  )
 }

@@ -389,6 +389,9 @@ const MISCONCEPTIONS: MisconceptionDef[] = [
   },
 ]
 
+/** All inventory codes — used by the question-bank shape test to validate references. */
+export const MISCONCEPTION_CODES: string[] = MISCONCEPTIONS.map((m) => m.code)
+
 export async function seedMisconceptions(prisma: PrismaClient): Promise<void> {
   // Build a map of category name → id for FK lookups
   const categories = await prisma.reportingCategory.findMany({

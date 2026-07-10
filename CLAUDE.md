@@ -148,6 +148,57 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**UNIT 1 TURNKEY (2026-07-10) — Phase 8 instructional-gap repair + Phase 15 Unit 1 content
+complete (ADR 0013). Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1033/1033, 116 suites).**
+The site now actually TEACHES Unit 1 end-to-end. Root cause of the "awful student
+experience" the owner reported: no Lesson/LessonStep rows had ever been authored (mission
+Training/Vocab/Scenario steps showed placeholder text), remediation content was a template
+sentence, and all Tier-C content sat NEEDS_REVIEW — invisible to students, so only Unit 1's
+original 90 questions were servable and **remediation assignment had never worked at all**
+(`assignRemediation` filters APPROVED). Fixed this session under owner directive:
+(1) **Owner-directed approval at seed (ADR 0013):** `seed/approval_mode.ts` — completed-unit
+AI content seeds APPROVED / Tier D (Unit 1 backfill → 30 approved questions/benchmark;
+lessons; authored remediation; Spanish glosses). Unit 2+ stays Tier C / NEEDS_REVIEW.
+Serving paths still filter APPROVED everywhere.
+(2) **Six authored guided lessons** (`seed/lessons/unit1.ts` via `seed/lessons/_seeder.ts`,
+deterministic-id upserts): ~8 steps each — NOTE big-picture → VOCABULARY-in-context → NOTE →
+WORKED_EXAMPLE (§18 think-aloud) → INTERACTIVE_CHECK → NOTE → INTERACTIVE_CHECK →
+SOURCE_ANALYSIS (reuses the Phase-7 stimulus passages + guiding questions). Structured steps
+store JSON validated by zod contracts in **new `src/lib/lesson-content/`** (`parseStepContent`
+w/ text fallback so malformed rows degrade, never break or gate).
+(3) **Mission flow renders real content:** mission page adds the missing APPROVED filter on
+lessons (rule-#9 gap) + fetches tier-3 Terms (with L1 gloss via the Phase-16 pipeline); new
+components `TrainingWalkthrough` (paginated, required checks gate Next), `VocabPanel`,
+`ScenarioLab`, `LessonStepRenderer`; the 7-step machine + StepIndicator unchanged. Lesson
+checks are ungraded client-local self-checks (scoped in ADR 0013 — rule #1 governs
+assessments; server-side grading untouched).
+(4) **Real remediation:** `seed/remediation/unit1.ts` — 6 authored defs (concept + ≥2
+examples/≥2 non-examples + try-it) merged into `seed/remediation_items.ts` (authored wins,
+placeholder+NEEDS_REVIEW fallback keeps audit-15 item 6 coverage); `RemediationActivity`
+renders the JSON w/ plain-text fallback. Remediation now actually assigns for Unit 1.
+(5) **Assessments generalized:** `seed/assessments.ts` (replaces `assessments_unit1.ts`)
+builds the 5-type suite + per-unit Region Challenge for every benchmark with enough APPROVED
+questions (Mastery only when a full 5-item level-2+ form exists) — future units need only
+content files.
+(6) **Scaffolding for Units 2–7:** `seed/questions/registry.ts` (`ALL_QUESTION_BANKS`);
+shape test generalized (`tests/unit/seed/question-bank-shape.test.ts`, replaces
+unit2-category-mix, + misconception-code inventory checks); audit-15 harness registry-driven
+— new units validate with zero test edits.
+(7) **Spanish glosses LIVE:** es translations APPROVED at seed; `FEATURE_L1_GLOSSES=true` in
+`.env.local`; +12 tier-3 Terms (with es glosses) so every Unit 1 benchmark has ≥3 key terms
+(SS.7.CG.1.3 previously had zero).
+(8) Dashboard narrative-beat unit now follows the student's current mission (was hardwired
+to the first unit). Prior session's demo classroom seed committed (`npm run db:seed:demo`).
+New tests: `tests/unit/lesson-content/`, `lesson-bank-shape`, `remediation-content-shape`,
+`question-bank-shape`, `tests/integration/mission-content.test.ts` (the "turnkey Unit 1"
+guarantee — lesson template, terms+glosses, 30 approved Qs, 5 assessments, parsing
+remediation per benchmark). **Remaining for full-course turnkey: Units 2–7 content waves**
+(30 questions/benchmark, lessons, terms, stimuli, remediation, 3 beats each; flip unit
+`active: true`) — pure content work on the now-proven template; tag `phase-15-complete`
+when the full course meets audit 15.
+
+---
+
 **Phase 18 — COMPLETE (code; owner/district sign-off pending) — Parent Login (§36.19).**
 **Tier 1 `tsc` GREEN + Tier 2 jest GREEN (934/934, 111 suites).** Real parent login, built
 **behind `FEATURE_PARENT_PORTAL` (default off)** so the unconfirmed district parent-identity
@@ -366,6 +417,37 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-07-09/10 (Unit 1 Turnkey — lessons, remediation, approval, mission UX):**
+Owner reported the site "would not in any way help a 7th grade civics student learn" —
+diagnosed as a CONTENT gap, not an engine gap: zero Lesson rows ever seeded (placeholder
+mission panels), template-sentence remediation (and `assignRemediation` filters APPROVED, so
+assignment had never fired), Tier-C content all NEEDS_REVIEW/invisible, Units 2–7 empty.
+Owner decisions (asked): scope = **Unit 1 perfected as the model**; approval = **seed
+APPROVED on owner authority** (ADR 0013, Tier D); **enable Spanish glosses**. Built:
+`seed/approval_mode.ts` + flipped Unit 1 backfill to APPROVED; `src/lib/lesson-content/`
+(zod contracts + parse w/ text fallback + pure gating); `seed/lessons/{_seeder,unit1,index}.ts`
+(6 authored ~8-step lessons: notes, vocab-in-context, worked examples, interactive checks,
+source analysis reusing Phase-7 passages); mission page (APPROVED lesson filter — rule-#9
+fix; tier-3 Terms fetch w/ L1 gloss) + `TrainingWalkthrough`/`VocabPanel`/`ScenarioLab`/
+`LessonStepRenderer` + MissionFlow swap (7-step machine unchanged);
+`seed/remediation/{_content,unit1}.ts` (6 authored reteach defs w/ examples/non-examples +
+try-it) merged into `remediation_items.ts` (authored→APPROVED, fallback placeholder);
+`RemediationActivity` structured rendering; `seed/assessments.ts` generalization (replaces
+`assessments_unit1.ts`; curly-apostrophe legacy title matched to avoid dup Unit 1 review);
+`seed/questions/registry.ts` + `question-bank-shape.test.ts` (replaces unit2-category-mix)
++ registry-driven audit15; dashboard beat-unit fix; +12 tier-3 Terms (1.2/1.3/1.4/1.5/1.6)
++ es glosses; es translations APPROVED at seed, ht stays NEEDS_REVIEW;
+`FEATURE_L1_GLOSSES=true`. Also committed prior session's `seed/demo/` (+`db:seed:demo`,
+auth.test teardown tolerance). New tests: lesson-content unit (contracts+gating),
+lesson-bank-shape, remediation-content-shape, mission-content integration (turnkey
+guarantee). **Verification: `tsc` 0 errors; full jest 1033/1033 green (116 suites, ~50s).**
+Gotcha: two concurrent tsc processes starved the machine and made jest look hung — kill
+strays before timing runs. Manual dev-server walkthrough of the full mission loop +
+remediation done via demo student. Commits: `chore` (demo seed), `fix(phase-8)` (mission
+renders real content), `feat(phase-15)` (Unit 1 content + ADR 0013). NOT tagged — Phase 15
+tags only when Units 2–7 land. **Next: Unit 2 completion (1.8–1.11) then Units 3–7 on the
+template.**
 
 **Session of 2026-06-19 (Phase 18 — Parent Login):** Built real parent login behind
 `FEATURE_PARENT_PORTAL` (default off) so the unconfirmed district parent-identity policy
@@ -672,6 +754,9 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-05-29] Accommodations OR-merged with self-serve settings (Phase 12a/b): the layout forces `.cq-high-contrast` / `.cq-large-text` on if either StudentUiSettings flag OR the corresponding ACC-* accommodation is active, and clamps the pause interval to ≤10 min when ACC-BREAKS is active. Models the Appendix-G "teacher grant flows through everywhere" requirement without giving the teacher grant a way to be turned off by a student preference. Reversible by changing OR to a precedence rule if teachers later need student opt-out.
 - [2026-05-29] Context Boost cards deferred (Phase 12b): ACC-CONTEXT-BOOST seeded as a catalog code so teachers can grant it and AuditLog is consistent, but the card-rendering feature itself is deferred to a later phase (owner decision). Reversible by implementing the feature when scheduled; no schema change required.
 - [2026-05-29] Phase 12 NOT tagged complete despite code landing (Phase 12 closeout): `tsc --noEmit` confirmed 0 errors but `jest`, `npm run build`, and the axe e2e were NOT run on the build machine — `npm install` silently dumped 600+ packages into `node_modules/.ignored` (likely disk-pressure related — disk was at 91%). Phase 11 discipline is "do not begin Phase N until Phase N-1 audit passes," so Phase 12 stays in "code landed, verification pending" until the env is fixed and the four verification commands run green. Reversible/recoverable simply by running them.
+- [2026-07-09] Owner-directed approval at seed for completed units (ADR 0013): chose seeding completed-unit AI content as APPROVED / sourceTier D over the Tier-C NEEDS_REVIEW default because the owner explicitly directed immediate student availability (the NEEDS_REVIEW pile was why the site couldn't teach). Bounded: only units the owner commissioned as complete (Unit 1 now); Unit 2+ drafts remain Tier C; APPROVED-only serving gates unchanged; owner reviews post-hoc in /teacher/content. Reversible by flipping `seed/approval_mode.ts` back to NEEDS_REVIEW and re-seeding.
+- [2026-07-09] Lesson interactive checks graded client-side (ADR 0013): lesson-step self-checks carry correct/feedback flags in step JSON and grade in the browser, unpersisted. Deliberate scoping of rule #1 ("server-side grading only"), which protects *assessments* — a lesson self-check is instructional content with zero mastery/SM-2 impact, like a textbook check-yourself box. Reversible by moving checks to a server endpoint if they ever feed analytics.
+- [2026-07-09] Misconception codes optional per misconception_check item: the 50-entry Appendix E inventory doesn't enumerate every misconception the banks target (e.g. Preamble/Bill-of-Rights confusion in Unit 2's bank), so the shape test requires ≥1 inventory-linked misconception item per benchmark plus validity of every referenced code, not a code on every item. Force-fitting wrong codes would corrupt distractor analytics. Reversible by extending the inventory and tightening the assertion.
 
 ---
 

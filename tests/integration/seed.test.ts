@@ -295,8 +295,9 @@ describe('seedSampleQuestions', () => {
   })
 
   it('all original (Tier B) Unit 1 questions are APPROVED', async () => {
-    // The original 15/benchmark are Tier B / APPROVED; the backfill is Tier C /
-    // NEEDS_REVIEW (owner approves later). Assert the Tier-B set is all APPROVED.
+    // The original 15/benchmark are Tier B / APPROVED; the backfill is Tier D /
+    // APPROVED under the owner's directive (ADR 0013). Assert the Tier-B set is
+    // all APPROVED.
     const wrongStatus = await prisma.question.count({
       where: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B', NOT: { approvalStatus: 'APPROVED' } },
     })

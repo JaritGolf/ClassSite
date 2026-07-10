@@ -2,9 +2,10 @@
  * Seed: Unit 1 Backfill — bring SS.7.CG.1.1–1.6 from 15 → 30 questions each.
  *
  * Phase 15. The original 15/benchmark (seed/sample_questions_unit_1.ts) are Tier B /
- * APPROVED. These +15/benchmark are AI-drafted → sourceTier C / approvalStatus
- * NEEDS_REVIEW (owner approves later). Each backfill set is authored to COMPLEMENT
- * the existing 15 so the combined 30 hit the §13.2 / §7.4 targets:
+ * APPROVED. These +15/benchmark are AI-drafted, seeded APPROVED / Tier D under the
+ * owner's explicit directive (ADR 0013 — see seed/approval_mode.ts). Each backfill
+ * set is authored to COMPLEMENT the existing 15 so the combined 30 hit the §13.2 /
+ * §7.4 targets:
  *   existing 15  : reading 5/7/3 · complexity 3/9/3
  *   backfill 15  : reading 4/8/3 · complexity 3/8/4   ← this file
  *   combined 30  : reading 9/15/6 (30/50/20) · complexity 6/17/7 (within §7.4 bands)
@@ -17,6 +18,7 @@
 
 import type { PrismaClient } from '@prisma/client'
 import { seedQuestionDefs, type QuestionSeedDef } from './_seeder'
+import { CONTENT_APPROVAL } from '../approval_mode'
 
 // ── SS.7.CG.1.1 — Enlightenment and European Influences ──────────────────────
 const SS7CG11: QuestionSeedDef[] = [
@@ -689,9 +691,8 @@ export const UNIT1_COMPLETE_BENCHMARKS: string[] = Object.keys(UNIT1_BACKFILL_BY
 const ALL_BACKFILL: QuestionSeedDef[] = Object.values(UNIT1_BACKFILL_BY_BENCHMARK).flat()
 
 export async function seedUnit1Backfill(prisma: PrismaClient): Promise<void> {
-  const count = await seedQuestionDefs(prisma, ALL_BACKFILL, {
-    sourceTier: 'C',
-    approvalStatus: 'NEEDS_REVIEW',
-  })
-  console.log(`  ✓ Unit 1 backfill seeded (${count} questions → 30/benchmark, Tier C / NEEDS_REVIEW)`)
+  const count = await seedQuestionDefs(prisma, ALL_BACKFILL, CONTENT_APPROVAL)
+  console.log(
+    `  ✓ Unit 1 backfill seeded (${count} questions → 30/benchmark, ${CONTENT_APPROVAL.sourceTier} / ${CONTENT_APPROVAL.approvalStatus} per ADR 0013)`
+  )
 }

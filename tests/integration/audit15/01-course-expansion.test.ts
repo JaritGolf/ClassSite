@@ -2,11 +2,10 @@
  * Audit 15 — Full Course Expansion (§36.16).
  *
  * Item 1 (all benchmarks loaded) is verified course-wide. Items 2–6 are verified
- * for the benchmarks listed in UNIT2_COMPLETE_BENCHMARKS (the bank fills in per
- * unit; the harness extends automatically as that list grows). The "30 *approved*"
- * qualifier on item 2 is satisfied operationally when the owner bulk-approves the
- * NEEDS_REVIEW drafts — here we assert the count + distribution + tagging that
- * Claude controls.
+ * for Unit 1 plus every completed benchmark in the question-bank registry (the
+ * harness extends automatically as unit banks land). The "30 *approved*"
+ * qualifier on item 2: Unit 1 content is APPROVED at seed under the owner's
+ * directive (ADR 0013); later units are approved per-unit the same way.
  *
  * Self-seeds (idempotent) so it is robust to run order.
  */
@@ -17,15 +16,20 @@ import { seedBenchmarks } from '../../../seed/benchmarks'
 import { seedMisconceptions } from '../../../seed/misconception_inventory'
 import { seedSampleQuestions } from '../../../seed/sample_questions_unit_1'
 import { seedUnit1Backfill, UNIT1_COMPLETE_BENCHMARKS } from '../../../seed/questions/unit1_backfill'
-import { seedUnit2Questions, UNIT2_COMPLETE_BENCHMARKS } from '../../../seed/questions/unit2'
+import { ALL_QUESTION_BANKS } from '../../../seed/questions/registry'
 import { seedRemediationItems } from '../../../seed/remediation_items'
 import { validateQuestionTags } from '@/lib/eoc-alignment'
 
 const prisma = new PrismaClient()
 
 // Benchmarks validated at the DB level (count, reading, complexity, tagging,
-// remediation). Unit 1 = original 15 (Tier B) + backfill 15 (Tier C) = 30.
-const DB_VALIDATED_BENCHMARKS = [...UNIT1_COMPLETE_BENCHMARKS, ...UNIT2_COMPLETE_BENCHMARKS]
+// remediation). Unit 1 = original 15 (Tier B) + backfill 15 (Tier D, ADR 0013)
+// = 30; other units come from the question-bank registry, so this harness
+// extends automatically as unit banks land.
+const DB_VALIDATED_BENCHMARKS = [
+  ...UNIT1_COMPLETE_BENCHMARKS,
+  ...ALL_QUESTION_BANKS.flatMap((b) => b.completeBenchmarks),
+]
 
 beforeAll(async () => {
   await seedReportingCategories(prisma)
@@ -33,7 +37,9 @@ beforeAll(async () => {
   await seedMisconceptions(prisma)
   await seedSampleQuestions(prisma)
   await seedUnit1Backfill(prisma)
-  await seedUnit2Questions(prisma)
+  for (const bank of ALL_QUESTION_BANKS) {
+    await bank.seed(prisma)
+  }
   await seedRemediationItems(prisma)
 }, 60000)
 
