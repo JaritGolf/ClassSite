@@ -108,7 +108,9 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
         <h2 className={`text-2xl font-bold ${result.passed ? 'text-green-700' : 'text-amber-700'}`}>
           {result.passed ? 'Mission Complete!' : 'Keep Practicing!'}
         </h2>
-        <p className="text-gray-600">Score: {Math.round(result.score * 100)}%</p>
+        {Number.isFinite(result.score) && (
+          <p className="text-gray-600">Score: {Math.round(result.score * 100)}%</p>
+        )}
 
         {result.calibration && <CalibrationCard calibration={result.calibration} />}
 

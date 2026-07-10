@@ -2,8 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { trainingStepsOf, vocabStepsOf, scenarioStepsOf } from '@/lib/lesson-content'
 import { StepIndicator } from './StepIndicator'
 import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
+import { TrainingWalkthrough } from './TrainingWalkthrough'
+import { VocabPanel, type TermView } from './VocabPanel'
+import { ScenarioLab } from './ScenarioLab'
+import type { LessonStepView } from './LessonStepRenderer'
 
 const STEP_ORDER = [
   'pre-check',
@@ -17,24 +22,18 @@ const STEP_ORDER = [
 
 type Step = typeof STEP_ORDER[number]
 
-interface LessonStep {
-  id: string
-  stepType: string
-  title: string
-  content: string
-  sequenceOrder: number
-  required: boolean
-}
-
 interface MissionData {
   benchmarkCode: string
   benchmarkTitle: string
   lessonSummary: string | null
+  /** Lesson.body — the authored Mission Briefing text (ADR 0013). */
+  lessonBody: string | null
   studentFriendlyTarget: string
   preCheckAssessmentId: string | null
   readinessAssessmentId: string | null
   assessmentId: string | null
-  lessonSteps: LessonStep[]
+  lessonSteps: LessonStepView[]
+  terms: TermView[]
 }
 
 interface MissionFlowProps {
@@ -56,11 +55,9 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     }
   }
 
-  const trainingSteps = mission.lessonSteps.filter((s) =>
-    ['VIDEO', 'NOTE', 'INTERACTIVE_CHECK', 'WORKED_EXAMPLE'].includes(s.stepType)
-  )
-  const vocabSteps = mission.lessonSteps.filter((s) => s.stepType === 'VOCABULARY')
-  const scenarioSteps = mission.lessonSteps.filter((s) => s.stepType === 'SOURCE_ANALYSIS')
+  const trainingSteps = trainingStepsOf(mission.lessonSteps)
+  const vocabSteps = vocabStepsOf(mission.lessonSteps)
+  const scenarioSteps = scenarioStepsOf(mission.lessonSteps)
 
   return (
     <div className="space-y-6">
@@ -101,50 +98,43 @@ export function MissionFlow({ mission }: MissionFlowProps) {
       {currentStep === 'briefing' && (
         <StepPanel
           title="Mission Briefing"
-          description={mission.lessonSummary ?? mission.studentFriendlyTarget}
+          description={mission.lessonBody ?? mission.lessonSummary ?? mission.studentFriendlyTarget}
           onContinue={() => completeStep('briefing')}
           ctaLabel="Got it — Let's Train!"
         />
       )}
 
       {currentStep === 'vocab' && (
-        <StepPanel
-          title="Key Terms Unlock"
-          description={
-            vocabSteps.length > 0
-              ? vocabSteps.map((s) => s.content).join('\n\n')
-              : 'Review the key terms for this benchmark before diving into training.'
-          }
+        <VocabPanel
+          terms={mission.terms}
+          vocabSteps={vocabSteps}
           onContinue={() => completeStep('vocab')}
-          ctaLabel="Terms Unlocked — Continue"
         />
       )}
 
-      {currentStep === 'training' && (
-        <StepPanel
-          title="Guided Training"
-          description={
-            trainingSteps.length > 0
-              ? trainingSteps[0].content
-              : 'Work through the guided lesson content for this benchmark.'
-          }
-          onContinue={() => completeStep('training')}
-          ctaLabel="Training Complete"
-        />
-      )}
+      {currentStep === 'training' &&
+        (trainingSteps.length > 0 ? (
+          <TrainingWalkthrough steps={trainingSteps} onComplete={() => completeStep('training')} />
+        ) : (
+          <StepPanel
+            title="Guided Training"
+            description="Work through the guided lesson content for this benchmark."
+            onContinue={() => completeStep('training')}
+            ctaLabel="Training Complete"
+          />
+        ))}
 
-      {currentStep === 'scenario-lab' && (
-        <StepPanel
-          title="Scenario Lab"
-          description={
-            scenarioSteps.length > 0
-              ? scenarioSteps[0].content
-              : 'Apply what you\'ve learned to a real civic scenario or source document.'
-          }
-          onContinue={() => completeStep('scenario-lab')}
-          ctaLabel="Scenario Complete"
-        />
-      )}
+      {currentStep === 'scenario-lab' &&
+        (scenarioSteps.length > 0 ? (
+          <ScenarioLab steps={scenarioSteps} onComplete={() => completeStep('scenario-lab')} />
+        ) : (
+          <StepPanel
+            title="Scenario Lab"
+            description="Apply what you've learned to a real civic scenario or source document."
+            onContinue={() => completeStep('scenario-lab')}
+            ctaLabel="Scenario Complete"
+          />
+        ))}
 
       {currentStep === 'readiness-check' &&
         (mission.readinessAssessmentId ? (

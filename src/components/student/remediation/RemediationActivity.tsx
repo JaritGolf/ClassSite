@@ -6,10 +6,16 @@
  * Renders an assigned remediation ("Training Mission", spec §14.1): the activity
  * content plus a completion action. On completion the student is offered the
  * alternate reassessment ("Second Chance Challenge") for the benchmark.
+ *
+ * Authored content (ADR 0013) is JSON per RemediationContentSchema — rendered
+ * as concept + examples/non-examples + optional try-it check. Legacy plain-text
+ * rows fall back to the original whitespace-pre-line rendering.
  */
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { parseRemediationContent } from '@/lib/lesson-content'
+import { CheckQuestion } from '@/components/student/mission/LessonStepRenderer'
 
 interface RemediationActivityProps {
   studentRemediationId: string
@@ -61,7 +67,7 @@ export function RemediationActivity({
         <h2 className="text-lg font-bold text-gray-900">{title}</h2>
       </div>
 
-      <div className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">{content}</div>
+      <RemediationContentView content={content} />
 
       {error && (
         <p className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
@@ -94,6 +100,59 @@ export function RemediationActivity({
               Back to Mission Map
             </Link>
           )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Structured reteach rendering with plain-text fallback for legacy rows. */
+function RemediationContentView({ content }: { content: string }) {
+  const parsed = parseRemediationContent(content)
+  if (!parsed) {
+    return <div className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">{content}</div>
+  }
+
+  const examples = parsed.examples.filter((e) => e.isExample)
+  const nonExamples = parsed.examples.filter((e) => !e.isExample)
+
+  return (
+    <div className="space-y-4">
+      <div className="text-sm leading-relaxed text-gray-700 whitespace-pre-line">
+        {parsed.concept}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
+            ✓ Looks like this
+          </p>
+          {examples.map((e, i) => (
+            <div key={i} className="rounded-lg border border-green-200 bg-green-50 p-3">
+              <p className="text-sm text-gray-800">{e.text}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-green-800">{e.explanation}</p>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-700">
+            ✗ Not this
+          </p>
+          {nonExamples.map((e, i) => (
+            <div key={i} className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <p className="text-sm text-gray-800">{e.text}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-red-800">{e.explanation}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {parsed.tryIt && (
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 mb-2">
+            Try it yourself
+          </p>
+          <CheckQuestion question={parsed.tryIt.question} options={parsed.tryIt.options} />
         </div>
       )}
     </div>

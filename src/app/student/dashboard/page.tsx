@@ -36,13 +36,21 @@ export default async function StudentDashboard() {
   ] = await Promise.all([
     prisma.studentProgress.findFirst({
       where: { studentId: student.id, status: 'IN_PROGRESS' },
-      include: { benchmark: { select: { code: true, title: true } } },
+      include: {
+        benchmark: {
+          select: { code: true, title: true, unit: { select: { id: true, sequenceOrder: true } } },
+        },
+      },
       orderBy: { benchmark: { sequenceOrder: 'asc' } },
     }).then(async (row) => {
       if (row) return row
       return prisma.studentProgress.findFirst({
         where: { studentId: student.id, status: 'NOT_STARTED' },
-        include: { benchmark: { select: { code: true, title: true } } },
+        include: {
+          benchmark: {
+            select: { code: true, title: true, unit: { select: { id: true, sequenceOrder: true } } },
+          },
+        },
         orderBy: { benchmark: { sequenceOrder: 'asc' } },
       })
     }),
@@ -83,13 +91,16 @@ export default async function StudentDashboard() {
     description: sb.badge.description,
   }))
 
-  // Narrative beat for the first active unit
+  // Narrative beat for the student's CURRENT unit (the unit of their current
+  // mission), falling back to the first active unit when they have no progress
+  // rows yet — otherwise students in later units would forever see Unit 1 beats.
   let narrativeBeat: { beatKey: string; unitId: string; npcName: string; dialogue: string } | null = null
-  if (firstUnit) {
-    const unitCode = `unit-${firstUnit.sequenceOrder}`
-    const beat = await getFirstUnreadBeat(student.id, firstUnit.id, unitCode)
+  const beatUnit = currentMission?.benchmark.unit ?? firstUnit
+  if (beatUnit) {
+    const unitCode = `unit-${beatUnit.sequenceOrder}`
+    const beat = await getFirstUnreadBeat(student.id, beatUnit.id, unitCode)
     if (beat) {
-      narrativeBeat = { beatKey: beat.beatKey, unitId: firstUnit.id, npcName: beat.npcName, dialogue: beat.dialogue }
+      narrativeBeat = { beatKey: beat.beatKey, unitId: beatUnit.id, npcName: beat.npcName, dialogue: beat.dialogue }
     }
   }
 
