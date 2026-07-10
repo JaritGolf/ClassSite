@@ -51,9 +51,14 @@ interface AssessmentPlayerProps {
   /**
    * When provided, the player is embedded in another flow (e.g. the mission
    * pre-check / readiness step): it calls onComplete with the result instead of
-   * rendering the standalone "Mission Map" call-to-action.
+   * rendering the standalone "Mission Map" call-to-action. reviewTopics is
+   * populated on failed readiness checks (topic labels of missed questions).
    */
-  onComplete?: (result: { passed: boolean; score: number }) => void
+  onComplete?: (result: {
+    passed: boolean
+    score: number
+    reviewTopics?: string[] | null
+  }) => void
 }
 
 const CONFIDENCE_REQUIRED = new Set(['MASTERY_CHALLENGE', 'REPUBLIC_CHALLENGE', 'FINAL_TRIAL'])
@@ -112,6 +117,28 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
           <p className="text-gray-600">Score: {Math.round(result.score * 100)}%</p>
         )}
 
+        {meta.assessmentType === 'MASTERY_CHALLENGE' && result.passed && (
+          <div className="mx-auto max-w-sm rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-left">
+            <div className="flex items-start gap-3">
+              <span
+                aria-hidden="true"
+                className="h-9 w-9 flex-shrink-0 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center"
+              >
+                F
+              </span>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                  The Founder
+                </p>
+                <p className="mt-0.5 text-sm leading-relaxed text-indigo-900">
+                  Well done, builder. Another pillar of the Republic stands because of you — and
+                  what you mastered today will return in your Daily Drill, so keep it sharp.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {result.calibration && <CalibrationCard calibration={result.calibration} />}
 
         {onComplete ? (
@@ -151,6 +178,11 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
         body: JSON.stringify({ attemptId, responses }),
       })
       const data = await res.json()
+      // A non-2xx response is a failed submission — never render the completion
+      // card for it (that masks real errors as "Keep Practicing!").
+      if (!res.ok) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'Submission failed.')
+      }
       setResult({
         passed: data.passed,
         score: data.score,
@@ -158,9 +190,9 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
         calibration: data.calibration ?? null,
       })
       setSubmitted(true)
-      onComplete?.({ passed: data.passed, score: data.score })
-    } catch {
-      setError('Submission failed. Please try again.')
+      onComplete?.({ passed: data.passed, score: data.score, reviewTopics: data.reviewTopics ?? null })
+    } catch (e) {
+      setError(e instanceof Error ? `${e.message} Please try again.` : 'Submission failed. Please try again.')
     } finally {
       setLoading(false)
     }

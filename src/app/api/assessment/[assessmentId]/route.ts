@@ -43,11 +43,25 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     )
   }
 
+  // Map the lib shape to the player's wire contract: the client keys answers
+  // by `questionId` (and the submit schema validates those ids), so the field
+  // name here is load-bearing — passing the lib's `id` through silently broke
+  // every UI submission with a 400 ("questionId must be a valid cuid").
   return NextResponse.json({
     assessmentId: result.meta.id,
     title: result.meta.title,
     assessmentType: result.meta.assessmentType,
     masteryThreshold: result.meta.masteryThreshold,
-    questions: result.questions,
+    questions: result.questions.map((q) => ({
+      questionId: q.id,
+      prompt: q.prompt,
+      itemType: q.itemType,
+      stimulus: q.stimulus,
+      options: q.options.map((o, i) => ({
+        id: o.id,
+        optionText: o.optionText,
+        position: i + 1,
+      })),
+    })),
   })
 }
