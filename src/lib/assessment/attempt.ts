@@ -63,6 +63,13 @@ export interface SubmitResult {
   feedback: FeedbackItem[] | null
   /** Per-confidence-level correctness, only for confidence-required types (spec §17.4) */
   calibration: CalibrationBreakdown | null
+  /**
+   * READINESS_CHECK only: human-readable topic labels (from skill tags) of the
+   * questions missed or skipped, so the mission flow can point the student back
+   * at the right training material. Post-submission, topic-level only — no
+   * answer keys, no per-question correctness (rule #2 stays intact).
+   */
+  reviewTopics: string[] | null
 }
 
 // ── Secure assessment types — feedback is never returned ──────────────────────
@@ -291,6 +298,30 @@ export async function gradeAndSubmit(
     }))
   }
 
+  // 9b. Readiness review topics — which concepts to revisit, at topic level only
+  //     (no per-question correctness, no keys). Missed = wrong OR unanswered.
+  let reviewTopics: string[] | null = null
+
+  if (assessment.assessmentType === 'READINESS_CHECK' && !passed) {
+    const answeredCorrectly = new Set(
+      grades.filter((g) => g.isCorrect).map((g) => g.questionId)
+    )
+    const missedIds = questionIds.filter((id) => !answeredCorrectly.has(id))
+    if (missedIds.length > 0) {
+      const missedQuestions = await prisma.question.findMany({
+        where: { id: { in: missedIds } },
+        select: { skillTag: true },
+      })
+      const topics = new Set(
+        missedQuestions
+          .map((q) => q.skillTag)
+          .filter((t): t is string => Boolean(t))
+          .map((t) => t.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))
+      )
+      reviewTopics = [...topics]
+    }
+  }
+
   // 10. Calibration feedback (spec §17.4) — only for confidence-required types.
   //     The snapshot write is non-fatal: the submission is already persisted.
   let calibration: CalibrationBreakdown | null = null
@@ -321,5 +352,6 @@ export async function gradeAndSubmit(
     passed,
     feedback,
     calibration,
+    reviewTopics,
   }
 }

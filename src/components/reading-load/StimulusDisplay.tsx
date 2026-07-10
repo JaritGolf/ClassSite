@@ -241,8 +241,9 @@ function chunkContent(text: string): string[] {
 /**
  * Interleave plain text segments with GlossaryPopover components.
  * Scans the text for each annotation's matchText and wraps matches.
+ * Exported for reuse by lesson-note rendering (LessonStepRenderer).
  */
-function renderAnnotatedText(
+export function renderAnnotatedText(
   text: string,
   annotations: GlossaryAnnotation[]
 ): React.ReactNode[] {

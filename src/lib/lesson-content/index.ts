@@ -3,6 +3,7 @@ export {
   InteractiveCheckSchema,
   WorkedExampleSchema,
   SourceAnalysisSchema,
+  TimelineSchema,
   RemediationContentSchema,
   parseStepContent,
   parseRemediationContent,
@@ -10,6 +11,7 @@ export {
   type InteractiveCheckContent,
   type WorkedExampleContent,
   type SourceAnalysisContent,
+  type TimelineContent,
   type RemediationContent,
   type ParsedStepContent,
 } from './contracts'

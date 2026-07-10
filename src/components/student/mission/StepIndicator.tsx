@@ -4,6 +4,7 @@ const STEPS = [
   { key: 'vocab', label: 'Key Terms' },
   { key: 'training', label: 'Training' },
   { key: 'scenario-lab', label: 'Scenario Lab' },
+  { key: 'practice', label: 'Practice' },
   { key: 'readiness-check', label: 'Readiness Check' },
   { key: 'mastery-challenge', label: 'Mastery Challenge' },
 ]

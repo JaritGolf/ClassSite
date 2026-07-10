@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getStudentAccommodations } from '@/lib/reading-load'
-import { resolveL1Language } from '@/lib/l1-glosses'
+import { resolveL1Language, getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
 import { MissionFlow } from '@/components/student/mission/MissionFlow'
 
 interface PageProps {
@@ -26,7 +26,9 @@ export default async function MissionPage({ params }: PageProps) {
       },
       assessments: {
         where: {
-          assessmentType: { in: ['PRE_CHECK', 'READINESS_CHECK', 'MASTERY_CHALLENGE'] },
+          assessmentType: {
+            in: ['PRE_CHECK', 'READINESS_CHECK', 'MASTERY_CHALLENGE', 'PRACTICE', 'VOCAB_CHECK'],
+          },
           approvalStatus: 'APPROVED',
         },
         select: { id: true, assessmentType: true },
@@ -48,21 +50,33 @@ export default async function MissionPage({ params }: PageProps) {
     const activeCodes = accommodations.filter((a) => a.active).map((a) => a.code)
     languageCode = resolveL1Language(student.l1Language ?? null, activeCodes)
   }
-  const termRows = await prisma.term.findMany({
-    where: { benchmarkId: benchmark.id, tier: 'TIER_3', approvalStatus: 'APPROVED' },
-    orderBy: { term: 'asc' },
-    select: {
-      term: true,
-      definition: true,
-      relatedVocab: true,
-      translations: languageCode
-        ? {
-            where: { languageCode, approvalStatus: 'APPROVED' },
-            select: { definitionTranslated: true, languageCode: true },
-          }
-        : false,
-    },
-  })
+  const [termRows, glossaryTerms, progress] = await Promise.all([
+    prisma.term.findMany({
+      where: { benchmarkId: benchmark.id, tier: 'TIER_3', approvalStatus: 'APPROVED' },
+      orderBy: { term: 'asc' },
+      select: {
+        term: true,
+        definition: true,
+        relatedVocab: true,
+        translations: languageCode
+          ? {
+              where: { languageCode, approvalStatus: 'APPROVED' },
+              select: { definitionTranslated: true, languageCode: true },
+            }
+          : false,
+      },
+    }),
+    // Popover annotations for lesson notes: tier-2 academic verbs (global) +
+    // this benchmark's tier-3 terms, with L1 glosses (display-only).
+    getGlossaryTermsForBenchmark(benchmark.id, languageCode),
+    // Cross-device resume point (the dormant Phase-1 FK, now in use).
+    student
+      ? prisma.studentProgress.findUnique({
+          where: { studentId_benchmarkId: { studentId: student.id, benchmarkId: benchmark.id } },
+          select: { currentStepId: true },
+        })
+      : Promise.resolve(null),
+  ])
 
   const lesson = benchmark.lessons[0]
   const idForType = (t: string) =>
@@ -77,7 +91,13 @@ export default async function MissionPage({ params }: PageProps) {
     preCheckAssessmentId: idForType('PRE_CHECK'),
     readinessAssessmentId: idForType('READINESS_CHECK'),
     assessmentId: idForType('MASTERY_CHALLENGE'),
+    practiceAssessmentId: idForType('PRACTICE'),
+    vocabCheckAssessmentId: idForType('VOCAB_CHECK'),
     lessonSteps: lesson?.steps ?? [],
+    glossaryTerms,
+    resumeStepId: progress?.currentStepId ?? null,
+    /** Scopes client-side resume state to this student on shared devices. */
+    progressKey: session.user.userId,
     terms: termRows.map((t) => {
       const tr = Array.isArray(t.translations) ? t.translations[0] : undefined
       return {

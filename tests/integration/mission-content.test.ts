@@ -64,7 +64,7 @@ describe('Turnkey Unit 1 — complete learning loop per benchmark', () => {
         })
         expect(lesson).not.toBeNull()
         expect(lesson!.body.trim().length).toBeGreaterThan(100)
-        expect(lesson!.steps.length).toBeGreaterThanOrEqual(6)
+        expect(lesson!.steps.length).toBeGreaterThanOrEqual(10)
 
         const types = new Set(lesson!.steps.map((s) => s.stepType))
         expect(types.has('NOTE')).toBe(true)

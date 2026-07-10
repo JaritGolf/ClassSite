@@ -44,6 +44,29 @@ export const WorkedExampleSchema = z.object({
 })
 export type WorkedExampleContent = z.infer<typeof WorkedExampleSchema>
 
+/**
+ * Visual organizer for NOTE steps: a vertical timeline or cause-effect chain
+ * (dual coding — spec §31.2 "visual organizers"). `marker` is the left-column
+ * label (a year like "1215" or a chain label like "Cause"); `connector`
+ * renders arrows between events for cause-effect chains.
+ */
+export const TimelineSchema = z.object({
+  kind: z.literal('timeline'),
+  intro: z.string().optional(),
+  connector: z.enum(['line', 'arrow']).default('line'),
+  events: z
+    .array(
+      z.object({
+        marker: z.string().min(1).max(24),
+        label: z.string().min(1),
+        detail: z.string().optional(),
+      })
+    )
+    .min(3)
+    .max(8),
+})
+export type TimelineContent = z.infer<typeof TimelineSchema>
+
 export const SourceAnalysisSchema = z.object({
   sourceTitle: z.string().min(1),
   sourceAttribution: z.string().min(1),
@@ -95,6 +118,7 @@ export type ParsedStepContent =
   | ({ kind: 'worked-example' } & WorkedExampleContent)
   | ({ kind: 'interactive-check' } & InteractiveCheckContent)
   | ({ kind: 'source-analysis' } & SourceAnalysisContent)
+  | ({ kind: 'timeline' } & Omit<TimelineContent, 'kind'>)
 
 function tryJson(content: string): unknown | undefined {
   try {
@@ -109,6 +133,9 @@ function tryJson(content: string): unknown | undefined {
  * to `{ kind: 'text' }` when the content is not valid JSON for their schema, so
  * a malformed or legacy row degrades to readable text instead of breaking the
  * mission flow (and never gates progression — see gating.ts).
+ *
+ * NOTE steps are plain text UNLESS the content is valid timeline JSON
+ * (`{"kind":"timeline",...}`) — the visual-organizer variant of a note.
  */
 export function parseStepContent(stepType: string, content: string): ParsedStepContent {
   const json = tryJson(content)
@@ -124,6 +151,13 @@ export function parseStepContent(stepType: string, content: string): ParsedStepC
     if (stepType === 'SOURCE_ANALYSIS') {
       const r = SourceAnalysisSchema.safeParse(json)
       if (r.success) return { kind: 'source-analysis', ...r.data }
+    }
+    if (stepType === 'NOTE') {
+      const r = TimelineSchema.safeParse(json)
+      if (r.success) {
+        const { kind: _kind, ...rest } = r.data
+        return { kind: 'timeline', ...rest }
+      }
     }
   }
   return { kind: 'text', text: content }

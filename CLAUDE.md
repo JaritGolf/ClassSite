@@ -148,6 +148,48 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**UNIT 1 LEARNING-EXPERIENCE UPGRADES (2026-07-10, second wave) — Tier 1 `tsc` GREEN +
+Tier 2 jest GREEN (1063/1063, 117 suites).** Eight owner-approved improvements so students
+LEARN better from Unit 1 (all in-browser verified):
+(1) **Practice Arena** — the Phase-6 adaptive engine is finally student-reachable: new
+`PracticeArena.tsx` drives `/api/practice/[attemptId]/{next-item,answer}` (worked example
+after a struggle streak → near-transfer → remediation escalation), inserted as an optional
+8th mission step between Scenario Lab and Readiness (STEP_ORDER + StepIndicator now 8 steps;
+skippable). (2) **Word Builder live** — VOCAB_CHECK embeds in `VocabPanel` and gates
+"Terms Unlocked — Continue" (vocabulary = retrieval, not reading). (3) **Readiness-failure
+loop closed** — `gradeAndSubmit` returns `reviewTopics` (humanized skillTags of missed/
+unanswered questions, READINESS_CHECK+fail only; topic-level post-submission, rule #2
+intact); fail panel shows topic chips + "Review the Training" / "Warm up in the Practice
+Arena" jumps that RETURN to readiness on completion (`reviewingFrom`). (4) **+2 checks per
+lesson** (4 total each: big-picture + sequence/synthesis). (5) **Timeline visuals** — new
+`TimelineSchema` (NOTE steps may carry `{"kind":"timeline"}` JSON; text fallback stays);
+vertical timeline/arrow-chain renderer; 6 authored visuals (documents road 1215→1776,
+self-gov roots, revolution chain, Declaration argument, Articles collapse, Convention→Bill
+of Rights). (6) **Notes get read-aloud + glossary popovers** — `NoteView` (Web Speech +
+`buildGlossaryAnnotations` over tier-2 global + tier-3 benchmark terms w/ L1, via
+`getGlossaryTermsForBenchmark`; `renderAnnotatedText` exported from StimulusDisplay).
+(7) **Resume** — localStorage flow-state keyed `cq:mission:{userId}:{code}` + new
+`POST /api/mission/progress` writing the dormant `StudentProgress.currentStepId` FK
+(validated against the benchmark's lesson); mission page passes `resumeStepId`; verified:
+reload mid-training returns to the exact step. (8) **Polish** — "Mission Debrief" recap
+NOTE ends every lesson; Founder victory card on passed MASTERY_CHALLENGE; lesson checks now
+capture confidence ("How sure are you?") BEFORE revealing feedback + calibration nudge
+(§17 practiced client-local, unpersisted). Tests: +30 (timeline contracts, lesson shape ≥10
+steps/≥4 checks/timeline/debrief, `readiness-review-topics` integration). Lessons now 12
+steps each.
+**CRITICAL PRE-EXISTING BUG found by this wave's browser verification and FIXED:** every
+UI assessment submission had been silently failing with 400 since the Phase-12 fetcher
+rework — `GET /api/assessment/[id]` returned questions keyed `id` while `AssessmentPlayer`
+submits `answers` keyed `questionId` ("questionId must be a valid cuid"), AND the player
+never checked `res.ok`, so a fake "Keep Practicing! Score: NaN%" completion card rendered
+on errors (masking the bug; readiness could never gate open, UI mastery never recorded —
+demo data looked fine because seed engine-helpers call the domain layer directly). Fix:
+the GET route now maps to the player's wire contract (`questionId` + option `position`),
+and the player throws on non-2xx instead of rendering a completion card. Verified live:
+readiness fail now returns a real graded Score: 0% + reviewTopics chips.
+
+---
+
 **UNIT 1 TURNKEY (2026-07-10) — Phase 8 instructional-gap repair + Phase 15 Unit 1 content
 complete (ADR 0013). Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1033/1033, 116 suites).**
 The site now actually TEACHES Unit 1 end-to-end. Root cause of the "awful student
@@ -417,6 +459,35 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-07-10 (Unit 1 learning-experience upgrades, second wave):** Owner asked
+"what would help students learn better from Unit 1?" then approved building all eight
+recommendations in order. Built: PracticeArena (surfaces the previously student-unreachable
+adaptive engine; optional 8th mission step, skippable, "practice 3 more" loop, remediation-
+escalation notices); Word Builder (VOCAB_CHECK) embedded + gating the Key Terms step;
+`reviewTopics` on failed readiness checks (attempt.ts §9b — topic labels only, rule #2
+intact) + fail panel with topic chips and review/practice jumps that return to readiness;
+12 new authored interactive checks (+2/lesson → 4 each); `TimelineSchema` + renderer + 6
+authored timelines/cause-chains (NOTE steps may carry timeline JSON — contract change,
+contracts test updated); NoteView read-aloud + glossary popovers on lesson notes (glossary
+terms threaded mission page → MissionFlow → TrainingWalkthrough); resume via localStorage
+flow-state + `POST /api/mission/progress` → `StudentProgress.currentStepId` (dormant FK now
+used; step validated against benchmark's lesson); Mission Debrief recap ends each lesson
+(12 steps each); Founder victory card on mastery pass; confidence-before-feedback on all
+lesson checks w/ calibration nudges (client-local). **Verification:** `tsc` 0 errors; full
+jest **1063/1063 (117 suites, ~13s)**; reseeded (idempotent); in-browser walk verified:
+8-step indicator, Word Builder gate, confidence flow (feedback withheld until confidence),
+calibration nudge, read-aloud + popovers on notes, Step N of 10 walkthrough, resume after
+reload to exact training step, timeline visual, Practice Arena live (incl. 3-miss →
+worked-example → near-transfer loop), readiness fail → Score 0% + topic chips + working
+"Review the Training" jump. **Found + fixed the critical GET/submit wire-contract bug**
+(see Current Build Phase — every UI submission had silently 400'd since Phase 12; the
+player's missing res.ok check masked it; yesterday's "NaN% = ungraded pre-check" diagnosis
+was wrong, it was this). Gotcha: browser preview tool API changed mid-session
+(preview_eval → javascript_tool w/ tabId); dev-server boot was ~20s on warm `.next`;
+UI text probes must be case-insensitive (CSS `uppercase` changes innerText).
+Commits: `fix(phase-3/8): assessment wire contract + honest submit errors`,
+`feat(phase-8): learning-experience upgrades`.
 
 **Session of 2026-07-09/10 (Unit 1 Turnkey — lessons, remediation, approval, mission UX):**
 Owner reported the site "would not in any way help a 7th grade civics student learn" —
@@ -757,6 +828,11 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-07-09] Owner-directed approval at seed for completed units (ADR 0013): chose seeding completed-unit AI content as APPROVED / sourceTier D over the Tier-C NEEDS_REVIEW default because the owner explicitly directed immediate student availability (the NEEDS_REVIEW pile was why the site couldn't teach). Bounded: only units the owner commissioned as complete (Unit 1 now); Unit 2+ drafts remain Tier C; APPROVED-only serving gates unchanged; owner reviews post-hoc in /teacher/content. Reversible by flipping `seed/approval_mode.ts` back to NEEDS_REVIEW and re-seeding.
 - [2026-07-09] Lesson interactive checks graded client-side (ADR 0013): lesson-step self-checks carry correct/feedback flags in step JSON and grade in the browser, unpersisted. Deliberate scoping of rule #1 ("server-side grading only"), which protects *assessments* — a lesson self-check is instructional content with zero mastery/SM-2 impact, like a textbook check-yourself box. Reversible by moving checks to a server endpoint if they ever feed analytics.
 - [2026-07-09] Misconception codes optional per misconception_check item: the 50-entry Appendix E inventory doesn't enumerate every misconception the banks target (e.g. Preamble/Bill-of-Rights confusion in Unit 2's bank), so the shape test requires ≥1 inventory-linked misconception item per benchmark plus validity of every referenced code, not a code on every item. Force-fitting wrong codes would corrupt distractor analytics. Reversible by extending the inventory and tightening the assertion.
+- [2026-07-10] Practice Arena leaves PRACTICE attempts unsubmitted: the arena grades per-item via `/api/practice/*` (AttemptResponse rows, AdaptiveSessionState) and never calls submit, so those AssessmentAttempt rows keep `submittedAt=null`/`score=null`. Mastery/off-ramp logic counts only MASTERY_CHALLENGE attempts and analytics filter on submitted/voided, so no impact; revisit if attempt-row hygiene ever matters. Reversible by adding a session-finalize endpoint.
+- [2026-07-10] `reviewTopics` on failed readiness checks (attempt.ts): returns humanized skill-tag labels of missed+unanswered questions, only for READINESS_CHECK and only after submission — no keys, no per-question correctness, so rules #1/#2 hold and retry brute-forcing isn't enabled. Reversible by dropping the field.
+- [2026-07-10] NOTE steps may carry timeline JSON (`TimelineSchema`, lesson-content contracts): chosen over adding a LessonStepType enum value (schema migration) or abusing VIDEO. A NOTE whose content parses as `{"kind":"timeline",...}` renders as a visual organizer; anything else stays plain text. Contract documented in the contracts test. Reversible by migrating to a dedicated enum value later.
+- [2026-07-10] Mission resume = localStorage (full flow state, per user+benchmark key) + server `StudentProgress.currentStepId` (training step only, via new POST /api/mission/progress): localStorage gives instant same-device resume; the dormant FK gives cross-device training resume. Display-only, no grading impact. Reversible independently.
+- [2026-07-10] Confidence on lesson self-checks (client-local): checks now ask "How sure are you?" after answering and before feedback, then show a calibration nudge. Spec §17 makes practice confidence optional — here it's unpersisted metacognition practice, consistent with the ADR 0013 lesson-check scoping. Reversible by removing the prompt from CheckQuestion.
 
 ---
 

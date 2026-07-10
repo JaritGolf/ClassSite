@@ -47,12 +47,47 @@ const VALID_SOURCE: SourceAnalysisContent = {
   ],
 }
 
+const VALID_TIMELINE = {
+  kind: 'timeline' as const,
+  intro: 'Watch the power shift.',
+  connector: 'line' as const,
+  events: [
+    { marker: '1215', label: 'Magna Carta', detail: 'Even the king obeys the law.' },
+    { marker: '1689', label: 'English Bill of Rights' },
+    { marker: '1776', label: 'Declaration of Independence' },
+  ],
+}
+
 describe('parseStepContent', () => {
-  it('NOTE and VOCABULARY always parse as text', () => {
+  it('plain NOTE text and VOCABULARY always parse as text', () => {
     expect(parseStepContent('NOTE', 'Plain text.')).toEqual({ kind: 'text', text: 'Plain text.' })
     // Even valid JSON stays text for non-structured types
     const asJson = JSON.stringify(VALID_CHECK)
     expect(parseStepContent('VOCABULARY', asJson)).toEqual({ kind: 'text', text: asJson })
+  })
+
+  it('a NOTE carrying valid timeline JSON parses as a timeline', () => {
+    const parsed = parseStepContent('NOTE', JSON.stringify(VALID_TIMELINE))
+    expect(parsed.kind).toBe('timeline')
+    if (parsed.kind === 'timeline') {
+      expect(parsed.events).toHaveLength(3)
+      expect(parsed.connector).toBe('line')
+    }
+  })
+
+  it('a NOTE with non-timeline JSON stays text (no accidental visual parsing)', () => {
+    const asJson = JSON.stringify(VALID_CHECK)
+    expect(parseStepContent('NOTE', asJson)).toEqual({ kind: 'text', text: asJson })
+  })
+
+  it('a timeline with fewer than 3 events degrades to text', () => {
+    const tooShort = { ...VALID_TIMELINE, events: VALID_TIMELINE.events.slice(0, 2) }
+    expect(parseStepContent('NOTE', JSON.stringify(tooShort)).kind).toBe('text')
+  })
+
+  it('timelines only apply to NOTE steps', () => {
+    const asJson = JSON.stringify(VALID_TIMELINE)
+    expect(parseStepContent('INTERACTIVE_CHECK', asJson).kind).toBe('text')
   })
 
   it('parses a valid WORKED_EXAMPLE', () => {

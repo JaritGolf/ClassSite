@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { trainingStepsOf, vocabStepsOf, scenarioStepsOf } from '@/lib/lesson-content'
+import type { GlossaryTerm } from '@/lib/reading-load'
 import { StepIndicator } from './StepIndicator'
 import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
 import { TrainingWalkthrough } from './TrainingWalkthrough'
 import { VocabPanel, type TermView } from './VocabPanel'
 import { ScenarioLab } from './ScenarioLab'
+import { PracticeArena } from './PracticeArena'
 import type { LessonStepView } from './LessonStepRenderer'
 
 const STEP_ORDER = [
@@ -16,6 +18,7 @@ const STEP_ORDER = [
   'vocab',
   'training',
   'scenario-lab',
+  'practice',
   'readiness-check',
   'mastery-challenge',
 ] as const
@@ -32,8 +35,27 @@ interface MissionData {
   preCheckAssessmentId: string | null
   readinessAssessmentId: string | null
   assessmentId: string | null
+  practiceAssessmentId: string | null
+  vocabCheckAssessmentId: string | null
   lessonSteps: LessonStepView[]
   terms: TermView[]
+  /** Tier-2 (global) + tier-3 (benchmark) terms for note glossary popovers. */
+  glossaryTerms: GlossaryTerm[]
+  /** Server-side resume point (StudentProgress.currentStepId), if any. */
+  resumeStepId: string | null
+  /** Scopes device-local resume state to this student (shared Chromebooks). */
+  progressKey: string
+}
+
+interface SavedFlowState {
+  v: 1
+  step: Step
+  completed: Step[]
+  trainingIndex: number
+}
+
+function flowStorageKey(progressKey: string, benchmarkCode: string): string {
+  return `cq:mission:${progressKey}:${benchmarkCode}`
 }
 
 interface MissionFlowProps {
@@ -44,20 +66,99 @@ export function MissionFlow({ mission }: MissionFlowProps) {
   const [currentStep, setCurrentStep] = useState<Step>('pre-check')
   const [completedSteps, setCompletedSteps] = useState<Step[]>([])
   const [preCheckDone, setPreCheckDone] = useState(false)
-  const [readinessResult, setReadinessResult] = useState<{ passed: boolean } | null>(null)
+  const [readinessResult, setReadinessResult] = useState<{
+    passed: boolean
+    reviewTopics?: string[] | null
+  } | null>(null)
   const [readinessAttempt, setReadinessAttempt] = useState(0)
+  // Set when the student jumps back from a failed readiness check — completing
+  // the review returns them to the readiness check instead of marching forward.
+  const [reviewingFrom, setReviewingFrom] = useState<Step | null>(null)
+  const [trainingIndex, setTrainingIndex] = useState(0)
+  const hydrated = useRef(false)
+
+  const trainingSteps = trainingStepsOf(mission.lessonSteps)
+  const vocabSteps = vocabStepsOf(mission.lessonSteps)
+  const scenarioSteps = scenarioStepsOf(mission.lessonSteps)
+
+  // ── Resume (spec §21.3 "continue from last saved step") ──────────────────
+  // Device-local flow state first; else the server-side training step pointer.
+  useEffect(() => {
+    if (hydrated.current) return
+    hydrated.current = true
+    try {
+      const raw = localStorage.getItem(flowStorageKey(mission.progressKey, mission.benchmarkCode))
+      if (raw) {
+        const saved = JSON.parse(raw) as SavedFlowState
+        if (saved.v === 1 && (STEP_ORDER as readonly string[]).includes(saved.step)) {
+          setCurrentStep(saved.step)
+          setCompletedSteps(saved.completed.filter((s) => (STEP_ORDER as readonly string[]).includes(s)))
+          setTrainingIndex(Math.min(Math.max(0, saved.trainingIndex), Math.max(0, trainingSteps.length - 1)))
+          return
+        }
+      }
+    } catch {
+      /* localStorage unavailable — fall through */
+    }
+    if (mission.resumeStepId) {
+      const idx = trainingSteps.findIndex((s) => s.id === mission.resumeStepId)
+      if (idx >= 0) {
+        setCurrentStep('training')
+        setCompletedSteps(['pre-check', 'briefing', 'vocab'])
+        setTrainingIndex(idx)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist flow state so a student can leave mid-mission and pick up here.
+  useEffect(() => {
+    if (!hydrated.current) return
+    try {
+      const state: SavedFlowState = {
+        v: 1,
+        step: currentStep,
+        completed: completedSteps,
+        trainingIndex,
+      }
+      localStorage.setItem(
+        flowStorageKey(mission.progressKey, mission.benchmarkCode),
+        JSON.stringify(state)
+      )
+    } catch {
+      /* non-fatal */
+    }
+  }, [currentStep, completedSteps, trainingIndex, mission.progressKey, mission.benchmarkCode])
+
+  function handleTrainingIndexChange(index: number, stepId: string) {
+    setTrainingIndex(index)
+    // Cross-device resume point — fire and forget; purely display/resume data.
+    fetch('/api/mission/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ benchmarkCode: mission.benchmarkCode, stepId }),
+    }).catch(() => {})
+  }
 
   function completeStep(step: Step) {
     setCompletedSteps((prev) => (prev.includes(step) ? prev : [...prev, step]))
+    if (reviewingFrom) {
+      setCurrentStep(reviewingFrom)
+      setReviewingFrom(null)
+      return
+    }
     const nextIndex = STEP_ORDER.indexOf(step) + 1
     if (nextIndex < STEP_ORDER.length) {
       setCurrentStep(STEP_ORDER[nextIndex])
     }
   }
 
-  const trainingSteps = trainingStepsOf(mission.lessonSteps)
-  const vocabSteps = vocabStepsOf(mission.lessonSteps)
-  const scenarioSteps = scenarioStepsOf(mission.lessonSteps)
+  function jumpToReview(step: Step) {
+    setReviewingFrom('readiness-check')
+    setReadinessResult(null)
+    setReadinessAttempt((n) => n + 1)
+    setCurrentStep(step)
+  }
 
   return (
     <div className="space-y-6">
@@ -108,13 +209,20 @@ export function MissionFlow({ mission }: MissionFlowProps) {
         <VocabPanel
           terms={mission.terms}
           vocabSteps={vocabSteps}
+          vocabCheckAssessmentId={mission.vocabCheckAssessmentId}
           onContinue={() => completeStep('vocab')}
         />
       )}
 
       {currentStep === 'training' &&
         (trainingSteps.length > 0 ? (
-          <TrainingWalkthrough steps={trainingSteps} onComplete={() => completeStep('training')} />
+          <TrainingWalkthrough
+            steps={trainingSteps}
+            glossaryTerms={mission.glossaryTerms}
+            initialIndex={trainingIndex}
+            onIndexChange={handleTrainingIndexChange}
+            onComplete={() => completeStep('training')}
+          />
         ) : (
           <StepPanel
             title="Guided Training"
@@ -136,6 +244,40 @@ export function MissionFlow({ mission }: MissionFlowProps) {
           />
         ))}
 
+      {currentStep === 'practice' &&
+        (mission.practiceAssessmentId ? (
+          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Practice Arena</h2>
+                <p className="text-sm text-gray-600">
+                  Warm up before the Readiness Check. Miss a few in a row and I&apos;ll walk one
+                  through with you — that&apos;s the point of practice.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => completeStep('practice')}
+                className="flex-shrink-0 text-xs font-medium text-gray-600 hover:text-indigo-700 underline"
+              >
+                Skip practice
+              </button>
+            </div>
+            <PracticeArena
+              key={readinessAttempt}
+              assessmentId={mission.practiceAssessmentId}
+              onFinish={() => completeStep('practice')}
+            />
+          </div>
+        ) : (
+          <StepPanel
+            title="Practice Arena"
+            description="No practice set is available for this benchmark yet — head straight to the Readiness Check."
+            onContinue={() => completeStep('practice')}
+            ctaLabel="Continue"
+          />
+        ))}
+
       {currentStep === 'readiness-check' &&
         (mission.readinessAssessmentId ? (
           <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
@@ -149,7 +291,9 @@ export function MissionFlow({ mission }: MissionFlowProps) {
             <AssessmentPlayer
               key={readinessAttempt}
               assessmentId={mission.readinessAssessmentId}
-              onComplete={(r) => setReadinessResult({ passed: r.passed })}
+              onComplete={(r) =>
+                setReadinessResult({ passed: r.passed, reviewTopics: r.reviewTopics ?? null })
+              }
             />
             {readinessResult?.passed && (
               <button
@@ -160,19 +304,52 @@ export function MissionFlow({ mission }: MissionFlowProps) {
               </button>
             )}
             {readinessResult && !readinessResult.passed && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-sm text-amber-700">
-                  Not quite — review the training and try the readiness check again.
+                  Not quite there yet — that&apos;s what the Readiness Check is for.
                 </p>
-                <button
-                  onClick={() => {
-                    setReadinessResult(null)
-                    setReadinessAttempt((n) => n + 1)
-                  }}
-                  className="rounded-lg border border-indigo-300 px-5 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
-                >
-                  Try Again
-                </button>
+                {readinessResult.reviewTopics && readinessResult.reviewTopics.length > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-1.5">
+                      Worth another look
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {readinessResult.reviewTopics.map((topic) => (
+                        <span
+                          key={topic}
+                          className="rounded-full bg-white border border-amber-300 px-2.5 py-0.5 text-xs font-medium text-amber-900"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => jumpToReview('training')}
+                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                  >
+                    Review the Training
+                  </button>
+                  {mission.practiceAssessmentId && (
+                    <button
+                      onClick={() => jumpToReview('practice')}
+                      className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+                    >
+                      Warm up in the Practice Arena
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setReadinessResult(null)
+                      setReadinessAttempt((n) => n + 1)
+                    }}
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
               </div>
             )}
           </div>

@@ -37,8 +37,8 @@ describe('Lesson banks — guided-training template shape', () => {
             expect(lesson.studentFriendlyTarget.trim()).toMatch(/^I can /)
           })
 
-          it('has at least 6 steps', () => {
-            expect(lesson.steps.length).toBeGreaterThanOrEqual(6)
+          it('has at least 10 steps', () => {
+            expect(lesson.steps.length).toBeGreaterThanOrEqual(10)
           })
 
           it('includes every instructional step type of the template', () => {
@@ -50,6 +50,26 @@ describe('Lesson banks — guided-training template shape', () => {
             expect(types.has('SOURCE_ANALYSIS')).toBe(true)
           })
 
+          it('has at least 4 interactive checks (retrieval after every chunk)', () => {
+            const checks = lesson.steps.filter((s) => s.stepType === 'INTERACTIVE_CHECK')
+            expect(checks.length).toBeGreaterThanOrEqual(4)
+          })
+
+          it('has at least one timeline visual organizer', () => {
+            const timelines = lesson.steps.filter(
+              (s) =>
+                s.stepType === 'NOTE' &&
+                parseStepContent(s.stepType, s.content).kind === 'timeline'
+            )
+            expect(timelines.length).toBeGreaterThanOrEqual(1)
+          })
+
+          it('ends with a Mission Debrief recap note', () => {
+            const last = lesson.steps[lesson.steps.length - 1]
+            expect(last.stepType).toBe('NOTE')
+            expect(last.title).toMatch(/Debrief/)
+          })
+
           it('every structured step parses against its contract (no silent text fallback)', () => {
             for (const step of lesson.steps) {
               const expected = EXPECTED_KIND[step.stepType]
@@ -58,6 +78,14 @@ describe('Lesson banks — guided-training template shape', () => {
               expect(`${step.stepType}:${step.title}:${parsed.kind}`).toBe(
                 `${step.stepType}:${step.title}:${expected}`
               )
+            }
+          })
+
+          it('NOTE steps carrying JSON parse as timelines (no raw JSON shown to students)', () => {
+            for (const step of lesson.steps) {
+              if (step.stepType !== 'NOTE' || !step.content.trimStart().startsWith('{')) continue
+              const parsed = parseStepContent(step.stepType, step.content)
+              expect(`${step.title}:${parsed.kind}`).toBe(`${step.title}:timeline`)
             }
           })
 

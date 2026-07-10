@@ -11,16 +11,37 @@
 
 import { useState } from 'react'
 import { canAdvance, stepNeedsAttempt } from '@/lib/lesson-content'
+import type { GlossaryTerm } from '@/lib/reading-load'
 import { LessonStepRenderer, type LessonStepView } from './LessonStepRenderer'
 
 interface TrainingWalkthroughProps {
   steps: LessonStepView[]
   onComplete: () => void
+  /** Glossary popover terms for note text (tier-2 verbs + tier-3 civics terms). */
+  glossaryTerms?: GlossaryTerm[]
+  /** Resume position (spec §21.3). */
+  initialIndex?: number
+  /** Reports position changes so the flow can persist the resume point. */
+  onIndexChange?: (index: number, stepId: string) => void
 }
 
-export function TrainingWalkthrough({ steps, onComplete }: TrainingWalkthroughProps) {
-  const [index, setIndex] = useState(0)
+export function TrainingWalkthrough({
+  steps,
+  onComplete,
+  glossaryTerms,
+  initialIndex = 0,
+  onIndexChange,
+}: TrainingWalkthroughProps) {
+  const [index, setIndex] = useState(() =>
+    Math.min(Math.max(0, initialIndex), Math.max(0, steps.length - 1))
+  )
   const [attempted, setAttempted] = useState<Set<string>>(new Set())
+
+  function goTo(nextIndex: number) {
+    const clamped = Math.min(Math.max(0, nextIndex), steps.length - 1)
+    setIndex(clamped)
+    onIndexChange?.(clamped, steps[clamped].id)
+  }
 
   const step = steps[index]
   const isLast = index === steps.length - 1
@@ -61,12 +82,17 @@ export function TrainingWalkthrough({ steps, onComplete }: TrainingWalkthroughPr
         ))}
       </div>
 
-      <LessonStepRenderer key={step.id} step={step} onAttempted={markAttempted} />
+      <LessonStepRenderer
+        key={step.id}
+        step={step}
+        onAttempted={markAttempted}
+        glossaryTerms={glossaryTerms}
+      />
 
       <div className="flex items-center justify-between gap-3 pt-1">
         <button
           type="button"
-          onClick={() => setIndex((i) => Math.max(0, i - 1))}
+          onClick={() => goTo(index - 1)}
           disabled={index === 0}
           className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -89,7 +115,7 @@ export function TrainingWalkthrough({ steps, onComplete }: TrainingWalkthroughPr
           ) : (
             <button
               type="button"
-              onClick={() => setIndex((i) => Math.min(steps.length - 1, i + 1))}
+              onClick={() => goTo(index + 1)}
               disabled={!mayAdvance}
               className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >

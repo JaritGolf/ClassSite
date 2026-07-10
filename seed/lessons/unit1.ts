@@ -16,12 +16,14 @@ import type { LessonSeedDef } from './_seeder'
 import type {
   InteractiveCheckContent,
   SourceAnalysisContent,
+  TimelineContent,
   WorkedExampleContent,
 } from '../../src/lib/lesson-content'
 
 const check = (c: InteractiveCheckContent): string => JSON.stringify(c)
 const worked = (c: WorkedExampleContent): string => JSON.stringify(c)
 const source = (c: SourceAnalysisContent): string => JSON.stringify(c)
+const timeline = (c: TimelineContent): string => JSON.stringify(c)
 
 export const UNIT1_LESSONS: LessonSeedDef[] = [
   // ═══════════════════════════════════════════════════════════════════════════
@@ -43,6 +45,39 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'In the 1600s and 1700s, most of Europe was ruled by kings and queens who claimed God had given them the right to rule. Ordinary people had little say in the laws they had to obey.\n\n' +
           'Then came the Enlightenment — a movement of writers and philosophers who said people should use REASON (careful thinking and evidence) to figure out how the world should work, instead of just accepting tradition. When they turned that reasoning toward government, they asked dangerous questions: Where does a ruler\'s power really come from? What is government actually FOR? What happens when a government treats its people badly?\n\n' +
           'Their answers — that power comes from the people, that government exists to protect rights, and that unfair governments can be changed — crossed the Atlantic Ocean and landed in the American colonies. In 1776, the Founders used those exact ideas to justify breaking away from Britain. This lesson is where the American story really begins.',
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Big Picture',
+        content: check({
+          question: 'Why were Enlightenment ideas so threatening to the kings of Europe?',
+          options: [
+            {
+              text: 'They argued a ruler\'s power comes from the people, not from God',
+              correct: true,
+              feedback:
+                'Exactly. If power comes from the people, a king who mistreats them can lose it — which is why these ideas eventually fueled a revolution.',
+            },
+            {
+              text: 'They demanded all kings be replaced by scientists',
+              correct: false,
+              feedback:
+                'Not quite — the Enlightenment prized reason, but it never proposed scientist-kings. Its dangerous idea was about WHERE power comes from.',
+            },
+            {
+              text: 'They proved the divine right of kings was written into law',
+              correct: false,
+              feedback:
+                'Backwards — divine right was the OLD belief. Enlightenment thinkers challenged it with reason.',
+            },
+            {
+              text: 'They called for an end to all government',
+              correct: false,
+              feedback:
+                'No — thinkers like Locke wanted BETTER government (one that protects rights), not no government at all.',
+            },
+          ],
+        }),
       },
       {
         stepType: 'VOCABULARY',
@@ -158,6 +193,55 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'NOTE',
+        title: 'See It: The Road of Ideas, 1215 to 1776',
+        content: timeline({
+          kind: 'timeline',
+          intro: 'Watch how each step limits rulers a little more — and hands power to the people.',
+          connector: 'line',
+          events: [
+            { marker: '1215', label: 'Magna Carta', detail: 'Even the king must obey the law.' },
+            { marker: '1620', label: 'Mayflower Compact', detail: 'Colonists agree in writing to govern themselves by consent.' },
+            { marker: '1689', label: 'English Bill of Rights', detail: 'Parliament sets written limits on the monarchy.' },
+            { marker: '1689', label: 'Locke\'s Two Treatises', detail: 'Natural rights and the social contract are published.' },
+            { marker: '1776', label: 'Declaration of Independence', detail: 'The colonies use these ideas to justify a revolution.' },
+          ],
+        }),
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: Keep the Order Straight',
+        content: check({
+          question: 'Which document came FIRST — and started the tradition that even rulers must follow the law?',
+          options: [
+            {
+              text: 'Magna Carta (1215)',
+              correct: true,
+              feedback:
+                'Right! Magna Carta is the oldest — 1215, more than four centuries before Locke. Keep the order: 1215 → 1620 → 1689 → 1776.',
+            },
+            {
+              text: 'The English Bill of Rights (1689)',
+              correct: false,
+              feedback:
+                'The English Bill of Rights came in 1689 — more than 450 years AFTER the document you\'re looking for.',
+            },
+            {
+              text: 'The Declaration of Independence (1776)',
+              correct: false,
+              feedback:
+                'The Declaration is the END of this road, not the start — it used ideas that had been growing since 1215.',
+            },
+            {
+              text: 'The Mayflower Compact (1620)',
+              correct: false,
+              feedback:
+                'The Compact was an important early agreement, but another document put limits on a king 400 years earlier.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'SOURCE_ANALYSIS',
         title: 'Source Quest: Reading Locke for Yourself',
         content: source({
@@ -215,6 +299,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           ],
         }),
       },
+      {
+        stepType: 'NOTE',
+        title: 'Mission Debrief: What You Learned',
+        content:
+          'You made it through the ideas that built America. Lock these in:\n\n' +
+          '• Natural rights (Locke): people are born with rights to life, liberty, and property — no government can take them away.\n' +
+          '• Social contract: people accept government IN EXCHANGE for protection of their rights; break the deal and the people may replace it.\n' +
+          '• Separation of powers (Montesquieu): split power into branches so no one holds it all.\n' +
+          '• Popular sovereignty: power flows UP from the people.\n' +
+          '• The English paper trail: Magna Carta (1215) → Mayflower Compact (1620) → English Bill of Rights (1689) — each put more limits on rulers.\n\n' +
+          'Next up: a quick practice round, then the Readiness Check. You\'ve got this.',
+      },
     ],
   },
 
@@ -237,6 +333,39 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'By the time the American Revolution began, colonists weren\'t beginners at government — they were experienced. Every colony had some form of elected assembly making local laws about taxes, roads, and courts. Farmers and shopkeepers voted, debated, and served in office.\n\n' +
           'This matters for one huge reason: when the colonies finally broke from Britain, they didn\'t have to invent self-government from scratch. They had been rehearsing it for a century and a half.\n\n' +
           'Two traditions fed this experience. First, colonists brought BRITISH traditions with them — the rights of Englishmen, trial by jury, and common law. Second, distance forced them to develop their OWN institutions: elected assemblies in the South, town meetings in New England, and written agreements like the Mayflower Compact. Keep both threads in mind as you train — EOC questions love to ask which tradition influenced what.',
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Big Picture',
+        content: check({
+          question: 'What is the BEST definition of self-government?',
+          options: [
+            {
+              text: 'The people who live under the laws help make the laws',
+              correct: true,
+              feedback:
+                'That\'s it — whether directly (town meetings) or through elected representatives (House of Burgesses), the governed do the governing.',
+            },
+            {
+              text: 'A government with no laws at all',
+              correct: false,
+              feedback:
+                'Self-government has plenty of laws — the point is WHO makes them: the people themselves.',
+            },
+            {
+              text: 'A king who governs his own kingdom personally',
+              correct: false,
+              feedback:
+                'A king ruling alone is the opposite — self-government means the PEOPLE governing themselves.',
+            },
+            {
+              text: 'A governor appointed to rule a colony',
+              correct: false,
+              feedback:
+                'Appointed governors answered to the king, not to the colonists — that\'s outside control, not self-government.',
+            },
+          ],
+        }),
       },
       {
         stepType: 'VOCABULARY',
@@ -353,6 +482,55 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'NOTE',
+        title: 'See It: Self-Government Takes Root',
+        content: timeline({
+          kind: 'timeline',
+          intro: 'A century and a half of practice — long before anyone imagined independence.',
+          connector: 'line',
+          events: [
+            { marker: '1607', label: 'Jamestown founded', detail: 'England\'s first permanent colony in America.' },
+            { marker: '1619', label: 'House of Burgesses', detail: 'The first elected assembly in the colonies.' },
+            { marker: '1620', label: 'Mayflower Compact', detail: 'Pilgrims agree in writing to govern themselves.' },
+            { marker: '1630s', label: 'Town meetings spread', detail: 'New England citizens vote directly on local issues.' },
+            { marker: '1700s', label: 'Salutary neglect', detail: 'Britain looks away; colonial self-rule grows strong.' },
+          ],
+        }),
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Common Thread',
+        content: check({
+          question: 'What do the House of Burgesses, the Mayflower Compact, and town meetings all have in common?',
+          options: [
+            {
+              text: 'They were all ways colonists governed themselves',
+              correct: true,
+              feedback:
+                'Exactly — one through elected representatives, one through a written agreement, one through direct votes. Three flavors of the same idea: self-government.',
+            },
+            {
+              text: 'They were all created by order of the king',
+              correct: false,
+              feedback:
+                'None were royal creations — each grew from colonists organizing their OWN government.',
+            },
+            {
+              text: 'They all collected taxes for Parliament',
+              correct: false,
+              feedback:
+                'Parliament isn\'t in this story — these institutions handled LOCAL affairs and were chosen by colonists.',
+            },
+            {
+              text: 'They all existed only in Virginia',
+              correct: false,
+              feedback:
+                'Virginia had the Burgesses, but the Compact was Plymouth and town meetings ran across New England.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'SOURCE_ANALYSIS',
         title: 'Source Quest: The House of Burgesses',
         content: source({
@@ -410,6 +588,19 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           ],
         }),
       },
+      {
+        stepType: 'NOTE',
+        title: 'Mission Debrief: What You Learned',
+        content:
+          'Colonial America was a 150-year training camp for self-government. Lock these in:\n\n' +
+          '• Self-government = the governed help make the laws.\n' +
+          '• 1619 House of Burgesses: the first ELECTED assembly (representative democracy).\n' +
+          '• 1620 Mayflower Compact: self-government by written CONSENT.\n' +
+          '• Town meetings: DIRECT democracy in New England.\n' +
+          '• Colonists kept English traditions too: common law and the rights of Englishmen.\n' +
+          '• Salutary neglect let all of this grow — which made later British control feel like theft.\n\n' +
+          'These 150 years of practice are why America was ready to govern itself in 1776.',
+      },
     ],
   },
 
@@ -433,6 +624,39 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'Britain\'s leaders made a decision that changed history: the American colonists should help pay for the war and for the British soldiers still stationed in America. Parliament began passing tax laws aimed directly at the colonies — something it had rarely done before.\n\n' +
           'Timing is everything here. Remember salutary neglect from the last mission? For decades Britain had left the colonies alone to govern and tax themselves. Now, suddenly, Parliament was taxing colonists directly AND enforcing trade laws strictly. From London\'s view, this was fair cost-sharing. From the colonies\' view, it was a violation of their rights as Englishmen — because not a single colonist sat in the Parliament passing these laws.\n\n' +
           'Hold on to this cause-and-effect chain, because the EOC loves it: war debt → new British taxes → colonial protest.',
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Big Picture',
+        content: check({
+          question: 'After the French and Indian War, why did Britain decide to tax the American colonies?',
+          options: [
+            {
+              text: 'The war left Britain deep in debt, and Parliament wanted the colonies to help pay',
+              correct: true,
+              feedback:
+                'Right — victory was enormously expensive. That decision started the chain of events that led to revolution.',
+            },
+            {
+              text: 'The colonies had refused to fight in the war',
+              correct: false,
+              feedback:
+                'Colonists DID fight — a young George Washington among them. The issue was the war\'s cost, not colonial refusal.',
+            },
+            {
+              text: 'Britain wanted to punish the colonies for the Boston Tea Party',
+              correct: false,
+              feedback:
+                'Careful with the timeline — the Tea Party (1773) happened AFTER years of taxes, not before them.',
+            },
+            {
+              text: 'France demanded that Britain collect taxes as part of the peace treaty',
+              correct: false,
+              feedback:
+                'France lost the war and demanded nothing of the kind — the debt was Britain\'s own problem to solve.',
+            },
+          ],
+        }),
       },
       {
         stepType: 'VOCABULARY',
@@ -550,6 +774,55 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'NOTE',
+        title: 'See It: The Chain Reaction',
+        content: timeline({
+          kind: 'timeline',
+          intro: 'Each event pushed the next — follow the chain.',
+          connector: 'arrow',
+          events: [
+            { marker: '1763', label: 'War debt', detail: 'The French and Indian War leaves Britain owing a fortune.' },
+            { marker: '1765', label: 'Stamp Act', detail: 'Parliament taxes colonial paper — the first direct tax.' },
+            { marker: '1766', label: 'Protest works', detail: 'Petitions and boycotts push Parliament to repeal the Stamp Act.' },
+            { marker: '1767', label: 'Townshend Acts', detail: 'New taxes on glass, paint, paper, and tea reignite the conflict.' },
+            { marker: '1773', label: 'Boston Tea Party', detail: 'The Sons of Liberty dump 342 chests of tea into the harbor.' },
+          ],
+        }),
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: Read the Chain',
+        content: check({
+          question: 'What does this chain of events show about the colonists\' boycotts?',
+          options: [
+            {
+              text: 'Economic pressure on British merchants could force Parliament to back down',
+              correct: true,
+              feedback:
+                'Exactly — the Stamp Act repeal proved peaceful economic resistance WORKED, which is why the colonists kept reaching for it.',
+            },
+            {
+              text: 'Boycotts had no effect on British policy',
+              correct: false,
+              feedback:
+                'Look at 1766 — the boycotts hurt British merchants, who pressured Parliament into repealing the Stamp Act. They worked.',
+            },
+            {
+              text: 'Only violence ever changed British policy',
+              correct: false,
+              feedback:
+                'The Stamp Act fell to PEACEFUL pressure — petitions and boycotts — years before the famous confrontations.',
+            },
+            {
+              text: 'Parliament repealed every tax the colonists opposed',
+              correct: false,
+              feedback:
+                'Parliament repealed the Stamp Act but came right back with the Townshend Acts — the conflict kept escalating.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'SOURCE_ANALYSIS',
         title: 'Source Quest: Reading the Stamp Act',
         content: source({
@@ -607,6 +880,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           ],
         }),
       },
+      {
+        stepType: 'NOTE',
+        title: 'Mission Debrief: What You Learned',
+        content:
+          'You just traced the road to revolution. Lock these in:\n\n' +
+          '• Root cause: French and Indian War debt → Britain taxes the colonies.\n' +
+          '• Core objection: not the COST — the lack of CONSENT. No colonist sat in Parliament. "No taxation without representation."\n' +
+          '• The resistance toolkit: petitions (formal requests), boycotts (economic pressure), Sons of Liberty (organized protest), committees of correspondence (uniting the colonies).\n' +
+          '• Boycotts worked: they forced the Stamp Act\'s repeal in 1766.\n' +
+          '• The pattern: British action → colonial resistance → British reaction → deeper resistance.\n\n' +
+          'Keep the chain handy: war debt → taxes → protest. EOC questions love it.',
+      },
     ],
   },
 
@@ -631,6 +916,39 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'Second, JUSTIFY it. Rebelling against your king was treason, punishable by death. The Declaration had to prove to the world (and to potential allies like France) that this wasn\'t a tantrum — it was a reasoned, rightful act based on principles any Enlightenment reader would recognize.\n\n' +
           'Third, UNITE the colonies. Thirteen quarrelsome colonies needed one shared statement of what they stood for.\n\n' +
           'One crucial thing to understand: the Declaration is NOT a plan of government and NOT law today. It created no congress, no courts, no taxes. It\'s a statement of principles and a justification for independence. (The plan of government comes later — first the Articles of Confederation, then the Constitution.) Keep that straight and you\'ll dodge one of the most common test traps in this unit.',
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Big Picture',
+        content: check({
+          question: 'What were the Declaration of Independence\'s three jobs?',
+          options: [
+            {
+              text: 'Announce the break with Britain, justify it with reasons, and unite the colonies',
+              correct: true,
+              feedback:
+                'All three — announce, justify, unite. It\'s a persuasive argument with the highest possible stakes.',
+            },
+            {
+              text: 'Create a president, a congress, and national courts',
+              correct: false,
+              feedback:
+                'That\'s the CONSTITUTION\'s job, thirteen years later. The Declaration set up no government at all.',
+            },
+            {
+              text: 'Declare war, raise taxes, and print money',
+              correct: false,
+              feedback:
+                'The Declaration granted no powers — it\'s a statement of principles and reasons, not a plan of government.',
+            },
+            {
+              text: 'Apologize to the king and request new laws',
+              correct: false,
+              feedback:
+                'No apology anywhere — it\'s a firm breakup letter, and the war continued for seven more years.',
+            },
+          ],
+        }),
       },
       {
         stepType: 'VOCABULARY',
@@ -748,6 +1066,53 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'NOTE',
+        title: 'See It: The Argument, Step by Step',
+        content: timeline({
+          kind: 'timeline',
+          intro: 'Jefferson built one logical argument in three moves — each part needs the others.',
+          connector: 'arrow',
+          events: [
+            { marker: 'Part 1', label: 'Universal principles', detail: 'All people have rights; government exists to protect them; power comes from consent.' },
+            { marker: 'Part 2', label: '27 grievances', detail: '"He has..." — evidence that King George III broke the deal.' },
+            { marker: 'Part 3', label: 'The declaration', detail: 'Therefore, these colonies are free and independent states.' },
+          ],
+        }),
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: How the Argument Works',
+        content: check({
+          question: 'How do the grievances (Part 2) support the principles (Part 1)?',
+          options: [
+            {
+              text: 'They provide evidence that the king violated the principles, which justifies independence',
+              correct: true,
+              feedback:
+                'That\'s the logic: principles say what government SHOULD do; grievances prove this one DIDN\'T; conclusion — independence is justified.',
+            },
+            {
+              text: 'They list the rights all people are born with',
+              correct: false,
+              feedback:
+                'The RIGHTS live in Part 1. The grievances are specific accusations against one king.',
+            },
+            {
+              text: 'They describe the structure of the new American government',
+              correct: false,
+              feedback:
+                'No structure is described anywhere in the Declaration — that comes later, with the Articles and then the Constitution.',
+            },
+            {
+              text: 'They are unrelated additions included for length',
+              correct: false,
+              feedback:
+                'They\'re the heart of the argument — without evidence that the king broke the contract, the conclusion wouldn\'t follow.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'SOURCE_ANALYSIS',
         title: 'Source Quest: We Hold These Truths',
         content: source({
@@ -805,6 +1170,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           ],
         }),
       },
+      {
+        stepType: 'NOTE',
+        title: 'Mission Debrief: What You Learned',
+        content:
+          'You can now read the Declaration like a historian. Lock these in:\n\n' +
+          '• Adopted July 4, 1776; drafted by Thomas Jefferson.\n' +
+          '• Three parts: universal PRINCIPLES → specific GRIEVANCES ("He has...") → the formal DECLARATION of independence.\n' +
+          '• Key principles: all created equal; unalienable rights (life, liberty, the pursuit of happiness); consent of the governed; the right to alter or abolish a destructive government.\n' +
+          '• Straight from Locke: natural rights + social contract + the right to replace a broken government.\n' +
+          '• It is NOT law and NOT a plan of government — it\'s the promise America keeps trying to live up to.\n\n' +
+          'The "He has..." test: specific ruler + specific act = grievance. True everywhere, always = principle.',
+      },
     ],
   },
 
@@ -828,6 +1205,39 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'So the Articles of Confederation (ratified 1781) created a "league of friendship" — thirteen states cooperating like independent countries, with a deliberately feeble national government. The design wasn\'t an accident or stupidity. It was FEAR of tyranny, written into law.\n\n' +
           'And to be fair, the Articles had real achievements: the government under them won the Revolutionary War, negotiated the Treaty of Paris (1783), and passed the Northwest Ordinance (1787), which set fair rules for turning western territory into equal new states.\n\n' +
           'But the same weakness that prevented tyranny also prevented GOVERNING. A government that can\'t tax can\'t pay its debts. A government that can\'t enforce laws can\'t keep order. Over the 1780s, those flaws stacked up into a national crisis — and that\'s the story of this mission.',
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Big Picture',
+        content: check({
+          question: 'Why did Americans deliberately design a WEAK national government in 1781?',
+          options: [
+            {
+              text: 'They had just fought a war against a powerful central government and feared building another',
+              correct: true,
+              feedback:
+                'Exactly — the weakness was a FEATURE born of fear of tyranny. It just turned out to prevent governing, too.',
+            },
+            {
+              text: 'They believed government was unnecessary in peacetime',
+              correct: false,
+              feedback:
+                'They wanted government — thirteen strong STATE governments. Only the national layer was kept weak, on purpose.',
+            },
+            {
+              text: 'They could not afford to pay for a stronger government',
+              correct: false,
+              feedback:
+                'Money was tight, but the design choice was about FEAR of concentrated power, not cost.',
+            },
+            {
+              text: 'Britain required a weak government in the peace treaty',
+              correct: false,
+              feedback:
+                'Britain had no say in America\'s design — the caution came from the Americans\' own experience with a king.',
+            },
+          ],
+        }),
       },
       {
         stepType: 'VOCABULARY',
@@ -949,6 +1359,54 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'NOTE',
+        title: 'See It: How the Articles Collapsed',
+        content: timeline({
+          kind: 'timeline',
+          intro: 'From hopeful league to national emergency in six years.',
+          connector: 'arrow',
+          events: [
+            { marker: '1781', label: 'Articles ratified', detail: 'A "league of friendship" — the states keep the power.' },
+            { marker: '1780s', label: 'Government can\'t function', detail: 'No taxes collected, laws unenforceable, war debts unpaid.' },
+            { marker: '1786', label: 'Shays\' Rebellion', detail: 'Armed farmers close courts; the nation can\'t raise a single soldier.' },
+            { marker: '1787', label: 'Constitutional Convention', detail: 'Delegates meet to fix the Articles — and replace them instead.' },
+          ],
+        }),
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Turning Point',
+        content: check({
+          question: 'What did Shays\' Rebellion prove that years of complaints could not?',
+          options: [
+            {
+              text: 'The national government was too weak to keep order — visibly and dangerously',
+              correct: true,
+              feedback:
+                'The rebellion turned abstract weaknesses into an emergency everyone could see. Within months, delegates were headed to Philadelphia.',
+            },
+            {
+              text: 'Massachusetts farmers were the real threat to America',
+              correct: false,
+              feedback:
+                'The farmers had real grievances — the scare was that NO national force existed to respond to any crisis at all.',
+            },
+            {
+              text: 'The Articles needed only one small amendment',
+              correct: false,
+              feedback:
+                'Amending required all 13 states — practically impossible. The rebellion helped convince leaders to start over entirely.',
+            },
+            {
+              text: 'State militias could handle every emergency',
+              correct: false,
+              feedback:
+                'A PRIVATELY funded militia had to save the day — proof the system had failed, not proof it worked.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'SOURCE_ANALYSIS',
         title: 'Source Quest: Each State Keeps Its Power',
         content: source({
@@ -1006,6 +1464,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           ],
         }),
       },
+      {
+        stepType: 'NOTE',
+        title: 'Mission Debrief: What You Learned',
+        content:
+          'America\'s first plan of government — and why it failed. Lock these in:\n\n' +
+          '• The Articles (1781): a deliberate league of sovereign states — fear of kings built a weak center.\n' +
+          '• Could NOT: tax, enforce laws, or regulate trade. Had NO president and NO national courts. Amendments needed ALL 13 states.\n' +
+          '• Real wins anyway: won the war, Treaty of Paris (1783), Northwest Ordinance (1787).\n' +
+          '• Shays\' Rebellion (1786): debt-crushed farmers close courts; the national government can\'t respond — the wake-up call.\n' +
+          '• Result: the Constitutional Convention (1787).\n\n' +
+          'Trap detector: any answer mentioning an Articles-era president or national court is automatically wrong — neither existed.',
+      },
     ],
   },
 
@@ -1029,6 +1499,39 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'The Convention\'s answer was a national government strong enough to tax, enforce laws, and keep order, but CAGED by design: power split among three branches (thank Montesquieu), each able to check the others, with all power ultimately flowing from the people (popular sovereignty — "We the People").\n\n' +
           'Every mission you\'ve completed feeds into this room in Philadelphia. Enlightenment ideas → the theory. Colonial assemblies → the experience. The taxation fight → the fear of unchecked power. The Declaration → the principles. The Articles → the failed first draft. The Constitution is where all of Unit 1\'s threads tie together.\n\n' +
           'As you train, keep asking one question about every feature of the Constitution: "Which failure of the Articles is THIS fixing?" If you can answer that, you\'ve mastered this benchmark.',
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Big Picture',
+        content: check({
+          question: 'What was the Constitutional Convention\'s central design challenge?',
+          options: [
+            {
+              text: 'Making the government strong enough to work but limited enough to prevent tyranny',
+              correct: true,
+              feedback:
+                'That\'s the balancing act — enough power to tax and enforce laws, but caged by branches, checks, and popular sovereignty.',
+            },
+            {
+              text: 'Choosing which state would rule over the others',
+              correct: false,
+              feedback:
+                'No state got to rule — the fights were about representation and power-sharing, solved by compromise.',
+            },
+            {
+              text: 'Deciding whether to invite the king back',
+              correct: false,
+              feedback:
+                'Nobody wanted a king — the fear of accidentally recreating one is exactly why the new power came with limits.',
+            },
+            {
+              text: 'Writing the longest constitution possible',
+              correct: false,
+              feedback:
+                'The Constitution is famously SHORT — the challenge was balance, not length.',
+            },
+          ],
+        }),
       },
       {
         stepType: 'VOCABULARY',
@@ -1152,6 +1655,56 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'NOTE',
+        title: 'See It: From Weak League to "We the People"',
+        content: timeline({
+          kind: 'timeline',
+          intro: 'Four years from a locked room in Philadelphia to a Bill of Rights.',
+          connector: 'line',
+          events: [
+            { marker: 'May 1787', label: 'Convention opens', detail: '55 delegates, doors locked, windows sealed for candor.' },
+            { marker: 'Jun 1787', label: 'The plans clash', detail: 'Virginia Plan (by population) vs. New Jersey Plan (equal states).' },
+            { marker: 'Jul 1787', label: 'Great Compromise', detail: 'House by population + Senate with two per state.' },
+            { marker: 'Sep 1787', label: 'Constitution signed', detail: 'The new plan goes out to the states.' },
+            { marker: '1787–88', label: 'Ratification fight', detail: 'Federalists vs. Anti-Federalists argue in every state.' },
+            { marker: '1791', label: 'Bill of Rights', detail: 'The promised first ten amendments are ratified.' },
+          ],
+        }),
+      },
+      {
+        stepType: 'INTERACTIVE_CHECK',
+        title: 'Quick Check: The Price of Ratification',
+        content: check({
+          question: 'Why did the Anti-Federalists finally get a Bill of Rights added to the Constitution?',
+          options: [
+            {
+              text: 'Key states would only ratify with the promise that one would be added',
+              correct: true,
+              feedback:
+                'Ratification was the leverage — several states effectively said "no rights list, no Constitution." The first ten amendments arrived in 1791.',
+            },
+            {
+              text: 'The Supreme Court ordered Congress to write one',
+              correct: false,
+              feedback:
+                'The Supreme Court barely existed yet — the pressure came from the ratification debate, not a court ruling.',
+            },
+            {
+              text: 'George Washington refused to be president without one',
+              correct: false,
+              feedback:
+                'Washington supported ratification as written — the demand came from Anti-Federalists in the state conventions.',
+            },
+            {
+              text: 'Britain required it in the peace treaty',
+              correct: false,
+              feedback:
+                'Britain had nothing to do with it — this was an all-American argument about protecting liberty from the new government.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'SOURCE_ANALYSIS',
         title: 'Source Quest: We the People',
         content: source({
@@ -1208,6 +1761,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
             },
           ],
         }),
+      },
+      {
+        stepType: 'NOTE',
+        title: 'Mission Debrief: What You Learned',
+        content:
+          'You\'ve reached the end of Unit 1\'s story — from ideas to a working government. Lock these in:\n\n' +
+          '• Every fix answers a failure: no taxes → Congress taxes; no enforcement → a President; no courts → federal judiciary; unanimous amendments → 2/3 of Congress + 3/4 of states.\n' +
+          '• Great Compromise = big vs. small states → House by population + equal Senate.\n' +
+          '• Three-Fifths Compromise = North vs. South → counted 3/5 of the enslaved population for representation; a bargain over human beings that haunted the nation until the Civil War.\n' +
+          '• Federalists (Madison, Hamilton) vs. Anti-Federalists (Henry, Mason) → ratification passed on the PROMISE of a Bill of Rights (1791).\n' +
+          '• "We the People": power flows from the people — popular sovereignty in three words.\n\n' +
+          'That completes Unit 1: Enlightenment ideas → colonial practice → revolution → a failed first draft → the Constitution. On to the Readiness Check!',
       },
     ],
   },
