@@ -46,7 +46,7 @@ export default async function RemediationPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 space-y-4">
-      <h1 className="text-sm font-medium text-gray-500">Targeted Practice</h1>
+      <h1 className="font-display text-xs font-bold uppercase tracking-widest text-amber-700">Targeted Practice</h1>
       <RemediationActivity
         studentRemediationId={remediation.id}
         title={remediation.remediationItem.title}

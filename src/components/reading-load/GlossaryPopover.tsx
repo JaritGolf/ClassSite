@@ -55,8 +55,8 @@ export function GlossaryPopover({ definition, tier, l1Definition, l1Language, ch
 
   const underlineClass =
     tier === 'TIER_2'
-      ? 'underline decoration-blue-500 decoration-dotted cursor-help'
-      : 'underline decoration-orange-500 decoration-dotted cursor-help'
+      ? 'underline decoration-blue-500 decoration-dotted decoration-2 underline-offset-2 cursor-help rounded-sm hover:bg-blue-50'
+      : 'underline decoration-orange-500 decoration-dotted decoration-2 underline-offset-2 cursor-help rounded-sm hover:bg-orange-50'
 
   return (
     <span className="relative inline">
@@ -89,23 +89,23 @@ export function GlossaryPopover({ definition, tier, l1Definition, l1Language, ch
           role="tooltip"
           className={[
             'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50',
-            'w-56 rounded-md shadow-lg border text-sm p-2',
-            'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600',
-            'text-gray-800 dark:text-gray-100',
+            'w-60 rounded-2xl border-2 p-3 text-sm leading-relaxed shadow-card animate-pop-in',
+            'bg-white text-gray-800',
+            tier === 'TIER_2' ? 'border-blue-200' : 'border-orange-200',
           ].join(' ')}
         >
           <span
             className={[
-              'block text-xs font-semibold mb-0.5',
-              tier === 'TIER_2' ? 'text-blue-600' : 'text-orange-600',
+              'mb-0.5 block font-display text-xs font-bold uppercase tracking-wide',
+              tier === 'TIER_2' ? 'text-blue-700' : 'text-orange-700',
             ].join(' ')}
           >
             {tier === 'TIER_2' ? 'Academic term' : 'Civics term'}
           </span>
           {definition}
           {l1Definition && (
-            <span className="mt-1.5 block border-t border-gray-100 pt-1.5 dark:border-gray-700">
-              <span className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <span className="mt-1.5 block border-t border-gray-100 pt-1.5">
+              <span className="block font-display text-xs font-bold uppercase tracking-wide text-emerald-700">
                 {(l1Language && L1_LABEL[l1Language]) || 'L1'}
               </span>
               <span lang={l1Language}>{l1Definition}</span>

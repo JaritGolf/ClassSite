@@ -9,9 +9,9 @@ interface HubConfig {
 export function Hub({ config }: { config: HubConfig }) {
   if (!config.featureEocReviewEnabled) {
     return (
-      <div className="max-w-2xl mx-auto py-12 text-center">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Republic Challenge</h1>
-        <p className="text-gray-600">
+      <div className="mx-auto max-w-2xl py-12 text-center">
+        <h1 className="mb-2 font-display text-3xl font-bold text-indigo-900">Republic Challenge</h1>
+        <p className="text-base text-gray-600">
           Republic Challenge is disabled for your class. Check back when your teacher
           turns it on.
         </p>
@@ -20,20 +20,21 @@ export function Hub({ config }: { config: HubConfig }) {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-8 px-4 space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
       <header>
-        <h1 className="text-2xl font-bold text-gray-800">Republic Challenge</h1>
-        <p className="text-sm text-gray-600 mt-1">
-          Cumulative review to consolidate everything you've mastered.
+        <h1 className="font-display text-3xl font-bold text-indigo-900">Republic Challenge</h1>
+        <p className="mt-1 text-base text-gray-600">
+          Cumulative review to consolidate everything you&apos;ve mastered.
         </p>
       </header>
 
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <ModeCard
           title="Quick Review"
           description="A short practice based on the skills slipping fastest."
           startUrl="/api/republic-challenge/quick-review/start"
           meta="5 questions"
+          icon="sparkle"
         />
 
         <ModeCard
@@ -42,6 +43,7 @@ export function Hub({ config }: { config: HubConfig }) {
           href="/student/republic-challenge/category"
           startUrl=""
           meta="Pick a category"
+          icon="target"
         />
 
         <ModeCard
@@ -50,6 +52,7 @@ export function Hub({ config }: { config: HubConfig }) {
           startUrl="/api/republic-challenge/mixed/start"
           length={10}
           meta="10 questions"
+          icon="map"
         />
 
         <ModeCard
@@ -58,6 +61,7 @@ export function Hub({ config }: { config: HubConfig }) {
           startUrl="/api/republic-challenge/mistake-replay/start"
           length={10}
           meta="10 questions"
+          icon="search"
         />
 
         <ModeCard
@@ -66,6 +70,7 @@ export function Hub({ config }: { config: HubConfig }) {
           href="/student/republic-challenge/source-sprint"
           startUrl=""
           meta="Pick a source type"
+          icon="book"
         />
 
         <ModeCard
@@ -73,6 +78,7 @@ export function Hub({ config }: { config: HubConfig }) {
           description="Build stamina. Today's length is based on the time of year."
           startUrl="/api/republic-challenge/endurance/start"
           meta={`${config.stamina.length} questions · ${config.stamina.label}`}
+          icon="flame"
         />
 
         <ModeCard
@@ -82,6 +88,7 @@ export function Hub({ config }: { config: HubConfig }) {
           meta={`${config.finalTrial.length} questions`}
           disabled={!config.finalTrial.open}
           disabledReason="Final Trial opens in April."
+          icon="shield"
         />
       </div>
     </div>

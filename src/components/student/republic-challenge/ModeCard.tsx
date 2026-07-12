@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 
 interface ModeCardProps {
   title: string
@@ -17,6 +18,8 @@ interface ModeCardProps {
   disabledReason?: string
   /** Alternative href to navigate to without a POST (used for the category + source pickers). */
   href?: string
+  /** Icon shown on the card's color plate. */
+  icon?: TrackIconName
 }
 
 export function ModeCard(props: ModeCardProps) {
@@ -59,28 +62,35 @@ export function ModeCard(props: ModeCardProps) {
       type="button"
       onClick={handleClick}
       disabled={props.disabled || loading}
-      className={`text-left rounded-xl border-2 px-5 py-4 transition-colors ${
+      className={`rounded-2xl border-2 px-5 py-4 text-left transition-colors ${
         props.disabled
-          ? 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
-          : 'border-gray-200 bg-white text-gray-800 hover:border-indigo-400 hover:shadow-sm'
+          ? 'cursor-not-allowed border-dashed border-gray-300 bg-gray-50 text-gray-500'
+          : 'border-rose-100 bg-white text-gray-800 shadow-card hover:border-rose-300 hover:bg-rose-50/40'
       }`}
     >
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-base">{props.title}</h3>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${
+              props.disabled ? 'bg-gray-200 text-gray-500' : 'bg-rose-500 text-white'
+            }`}
+          >
+            <TrackIcon name={props.icon ?? 'shield'} className="h-5 w-5" />
+          </span>
+          <h3 className="font-display text-base font-bold">{props.title}</h3>
+        </div>
         {props.meta && (
-          <span className="text-xs text-gray-500 bg-gray-100 rounded px-2 py-0.5">
+          <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-800">
             {props.meta}
           </span>
         )}
       </div>
-      <p className="text-sm text-gray-600 mt-1">{props.description}</p>
+      <p className="mt-2 text-sm leading-relaxed text-gray-600">{props.description}</p>
       {props.disabled && props.disabledReason && (
-        <p className="text-xs text-amber-600 mt-2">{props.disabledReason}</p>
+        <p className="mt-2 text-sm font-semibold text-amber-700">{props.disabledReason}</p>
       )}
-      {loading && (
-        <p className="text-xs text-indigo-600 mt-2">Starting session…</p>
-      )}
-      {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+      {loading && <p className="mt-2 text-sm font-semibold text-indigo-600">Starting session…</p>}
+      {error && <p className="mt-2 text-sm font-semibold text-red-600">{error}</p>}
     </button>
   )
 }

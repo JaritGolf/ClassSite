@@ -24,10 +24,10 @@ function Toggle({
   onChange: () => void
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 flex items-start gap-4">
+    <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 flex items-start gap-4 shadow-card">
       <div className="flex-1">
-        <p className="text-sm font-semibold text-gray-700">{label}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+        <p className="font-display text-base font-bold text-gray-800">{label}</p>
+        <p className="text-sm text-gray-600 mt-0.5">{description}</p>
       </div>
       <button
         type="button"
@@ -103,16 +103,16 @@ export default function StudentSettingsPage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Student Settings</h1>
-      <p className="text-sm text-gray-500 mb-6">Tools turned on for you. Change them anytime.</p>
+      <h1 className="font-display text-3xl font-bold text-indigo-900 mb-2">Student Settings</h1>
+      <p className="text-base text-gray-600 mb-6">Tools turned on for you. Change them anytime.</p>
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* Pause-point */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-3">
-          <label htmlFor="pause-slider" className="block text-sm font-semibold text-gray-700">
+        <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 space-y-3 shadow-card">
+          <label htmlFor="pause-slider" className="block font-display text-base font-bold text-gray-800">
             Pause-point reminder
           </label>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-600">
             Get a break reminder after this many minutes of activity.
           </p>
           <div className="flex items-center gap-3">
@@ -161,11 +161,11 @@ export default function StudentSettingsPage() {
         />
 
         {/* L1 (first-language) glosses */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-2">
-          <label htmlFor="l1-language" className="block text-sm font-semibold text-gray-700">
+        <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 space-y-2 shadow-card">
+          <label htmlFor="l1-language" className="block font-display text-base font-bold text-gray-800">
             Translated word help (first language)
           </label>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-600">
             Show an approved translation when you hover or tap a civics term.
           </p>
           <select
@@ -174,7 +174,7 @@ export default function StudentSettingsPage() {
             onChange={(e) =>
               setSettings((s) => ({ ...s, l1Language: e.target.value === '' ? null : e.target.value }))
             }
-            className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+            className="mt-1 w-full rounded-xl border-2 border-gray-200 bg-white px-3 py-2 text-base focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <option value="">Off</option>
             <option value="es">Español (Spanish)</option>
@@ -185,7 +185,7 @@ export default function StudentSettingsPage() {
         <button
           type="submit"
           disabled={saving}
-          className="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          className="w-full rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 py-2.5 font-display text-base font-bold text-white hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0 disabled:opacity-50 transition-colors"
         >
           {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Settings'}
         </button>

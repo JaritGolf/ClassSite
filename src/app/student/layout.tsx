@@ -62,7 +62,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
   return (
     <div className={themeClass}>
       <StudentNav />
-      <main className="min-h-screen bg-gray-50">{children}</main>
+      <main className="min-h-screen bg-indigo-50 bg-dots bg-[length:26px_26px]">{children}</main>
       <PauseBanner pausePointMinutes={pausePointMinutes} />
     </div>
   )

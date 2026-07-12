@@ -116,13 +116,29 @@ async function awardBadgeIfExists(studentId: string, badgeName: string): Promise
 // ── Accommodations — structural data, same sanctioned-exception category as People ──
 
 async function seedAccommodations(heroStudentId: string, teacherUserId: string): Promise<void> {
+  // Sentence chunking demos the accommodation flow without changing the hero's
+  // whole visual experience. High-contrast is deliberately NOT granted to the
+  // hero anymore: it forces the monochrome theme on every demo walkthrough
+  // (Appendix-G grants can't be turned off by the student), which hides the
+  // product's actual look. Demo high-contrast live via the teacher's
+  // AccommodationEditor instead. The update below also unwinds the old grant
+  // on already-seeded databases (idempotent repair).
   await grantAccommodation(heroStudentId, 'ACC-CHUNK', teacherUserId)
-  await grantAccommodation(heroStudentId, 'ACC-HIGH-CONTRAST', teacherUserId)
+  await deactivateAccommodation(heroStudentId, 'ACC-HIGH-CONTRAST')
 
   await prisma.studentUiSettings.upsert({
     where: { studentId: heroStudentId },
-    update: { highContrast: true },
-    create: { studentId: heroStudentId, highContrast: true },
+    update: { highContrast: false },
+    create: { studentId: heroStudentId, highContrast: false },
+  })
+}
+
+async function deactivateAccommodation(studentId: string, code: string): Promise<void> {
+  const accommodation = await prisma.accommodation.findUnique({ where: { code }, select: { id: true } })
+  if (!accommodation) return
+  await prisma.studentAccommodation.updateMany({
+    where: { studentId, accommodationId: accommodation.id },
+    data: { active: false },
   })
 }
 

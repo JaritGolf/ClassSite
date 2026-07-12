@@ -11,6 +11,7 @@
 
 import { useState } from 'react'
 import { parseStepContent } from '@/lib/lesson-content'
+import { TrackIcon } from '@/components/ui/TrackIcon'
 import { LessonStepRenderer, type LessonStepView } from './LessonStepRenderer'
 
 interface ScenarioLabProps {
@@ -38,18 +39,23 @@ export function ScenarioLab({ steps, onComplete }: ScenarioLabProps) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-gray-900">Scenario Lab</h2>
-        <p className="text-sm text-gray-600">
-          Time to apply what you learned — read the source like a historian and answer the
-          guiding questions.
-        </p>
+    <div className="space-y-4 rounded-2xl border-2 border-sky-200 bg-white p-5 shadow-card">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-sky-500 text-white">
+          <TrackIcon name="search" className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-display text-xl font-bold text-gray-900">Scenario Lab</h2>
+          <p className="text-base text-gray-600">
+            Time to apply what you learned — read the source like a historian and answer the
+            guiding questions.
+          </p>
+        </div>
       </div>
 
       {steps.map((step) => (
         <div key={step.id} className="space-y-2">
-          <p className="text-sm font-semibold text-indigo-700">{step.title}</p>
+          <p className="font-display text-base font-bold text-sky-800">{step.title}</p>
           <LessonStepRenderer step={step} onAttempted={markAttempted} />
         </div>
       ))}
@@ -59,12 +65,12 @@ export function ScenarioLab({ steps, onComplete }: ScenarioLabProps) {
           type="button"
           onClick={onComplete}
           disabled={!allAttempted}
-          className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
         >
           Scenario Complete
         </button>
         {!allAttempted && (
-          <p className="text-xs text-amber-700">Answer every guiding question to continue</p>
+          <p className="text-sm font-semibold text-amber-700">Answer every guiding question to continue</p>
         )}
       </div>
     </div>

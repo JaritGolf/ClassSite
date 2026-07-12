@@ -31,9 +31,9 @@ export default async function SourceDecoderPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
       <header>
-        <p className="text-xs font-medium uppercase tracking-wide text-blue-600">Parallel Track</p>
-        <h1 className="text-2xl font-bold text-gray-900">Source Decoder</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="font-display text-xs font-bold uppercase tracking-widest text-sky-600">Parallel Track</p>
+        <h1 className="font-display text-3xl font-bold text-indigo-900">Source Decoder</h1>
+        <p className="mt-1 text-base text-gray-600">
           Level up your reading skills for tough EOC passages. Complete each level to unlock the
           next — and to earn access to the hardest source questions.
         </p>

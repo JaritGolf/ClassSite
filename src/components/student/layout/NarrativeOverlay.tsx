@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { Mascot } from '@/components/ui/Mascot'
 
 interface Beat {
   beatKey: string
@@ -55,7 +56,7 @@ export function NarrativeOverlay({ beat, onDismiss }: NarrativeOverlayProps) {
       ref={dialogRef}
       aria-labelledby="npc-name"
       aria-describedby="npc-dialogue"
-      className="rounded-2xl bg-white p-6 shadow-2xl max-w-md w-full backdrop:bg-black/40"
+      className="w-full max-w-md rounded-3xl border-2 border-indigo-100 bg-white p-6 shadow-2xl backdrop:bg-indigo-950/50"
       onCancel={(e) => {
         e.preventDefault()
         handleDismiss()
@@ -63,20 +64,30 @@ export function NarrativeOverlay({ beat, onDismiss }: NarrativeOverlayProps) {
     >
       {beat && (
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-lg">
-              {beat.npcName[0]}
+          <div className="flex items-end gap-3">
+            <Mascot pose="pointing" className="h-16 w-16 flex-shrink-0" />
+            <div className="mb-1">
+              <p className="font-display text-xs font-bold uppercase tracking-widest text-indigo-600">
+                A message from
+              </p>
+              <span id="npc-name" className="font-display text-lg font-bold text-gray-900">
+                {beat.npcName}
+              </span>
             </div>
-            <span id="npc-name" className="font-semibold text-gray-900">
-              {beat.npcName}
-            </span>
           </div>
-          <p id="npc-dialogue" className="text-gray-700 text-sm leading-relaxed">
-            {beat.dialogue}
-          </p>
+          {/* Speech bubble */}
+          <div className="relative rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-4">
+            <div
+              aria-hidden="true"
+              className="absolute -top-2.5 left-8 h-4 w-4 rotate-45 border-l-2 border-t-2 border-indigo-100 bg-indigo-50"
+            />
+            <p id="npc-dialogue" className="text-base leading-relaxed text-gray-800">
+              {beat.dialogue}
+            </p>
+          </div>
           <button
             onClick={handleDismiss}
-            className="self-end rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition-colors"
+            className="self-end rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
           >
             Got it
           </button>

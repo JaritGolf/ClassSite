@@ -103,7 +103,14 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
         </Link>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      {/* tabIndex: the table can overflow horizontally — keyboard users need to
+          be able to focus the scroll region to pan it (axe scrollable-region-focusable). */}
+      <div
+        className="overflow-x-auto rounded-lg border border-gray-200 bg-white"
+        tabIndex={0}
+        role="region"
+        aria-label="Audit log entries"
+      >
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b text-left text-gray-500">

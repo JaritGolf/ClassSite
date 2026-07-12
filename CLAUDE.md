@@ -148,6 +148,47 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**VISUAL REDESIGN — BRIGHT LEARNING-GAME (2026-07-11) — Tier 1 `tsc` GREEN + Tier 2 jest
+GREEN (1063/1063, 117 suites).** Owner asked for the visual layer to "do everything possible
+to improve student outcomes"; chose (via AskUserQuestion) **bright learning-game** art
+direction + **illustrated journey-path** Mission Map. Styling-only — zero API/schema/data
+changes. What shipped:
+(1) **Design system:** `next/font/google` **Baloo 2** (display) + **Atkinson Hyperlegible**
+(body — Braille Institute face chosen for young/striving readers; latin-ext covers es/ht);
+`tailwind.config.ts` gains `darkMode:'class'` (disarms the stray `dark:` islands — no `.dark`
+is ever set), fontFamily, keyframes (`pop-in`,`wiggle`,`bounce-soft`,`float`,`confetti-fall`),
+soft `shadow-card`, `bg-dots` pattern. Component vocabulary: chunky 3D press buttons
+(`border-b-4` + `active:translate-y`), `rounded-2xl border-2` cards, icon+text status chips.
+Text floor raised: instructional text `text-base`/`text-lg` with `max-w-prose` (was 14px).
+(2) **Art, all inline SVG** (new `src/components/ui/`): `Mascot.tsx` — "The Founder" bald
+eagle in a tricorn (poses: happy/thinking/celebrating/pointing) replaces every
+letter-in-a-circle avatar (NPC overlay, Founder card, victory/fail screens, worked examples,
+map marker, nav/login/landing); `BadgeMedal.tsx` parametric medallions (+`medalForIconKey`
+map from seed iconKeys) replace letter circles on badges; `TrackIcon.tsx` stroke icon set
+(currentColor → high-contrast safe).
+(3) **Journey-path Mission Map:** per-unit gradient region banner (7-color cycle,
+`REGION_THEMES`) w/ mastered-progress bar; benchmarks on a winding fixed-320px-column trail
+(`OFFSETS` cycle, dotted SVG path through node centers) with 80px landmark nodes — green
+star + score chip (mastered), amber target (remediation), lock + grayscale dim (locked),
+ring + floating mascot marker (current). Still a semantic `<ol>` of links;
+`data-testid="benchmark-node"` preserved.
+(4) **Learning core:** lesson notes at 16-18px with lead paragraph; CheckQuestion chunky
+lettered plates, wrong-answer `wiggle`, feedback panels, confidence tiles; worked examples =
+mascot + numbered thought bubbles; AssessmentPlayer focus mode (fat progress bar, fraction
+chip, `text-lg` prompts) + **CSS-only confetti pass screen** with celebrating mascot; drill
+amber-themed w/ progress bar; PracticeArena same vocabulary + mascot moments; Mastery
+Challenge panel = dramatic indigo gradient + shield.
+(5) **Shell/first impressions:** branded landing page (was "Platform coming soon."), login
+card w/ mascot, StudentNav icon+label pills w/ eagle wordmark, `bg-dots` tinted page
+backdrop, staggered `pop-in` dashboard.
+(6) **A11y kept first-class:** `.cq-high-contrast` extended for every new tint/gradient/
+saturated-bg utility (verified live — heroes/gradients/tints all neutralize to outlined
+white); reduce-motion additionally zeroes `animation-delay` (staggered reveals can't hide
+content); global `:focus-visible` ring; no `text-gray-400` remains on student surfaces;
+axe e2e suite green (see Last Action). Teacher/admin/parent surfaces untouched (future pass).
+
+---
+
 **UNIT 1 LEARNING-EXPERIENCE UPGRADES (2026-07-10, second wave) — Tier 1 `tsc` GREEN +
 Tier 2 jest GREEN (1063/1063, 117 suites).** Eight owner-approved improvements so students
 LEARN better from Unit 1 (all in-browser verified):
@@ -459,6 +500,47 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-07-11 (Visual redesign — bright learning-game):** Owner: "lets work on the
+visual aspect of the site... visually it is doing everything possible to improve student
+outcomes." Surveyed the student UI (default-Tailwind cards, no fonts/assets/identity, 14px
+body text everywhere, map = flat list, badges = letter circles, landing = "coming soon",
+broken partial dark-mode islands); owner chose **bright learning-game** + **journey-path
+map** via AskUserQuestion. Built chunks A–H (see Current Build Phase): tokens/fonts/motion,
+Mascot/BadgeMedal/TrackIcon SVG art, shell + landing + login, dashboard, journey map,
+learning core (LessonStepRenderer/TrainingWalkthrough/StepIndicator/MissionFlow/
+AssessmentPlayer/ConfidenceSelector/DrillCard/PracticeArena), badges + remediation,
+periphery (RC rose + ModeCard icons, Source Decoder sky, Strategy purple, StimulusDisplay
+paper treatment + GlossaryPopover, settings) + stripped now-dead `dark:` variants
+(`darkMode:'class'`). **Verification:** `tsc` 0 errors; **jest 1063/1063** (unchanged —
+styling-only); in-browser walk as demo student Alex: landing/login (desktop+mobile),
+dashboard, full-page journey map (Unit 1 indigo + Unit 2 rose regions, mastered/remediation/
+locked node states), mission resume → Step 10/10 debrief w/ glossary popovers + read-aloud
+pill, check flow (select → confidence tiles → feedback + calibration nudge), badges medal
+grid, RC hub, drill; **high-contrast mode verified live** (Alex had leftover
+ACC-HIGH-CONTRAST + ui-settings flag from prior a11y testing — the new overrides neutralized
+every gradient/tint correctly; deactivated both to view the design; that accommodation was
+demo-data cleanup, not a product change). **axe e2e: first run caught 4 real redesign regressions, all fixed, re-run = 8/8 green:**
+NarrativeOverlay eyebrow `text-indigo-500` at 12px = 4.46:1 (→ indigo-600); ReadinessMeter
+progressbar lacked an accessible name (→ aria-label); the 8-step StepIndicator now overflows
+→ scroll region needs `tabIndex={0}`; `/admin/audit`'s table wrapper newly overflows because
+Atkinson Hyperlegible is wider than the system font (→ tabIndex + role="region" +
+aria-label — the one admin file touched, a11y-only).
+**CRITICAL test-infra fix:** the June e2e `global-teardown.ts` deleted every `mock-*` user +
+children — but since July the DEMO CLASSROOM lives in that namespace (mock-student-001 IS
+the demo hero), so each e2e run gutted the demo dataset (observed live: Alex → 0 progress/
+attempts/badges, classmates deleted). Teardown is now a documented no-op (auth.test already
+tolerates FK-blocked mock wipes, so it was obsolete anyway); demo restored via
+`npm run db:seed:demo` (idempotent). Also fixed in passing before the no-op decision: the
+teardown's missing `classReadinessSnapshot` child delete.
+**Env gotchas:** first mascot draft read as "penguin in a sun hat" — fixed with hooked
+raptor beak/brows/no white belly + 3-point tricorn; Browser-pane screenshots intermittently
+black (`document.visibilityState === 'hidden'`) — `navigate` re-fronts the tab and a TALL
+viewport (`resize_window 900×2300`) captures full pages in the one reliable post-navigate
+shot (see memory [[browser-pane-black-screenshots]]); Alex had leftover high-contrast
+flags (StudentUiSettings + ACC-HIGH-CONTRAST) from prior a11y testing — deactivated after
+they usefully live-verified the new high-contrast overrides.
+Commit: `feat(phase-8): bright learning-game visual redesign`.
 
 **Session of 2026-07-10 (Unit 1 learning-experience upgrades, second wave):** Owner asked
 "what would help students learn better from Unit 1?" then approved building all eight
@@ -833,6 +915,12 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-07-10] NOTE steps may carry timeline JSON (`TimelineSchema`, lesson-content contracts): chosen over adding a LessonStepType enum value (schema migration) or abusing VIDEO. A NOTE whose content parses as `{"kind":"timeline",...}` renders as a visual organizer; anything else stays plain text. Contract documented in the contracts test. Reversible by migrating to a dedicated enum value later.
 - [2026-07-10] Mission resume = localStorage (full flow state, per user+benchmark key) + server `StudentProgress.currentStepId` (training step only, via new POST /api/mission/progress): localStorage gives instant same-device resume; the dormant FK gives cross-device training resume. Display-only, no grading impact. Reversible independently.
 - [2026-07-10] Confidence on lesson self-checks (client-local): checks now ask "How sure are you?" after answering and before feedback, then show a calibration nudge. Spec §17 makes practice confidence optional — here it's unpersisted metacognition practice, consistent with the ADR 0013 lesson-check scoping. Reversible by removing the prompt from CheckQuestion.
+- [2026-07-11] Art direction = bright learning-game (owner choice over founding-era and blueprint options); Mission Map = illustrated journey path (owner choice over full map / polished list). Styling-only pass; teacher/admin/parent surfaces deferred to a later pass.
+- [2026-07-11] Fonts via next/font/google (Baloo 2 display + Atkinson Hyperlegible body): downloaded at build, self-hosted — zero runtime requests, no student data leaves the app (rule #9 intact). Atkinson Hyperlegible chosen for maximum character disambiguation for young/striving readers. Reversible by removing the font setup in src/app/layout.tsx (falls back to ui-rounded/system stack).
+- [2026-07-11] `darkMode: 'class'` in tailwind.config.ts with no `.dark` ever set: one-line disarm of the stray `dark:` variants (StimulusDisplay/GlossaryPopover/SourceDecoder) that gave OS-dark students mismatched dark islands; the stripped variants in touched files are belt-and-suspenders. Real dark mode is NOT built. Reversible by toggling a .dark class if dark mode is ever scheduled.
+- [2026-07-11] Palette policy = stock Tailwind color names used boldly (no custom color tokens): keeps `.cq-high-contrast`'s utility-name `:where()` overrides workable. High-contrast additions: all new -50/-100 tints, `[class*='bg-gradient-']`/`.bg-dots` → background-image:none, saturated brand bgs (indigo/amber/green/rose/sky/purple/orange 400–900) → white + 2px black border so light-on-dark text can flip black, opacity-suffixed tints caught by `[class*='bg-indigo-50/']`-style prefixes, and light-on-dark text utilities forced to #000. Verified live via the demo student's leftover high-contrast flags.
+- [2026-07-11] Journey-map geometry is a fixed 320px column (PATH_ROW_H 152px, offsets 0/+72/0/-72) so the dotted SVG trail through node centers needs no measurement/JS; fits the 375px mobile viewport. Node states are icon+text (never color-only); the visual path is aria-hidden decoration over a semantic `<ol>`; `data-testid="benchmark-node"` unchanged for e2e.
+- [2026-07-11] Motion is CSS-only (tailwind keyframes incl. the assessment-pass confetti burst) and `.cq-reduce-motion`/`prefers-reduced-motion` now also zero `animation-delay` — otherwise staggered `animation-fill-mode: both` reveals would leave content invisible for the delay when durations are zeroed. No timer-based punishments (rule: freeze tokens, not timers).
 
 ---
 

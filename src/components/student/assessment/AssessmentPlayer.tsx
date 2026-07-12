@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ConfidenceSelector } from './ConfidenceSelector'
 import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
+import { Mascot } from '@/components/ui/Mascot'
 import type { GlossaryAnnotation } from '@/lib/reading-load'
 
 interface Option {
@@ -63,6 +64,29 @@ interface AssessmentPlayerProps {
 
 const CONFIDENCE_REQUIRED = new Set(['MASTERY_CHALLENGE', 'REPUBLIC_CHALLENGE', 'FINAL_TRIAL'])
 
+const CONFETTI_COLORS = ['#f59e0b', '#22c55e', '#0ea5e9', '#f43f5e', '#a855f7', '#4f46e5']
+
+/** CSS-only celebration burst (frozen automatically under reduce-motion). */
+function ConfettiBurst() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      {Array.from({ length: 28 }).map((_, i) => (
+        <span
+          key={i}
+          className="absolute top-0 block animate-confetti-fall rounded-sm"
+          style={{
+            left: `${(i * 37 + 11) % 100}%`,
+            width: `${7 + (i % 3) * 3}px`,
+            height: `${11 + (i % 4) * 2}px`,
+            backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            animationDelay: `${(i % 12) * 130}ms`,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerProps) {
   const [meta, setMeta] = useState<AssessmentMeta | null>(null)
   const [attemptId, setAttemptId] = useState<string | null>(null)
@@ -99,8 +123,8 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
     load()
   }, [assessmentId])
 
-  if (loading) return <div className="py-12 text-center text-gray-600">Loading assessment…</div>
-  if (error) return <div className="py-12 text-center text-red-500">{error}</div>
+  if (loading) return <div className="py-12 text-center text-base text-gray-600">Loading assessment…</div>
+  if (error) return <div className="py-12 text-center text-base font-semibold text-red-600">{error}</div>
   if (!meta || !attemptId) return null
 
   const needsConfidence = CONFIDENCE_REQUIRED.has(meta.assessmentType)
@@ -108,29 +132,34 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
 
   if (submitted && result) {
     return (
-      <div className="text-center py-12 space-y-4">
-        <div className={`text-5xl ${result.passed ? '🏆' : '📚'}`}>{result.passed ? '🏆' : '📚'}</div>
-        <h2 className={`text-2xl font-bold ${result.passed ? 'text-green-700' : 'text-amber-700'}`}>
+      <div className="relative space-y-4 py-12 text-center">
+        {result.passed && <ConfettiBurst />}
+
+        <div className={result.passed ? 'animate-bounce-soft inline-block' : 'inline-block'}>
+          <Mascot pose={result.passed ? 'celebrating' : 'thinking'} className="h-28 w-28" />
+        </div>
+        <h2
+          className={`font-display text-3xl font-bold ${
+            result.passed ? 'text-green-700' : 'text-amber-700'
+          }`}
+        >
           {result.passed ? 'Mission Complete!' : 'Keep Practicing!'}
         </h2>
         {Number.isFinite(result.score) && (
-          <p className="text-gray-600">Score: {Math.round(result.score * 100)}%</p>
+          <p className="font-display text-lg font-bold text-gray-700">
+            Score: {Math.round(result.score * 100)}%
+          </p>
         )}
 
         {meta.assessmentType === 'MASTERY_CHALLENGE' && result.passed && (
-          <div className="mx-auto max-w-sm rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-left">
+          <div className="relative mx-auto max-w-sm rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 text-left animate-pop-in">
             <div className="flex items-start gap-3">
-              <span
-                aria-hidden="true"
-                className="h-9 w-9 flex-shrink-0 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center"
-              >
-                F
-              </span>
+              <Mascot pose="happy" className="h-12 w-12 flex-shrink-0" />
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">
+                <p className="font-display text-xs font-bold uppercase tracking-widest text-indigo-700">
                   The Founder
                 </p>
-                <p className="mt-0.5 text-sm leading-relaxed text-indigo-900">
+                <p className="mt-0.5 text-base leading-relaxed text-indigo-950">
                   Well done, builder. Another pillar of the Republic stands because of you — and
                   what you mastered today will return in your Daily Drill, so keep it sharp.
                 </p>
@@ -142,15 +171,18 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
         {result.calibration && <CalibrationCard calibration={result.calibration} />}
 
         {onComplete ? (
-          <p className="text-sm text-gray-500">Great work — continue your mission below.</p>
+          <p className="text-base text-gray-600">Great work — continue your mission below.</p>
         ) : result.passed ? (
-          <p className="text-sm text-gray-500">Next mission unlocked. Head to the Mission Map!</p>
+          <p className="text-base text-gray-600">Next mission unlocked. Head to the Mission Map!</p>
         ) : (
-          <p className="text-sm text-gray-500">Remediation has been assigned to strengthen your skills.</p>
+          <p className="text-base text-gray-600">Remediation has been assigned to strengthen your skills.</p>
         )}
 
         {!onComplete && (
-          <a href="/student/map" className="inline-block mt-4 rounded-lg bg-indigo-600 px-5 py-2 text-white font-medium hover:bg-indigo-700">
+          <a
+            href="/student/map"
+            className="mt-4 inline-block rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
+          >
             Mission Map
           </a>
         )}
@@ -162,6 +194,7 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   const currentAnswer = answers[currentQ.questionId]
   const isLast = currentIndex === questions.length - 1
   const canAdvance = !!currentAnswer?.optionId && (!needsConfidence || !!currentAnswer?.confidence)
+  const letters = ['A', 'B', 'C', 'D', 'E', 'F']
 
   async function handleSubmit() {
     if (!meta || !attemptId) return
@@ -199,22 +232,29 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold text-gray-800">{meta.title}</h2>
-        <span className="text-sm text-gray-400">
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-lg font-bold text-gray-900">{meta.title}</h2>
+        <span className="flex-shrink-0 rounded-full bg-indigo-100 px-3 py-1 font-display text-xs font-bold text-indigo-800">
           {currentIndex + 1} / {questions.length}
         </span>
       </div>
 
-      <div className="w-full bg-gray-100 rounded-full h-1.5">
+      <div
+        className="h-2.5 w-full overflow-hidden rounded-full bg-indigo-100"
+        role="progressbar"
+        aria-label="Assessment progress"
+        aria-valuenow={currentIndex + 1}
+        aria-valuemin={1}
+        aria-valuemax={questions.length}
+      >
         <div
-          className="bg-indigo-500 h-1.5 rounded-full transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500"
           style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
         />
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+      <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
         {currentQ.stimulus && (
           <StimulusDisplay
             stimulusId={currentQ.stimulus.stimulusId}
@@ -225,32 +265,42 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
             glossaryAnnotations={currentQ.stimulus.glossaryAnnotations}
           />
         )}
-        <p className="text-gray-800 font-medium leading-relaxed">{currentQ.prompt}</p>
+        <p className="text-lg font-semibold leading-relaxed text-gray-900">{currentQ.prompt}</p>
 
-        <div className="space-y-2" role="group" aria-label="Answer choices">
+        <div className="space-y-2.5" role="group" aria-label="Answer choices">
           {currentQ.options
             .slice()
             .sort((a, b) => a.position - b.position)
-            .map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() =>
-                  setAnswers((prev) => ({
-                    ...prev,
-                    [currentQ.questionId]: { optionId: opt.id, confidence: prev[currentQ.questionId]?.confidence ?? null },
-                  }))
-                }
-                className={`w-full text-left rounded-lg border-2 px-4 py-3 text-sm transition-colors ${
-                  currentAnswer?.optionId === opt.id
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-800'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-                aria-pressed={currentAnswer?.optionId === opt.id}
-              >
-                {opt.optionText}
-              </button>
-            ))}
+            .map((opt, i) => {
+              const isSelected = currentAnswer?.optionId === opt.id
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() =>
+                    setAnswers((prev) => ({
+                      ...prev,
+                      [currentQ.questionId]: { optionId: opt.id, confidence: prev[currentQ.questionId]?.confidence ?? null },
+                    }))
+                  }
+                  className={`flex w-full items-start gap-3 rounded-2xl border-2 px-4 py-3 text-left text-base leading-snug transition-colors ${
+                    isSelected
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-950'
+                      : 'border-gray-200 bg-white text-gray-800 hover:border-indigo-300 hover:bg-indigo-50/50'
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  <span
+                    className={`mt-px flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg font-display text-sm font-bold ${
+                      isSelected ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {letters[i] ?? '•'}
+                  </span>
+                  <span className="pt-0.5">{opt.optionText}</span>
+                </button>
+              )
+            })}
         </div>
 
         {needsConfidence && currentAnswer?.optionId && (
@@ -271,7 +321,7 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
           <button
             onClick={handleSubmit}
             disabled={!canAdvance || loading}
-            className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="rounded-2xl border-b-4 border-green-800 bg-green-600 px-6 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-green-500 active:translate-y-[3px] active:border-b-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
           >
             Submit Assessment
           </button>
@@ -279,7 +329,7 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
           <button
             onClick={() => setCurrentIndex((i) => i + 1)}
             disabled={!canAdvance}
-            className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
           >
             Next →
           </button>
@@ -305,19 +355,19 @@ function CalibrationCard({ calibration }: { calibration: CalibrationSummary }) {
   if (rows.length === 0) return null
 
   return (
-    <div className="mx-auto mt-4 max-w-sm rounded-xl border border-gray-200 bg-gray-50 p-4 text-left">
-      <h3 className="text-sm font-semibold text-gray-700">How well did you know yourself?</h3>
-      <p className="mt-0.5 text-xs text-gray-500">
+    <div className="relative mx-auto mt-4 max-w-sm rounded-2xl border-2 border-sky-100 bg-sky-50 p-4 text-left animate-pop-in">
+      <h3 className="font-display text-sm font-bold text-sky-900">How well did you know yourself?</h3>
+      <p className="mt-0.5 text-sm text-sky-800">
         Matching your confidence to your results is a real test-taking skill — keep closing the gap!
       </p>
       <ul className="mt-3 space-y-1.5">
         {rows.map((r) => (
-          <li key={r.key} className="flex items-center justify-between text-sm text-gray-700">
+          <li key={r.key} className="flex items-center justify-between text-base text-gray-800">
             <span>
               <span aria-hidden="true" className="mr-1.5">{r.emoji}</span>
               On <strong>{r.label}</strong> answers
             </span>
-            <span className="font-mono text-gray-600">
+            <span className="font-display font-bold text-gray-700">
               {r.correct} / {r.total} right
             </span>
           </li>

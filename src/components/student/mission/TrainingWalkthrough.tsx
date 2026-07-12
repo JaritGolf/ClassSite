@@ -59,27 +59,30 @@ export function TrainingWalkthrough({
   if (!step) return null
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+    <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Guided Training</h2>
-          <p className="text-sm font-semibold text-indigo-700">{step.title}</p>
+          <h2 className="font-display text-xl font-bold text-gray-900">Guided Training</h2>
+          <p className="text-sm font-bold text-indigo-700">{step.title}</p>
         </div>
-        <span className="flex-shrink-0 text-xs font-medium text-gray-600 rounded-full bg-gray-100 px-2.5 py-1">
+        <span className="flex-shrink-0 rounded-full bg-indigo-100 px-3 py-1 font-display text-xs font-bold text-indigo-800">
           Step {index + 1} of {steps.length}
         </span>
       </div>
 
-      {/* Progress dots */}
-      <div className="flex items-center gap-1.5" aria-hidden="true">
-        {steps.map((s, i) => (
-          <span
-            key={s.id}
-            className={`h-1.5 rounded-full transition-all ${
-              i === index ? 'w-6 bg-indigo-600' : i < index ? 'w-3 bg-indigo-300' : 'w-3 bg-gray-200'
-            }`}
-          />
-        ))}
+      {/* Quest progress bar */}
+      <div
+        className="h-2.5 w-full overflow-hidden rounded-full bg-indigo-100"
+        role="progressbar"
+        aria-label="Training progress"
+        aria-valuenow={index + 1}
+        aria-valuemin={1}
+        aria-valuemax={steps.length}
+      >
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500"
+          style={{ width: `${((index + 1) / steps.length) * 100}%` }}
+        />
       </div>
 
       <LessonStepRenderer
@@ -94,30 +97,30 @@ export function TrainingWalkthrough({
           type="button"
           onClick={() => goTo(index - 1)}
           disabled={index === 0}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-2xl border-2 border-b-4 border-gray-200 bg-white px-4 py-2 font-display text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 active:translate-y-[2px] active:border-b-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
         >
           ← Back
         </button>
 
         <div className="flex items-center gap-3">
           {!mayAdvance && stepNeedsAttempt(step) && (
-            <p className="text-xs text-amber-700">Try the quick check to continue</p>
+            <p className="text-sm font-semibold text-amber-700">Try the quick check to continue</p>
           )}
           {isLast ? (
             <button
               type="button"
               onClick={onComplete}
               disabled={!mayAdvance}
-              className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-2xl border-b-4 border-green-800 bg-green-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-green-500 active:translate-y-[3px] active:border-b-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
             >
-              Training Complete
+              Training Complete ✓
             </button>
           ) : (
             <button
               type="button"
               onClick={() => goTo(index + 1)}
               disabled={!mayAdvance}
-              className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
             >
               Next →
             </button>

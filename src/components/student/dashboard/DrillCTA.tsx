@@ -1,26 +1,37 @@
 import Link from 'next/link'
+import { TrackIcon } from '@/components/ui/TrackIcon'
 
 interface DrillCTAProps {
   drillCount: number
 }
 
 export function DrillCTA({ drillCount }: DrillCTAProps) {
+  const due = drillCount > 0
+
   return (
     <Link
       href="/student/daily-drill"
-      className="block rounded-xl border border-amber-200 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+      className="block rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-card transition-colors hover:border-amber-300 hover:bg-amber-50"
     >
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-200 text-amber-800 text-lg">
-          ⚡
-        </div>
+      <div className="flex items-center gap-4">
+        <span
+          className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-amber-950 ${
+            due ? 'animate-bounce-soft' : ''
+          }`}
+        >
+          <TrackIcon name="bolt" className="h-6 w-6" />
+        </span>
         <div>
-          <p className="text-sm font-semibold text-amber-900">Daily Republic Drill</p>
-          <p className="text-xs text-amber-700">
-            {drillCount > 0 ? `${drillCount} item${drillCount !== 1 ? 's' : ''} due today` : 'All caught up for today!'}
+          <p className="font-display text-base font-bold text-gray-900">Daily Republic Drill</p>
+          <p className="text-sm text-amber-800">
+            {due
+              ? `${drillCount} item${drillCount !== 1 ? 's' : ''} due today — keep your streak alive!`
+              : 'All caught up for today!'}
           </p>
         </div>
-        <span className="ml-auto text-amber-600 text-sm">→</span>
+        <span aria-hidden="true" className="ml-auto font-display text-xl font-bold text-amber-600">
+          →
+        </span>
       </div>
     </Link>
   )

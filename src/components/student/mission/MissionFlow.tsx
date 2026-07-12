@@ -6,6 +6,8 @@ import { trainingStepsOf, vocabStepsOf, scenarioStepsOf } from '@/lib/lesson-con
 import type { GlossaryTerm } from '@/lib/reading-load'
 import { StepIndicator } from './StepIndicator'
 import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
+import { Mascot } from '@/components/ui/Mascot'
+import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { TrainingWalkthrough } from './TrainingWalkthrough'
 import { VocabPanel, type TermView } from './VocabPanel'
 import { ScenarioLab } from './ScenarioLab'
@@ -166,14 +168,11 @@ export function MissionFlow({ mission }: MissionFlowProps) {
 
       {currentStep === 'pre-check' &&
         (mission.preCheckAssessmentId ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">Mission Pre-Check</h2>
-              <p className="text-sm text-gray-600">
-                A few quick questions to see what you already know — this does NOT count toward
-                your score. It&apos;s just scouting!
-              </p>
-            </div>
+          <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+            <StepHeader icon="search" title="Mission Pre-Check">
+              A few quick questions to see what you already know — this does NOT count toward
+              your score. It&apos;s just scouting!
+            </StepHeader>
             <AssessmentPlayer
               assessmentId={mission.preCheckAssessmentId}
               onComplete={() => setPreCheckDone(true)}
@@ -181,7 +180,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
             {preCheckDone && (
               <button
                 onClick={() => completeStep('pre-check')}
-                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
               >
                 Continue to Briefing →
               </button>
@@ -246,19 +245,16 @@ export function MissionFlow({ mission }: MissionFlowProps) {
 
       {currentStep === 'practice' &&
         (mission.practiceAssessmentId ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+          <div className="space-y-4 rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-card">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Practice Arena</h2>
-                <p className="text-sm text-gray-600">
-                  Warm up before the Readiness Check. Miss a few in a row and I&apos;ll walk one
-                  through with you — that&apos;s the point of practice.
-                </p>
-              </div>
+              <StepHeader icon="bolt" title="Practice Arena" tone="amber">
+                Warm up before the Readiness Check. Miss a few in a row and I&apos;ll walk one
+                through with you — that&apos;s the point of practice.
+              </StepHeader>
               <button
                 type="button"
                 onClick={() => completeStep('practice')}
-                className="flex-shrink-0 text-xs font-medium text-gray-600 hover:text-indigo-700 underline"
+                className="flex-shrink-0 text-sm font-semibold text-gray-600 underline hover:text-indigo-700"
               >
                 Skip practice
               </button>
@@ -280,14 +276,11 @@ export function MissionFlow({ mission }: MissionFlowProps) {
 
       {currentStep === 'readiness-check' &&
         (mission.readinessAssessmentId ? (
-          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">Readiness Check</h2>
-              <p className="text-sm text-gray-600">
-                A short quiz to see if you&apos;re ready. Score 70% or higher to unlock the Mastery
-                Challenge.
-              </p>
-            </div>
+          <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+            <StepHeader icon="target" title="Readiness Check">
+              A short quiz to see if you&apos;re ready. Score 70% or higher to unlock the Mastery
+              Challenge.
+            </StepHeader>
             <AssessmentPlayer
               key={readinessAttempt}
               assessmentId={mission.readinessAssessmentId}
@@ -298,26 +291,29 @@ export function MissionFlow({ mission }: MissionFlowProps) {
             {readinessResult?.passed && (
               <button
                 onClick={() => completeStep('readiness-check')}
-                className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
               >
                 Unlock Mastery Challenge →
               </button>
             )}
             {readinessResult && !readinessResult.passed && (
-              <div className="space-y-3">
-                <p className="text-sm text-amber-700">
-                  Not quite there yet — that&apos;s what the Readiness Check is for.
-                </p>
+              <div className="space-y-3 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4 animate-pop-in">
+                <div className="flex items-start gap-3">
+                  <Mascot pose="pointing" className="h-14 w-14 flex-shrink-0" />
+                  <p className="pt-1 text-base font-semibold text-amber-900">
+                    Not quite there yet — that&apos;s exactly what the Readiness Check is for.
+                  </p>
+                </div>
                 {readinessResult.reviewTopics && readinessResult.reviewTopics.length > 0 && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 mb-1.5">
+                  <div className="rounded-xl border border-amber-200 bg-white p-3">
+                    <p className="mb-1.5 font-display text-xs font-bold uppercase tracking-widest text-amber-700">
                       Worth another look
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {readinessResult.reviewTopics.map((topic) => (
                         <span
                           key={topic}
-                          className="rounded-full bg-white border border-amber-300 px-2.5 py-0.5 text-xs font-medium text-amber-900"
+                          className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-sm font-semibold text-amber-900"
                         >
                           {topic}
                         </span>
@@ -328,14 +324,14 @@ export function MissionFlow({ mission }: MissionFlowProps) {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() => jumpToReview('training')}
-                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+                    className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-4 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
                   >
                     Review the Training
                   </button>
                   {mission.practiceAssessmentId && (
                     <button
                       onClick={() => jumpToReview('practice')}
-                      className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+                      className="rounded-2xl border-2 border-b-4 border-indigo-300 bg-white px-4 py-2 font-display text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-50 active:translate-y-[2px] active:border-b-2"
                     >
                       Warm up in the Practice Arena
                     </button>
@@ -345,7 +341,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
                       setReadinessResult(null)
                       setReadinessAttempt((n) => n + 1)
                     }}
-                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="rounded-2xl border-2 border-b-4 border-gray-300 bg-white px-4 py-2 font-display text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 active:translate-y-[2px] active:border-b-2"
                   >
                     Try Again
                   </button>
@@ -363,24 +359,63 @@ export function MissionFlow({ mission }: MissionFlowProps) {
         ))}
 
       {currentStep === 'mastery-challenge' && (
-        <div className="rounded-xl border-2 border-indigo-300 bg-indigo-50 p-6 space-y-4 text-center">
-          <h2 className="text-xl font-bold text-indigo-800">Mastery Challenge</h2>
-          <p className="text-indigo-700 text-sm">
+        <div className="relative space-y-4 overflow-hidden rounded-3xl border-b-4 border-indigo-950 bg-gradient-to-br from-indigo-700 to-indigo-900 p-8 text-center text-white">
+          <svg
+            aria-hidden="true"
+            className="pointer-events-none absolute -left-8 -top-10 h-44 w-44 text-white/10"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path d="M12 3l7.5 3v5.5c0 5-3.7 8.3-7.5 10.5-3.8-2.2-7.5-5.5-7.5-10.5V6L12 3z" />
+          </svg>
+          <span className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15">
+            <TrackIcon name="shield" className="h-9 w-9" strokeWidth={1.8} />
+          </span>
+          <h2 className="relative font-display text-2xl font-bold">Mastery Challenge</h2>
+          <p className="relative mx-auto max-w-md text-base leading-relaxed text-indigo-100">
             This is the final assessment. You need 80% or higher to master this benchmark and unlock the next mission.
             Confidence ratings are required.
           </p>
           {mission.assessmentId ? (
             <Link
               href={`/student/assessment/${mission.assessmentId}`}
-              className="inline-block rounded-lg bg-indigo-600 px-6 py-2.5 text-white font-semibold hover:bg-indigo-700 transition-colors"
+              className="relative inline-block rounded-2xl border-b-4 border-amber-600 bg-amber-400 px-7 py-3 font-display text-base font-bold text-amber-950 transition-colors hover:bg-amber-300 active:translate-y-[3px] active:border-b-0"
             >
               Begin Mastery Challenge →
             </Link>
           ) : (
-            <p className="text-amber-600 text-sm">Assessment not yet available for this benchmark.</p>
+            <p className="relative text-base text-amber-200">Assessment not yet available for this benchmark.</p>
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function StepHeader({
+  icon,
+  title,
+  tone = 'indigo',
+  children,
+}: {
+  icon: TrackIconName
+  title: string
+  tone?: 'indigo' | 'amber'
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span
+        className={`mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
+          tone === 'amber' ? 'bg-amber-400 text-amber-950' : 'bg-indigo-600 text-white'
+        }`}
+      >
+        <TrackIcon name={icon} className="h-5 w-5" />
+      </span>
+      <div>
+        <h2 className="font-display text-xl font-bold text-gray-900">{title}</h2>
+        <p className="text-base text-gray-600">{children}</p>
+      </div>
     </div>
   )
 }
@@ -397,12 +432,12 @@ function StepPanel({
   ctaLabel: string
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4">
-      <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-      <div className="text-gray-700 text-sm leading-relaxed whitespace-pre-line">{description}</div>
+    <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-6 shadow-card">
+      <h2 className="font-display text-xl font-bold text-gray-900">{title}</h2>
+      <div className="max-w-prose whitespace-pre-line text-base leading-7 text-gray-800">{description}</div>
       <button
         onClick={onContinue}
-        className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors"
+        className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
       >
         {ctaLabel}
       </button>

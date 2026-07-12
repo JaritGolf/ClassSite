@@ -8,6 +8,7 @@ import { DrillCTA } from '@/components/student/dashboard/DrillCTA'
 import { StreakWidget } from '@/components/student/dashboard/StreakWidget'
 import { BadgeRack } from '@/components/student/dashboard/BadgeRack'
 import { NarrativeOverlayWrapper } from '@/components/student/layout/NarrativeOverlayWrapper'
+import { TrackIcon } from '@/components/ui/TrackIcon'
 
 export default async function StudentDashboard() {
   const session = await requireAuth(['STUDENT'])
@@ -105,28 +106,45 @@ export default async function StudentDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 space-y-4">
-      <DashboardHero currentMission={missionData} studentName={session.user.name} />
-      <ReadinessMeter {...readinessMeter} />
-      <StreakWidget
-        currentLength={streakState.currentLength}
-        longestLength={streakState.longestLength}
-        freezeTokens={streakState.freezeTokens}
-      />
-      <DrillCTA drillCount={drillCount} />
+    <div className="mx-auto max-w-2xl space-y-4 px-4 py-8">
+      <div className="animate-pop-in">
+        <DashboardHero currentMission={missionData} studentName={session.user.name} />
+      </div>
+      <div className="animate-pop-in [animation-delay:90ms]">
+        <ReadinessMeter {...readinessMeter} />
+      </div>
+      <div className="grid gap-4 animate-pop-in [animation-delay:180ms] sm:grid-cols-2">
+        <StreakWidget
+          currentLength={streakState.currentLength}
+          longestLength={streakState.longestLength}
+          freezeTokens={streakState.freezeTokens}
+        />
+        <DrillCTA drillCount={drillCount} />
+      </div>
       {activeRemediation && (
         <a
           href={`/student/remediation/${activeRemediation.id}`}
-          className="block rounded-xl border border-amber-300 bg-amber-50 p-4 hover:bg-amber-100 transition-colors"
+          className="block rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-card transition-colors hover:border-amber-300 hover:bg-amber-50 animate-pop-in [animation-delay:270ms]"
         >
-          <p className="text-xs font-medium uppercase tracking-wide text-amber-700">Training Mission</p>
-          <p className="text-sm font-semibold text-amber-900">
-            {activeRemediation.remediationItem.title}
-          </p>
-          <p className="text-xs text-amber-700">Tap to strengthen this skill →</p>
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-amber-950">
+              <TrackIcon name="target" className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="font-display text-xs font-bold uppercase tracking-widest text-amber-700">
+                Training Mission
+              </p>
+              <p className="font-display text-base font-bold text-gray-900">
+                {activeRemediation.remediationItem.title}
+              </p>
+              <p className="text-sm text-amber-800">Tap to strengthen this skill →</p>
+            </div>
+          </div>
         </a>
       )}
-      <BadgeRack badges={badges} />
+      <div className="animate-pop-in [animation-delay:360ms]">
+        <BadgeRack badges={badges} />
+      </div>
       <NarrativeOverlayWrapper beat={narrativeBeat} />
     </div>
   )

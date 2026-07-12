@@ -21,12 +21,12 @@ export default async function SourceSprintPickerPage() {
       <header>
         <Link
           href="/student/republic-challenge"
-          className="text-sm text-indigo-600 hover:underline"
+          className="text-sm font-semibold text-indigo-600 hover:underline"
         >
           ← Back to Republic Challenge
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800 mt-2">Source Sprint</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <h1 className="font-display text-3xl font-bold text-indigo-900 mt-2">Source Sprint</h1>
+        <p className="text-base text-gray-600 mt-1">
           Practice items with a specific kind of source material.
         </p>
       </header>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { DrillCard } from '@/components/student/drill/DrillCard'
+import { Mascot } from '@/components/ui/Mascot'
 
 interface DrillItem {
   benchmarkId: string
@@ -42,35 +43,54 @@ export default function DailyDrillPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-8 text-center text-gray-400">
+      <div className="mx-auto max-w-2xl px-4 py-8 text-center text-base text-gray-600">
         Loading drill queue…
       </div>
     )
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8 space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4 px-4 py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Daily Republic Drill</h1>
+        <h1 className="font-display text-3xl font-bold text-indigo-900">Daily Republic Drill</h1>
         {items.length > 0 && !done && (
-          <span className="text-sm text-gray-400">
+          <span className="rounded-full bg-amber-100 px-3 py-1 font-display text-sm font-bold text-amber-800">
             {currentIndex + 1} / {items.length}
           </span>
         )}
       </div>
 
+      {items.length > 0 && !done && (
+        <div
+          className="h-2.5 w-full overflow-hidden rounded-full bg-amber-100"
+          role="progressbar"
+          aria-label="Drill progress"
+          aria-valuenow={currentIndex + 1}
+          aria-valuemin={1}
+          aria-valuemax={items.length}
+        >
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-500"
+            style={{ width: `${((currentIndex + 1) / items.length) * 100}%` }}
+          />
+        </div>
+      )}
+
       {done ? (
-        <div className="text-center py-12 space-y-3">
-          <p className="text-4xl">⚡</p>
-          <p className="text-lg font-semibold text-gray-800">
-            {items.length === 0 ? "All caught up for today!" : "Drill complete — great work!"}
+        <div className="space-y-3 rounded-3xl border-2 border-amber-200 bg-white py-12 text-center shadow-card animate-pop-in">
+          <Mascot pose={items.length === 0 ? 'happy' : 'celebrating'} className="mx-auto h-24 w-24" />
+          <p className="font-display text-2xl font-bold text-gray-900">
+            {items.length === 0 ? 'All caught up for today!' : 'Drill complete — great work!'}
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-base text-gray-600">
             {items.length === 0
-              ? "No items are due right now. Come back tomorrow!"
-              : "Your spaced review state has been updated. See you tomorrow!"}
+              ? 'No items are due right now. Come back tomorrow!'
+              : 'Your spaced review state has been updated. See you tomorrow!'}
           </p>
-          <a href="/student/dashboard" className="inline-block mt-4 rounded-lg bg-indigo-600 px-5 py-2 text-white font-medium hover:bg-indigo-700">
+          <a
+            href="/student/dashboard"
+            className="mt-4 inline-block rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
+          >
             Back to Dashboard
           </a>
         </div>

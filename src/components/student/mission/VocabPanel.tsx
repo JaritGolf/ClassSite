@@ -13,6 +13,7 @@
 
 import { useState } from 'react'
 import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
+import { TrackIcon } from '@/components/ui/TrackIcon'
 import { LessonStepRenderer, type LessonStepView } from './LessonStepRenderer'
 
 export interface TermView {
@@ -37,35 +38,40 @@ export function VocabPanel({ terms, vocabSteps, vocabCheckAssessmentId, onContin
   const continueGated = Boolean(vocabCheckAssessmentId) && !wordBuilderDone
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-gray-900">Key Terms Unlock</h2>
-        <p className="text-sm text-gray-600">
-          Learn these words first — they unlock everything else in this mission.
-        </p>
+    <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white">
+          <TrackIcon name="book" className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-display text-xl font-bold text-gray-900">Key Terms Unlock</h2>
+          <p className="text-base text-gray-600">
+            Learn these words first — they unlock everything else in this mission.
+          </p>
+        </div>
       </div>
 
       {terms.length > 0 && (
-        <ul className="space-y-2">
+        <ul className="grid gap-2.5 sm:grid-cols-2">
           {terms.map((t) => (
-            <li key={t.term} className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+            <li key={t.term} className="rounded-2xl border-2 border-orange-100 bg-orange-50/50 p-3.5">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-900">{t.term}</span>
-                <span className="text-[10px] font-semibold uppercase tracking-wide rounded-full bg-orange-100 text-orange-700 px-2 py-0.5">
+                <span className="font-display text-base font-bold text-gray-900">{t.term}</span>
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-orange-800">
                   Civics term
                 </span>
               </div>
-              <p className="mt-1 text-sm leading-relaxed text-gray-700">{t.definition}</p>
+              <p className="mt-1 text-base leading-relaxed text-gray-700">{t.definition}</p>
               {t.l1Definition && t.l1Language && (
-                <p className="mt-1 text-sm leading-relaxed text-indigo-800" lang={t.l1Language}>
-                  <span className="text-xs font-semibold uppercase tracking-wide text-indigo-600 mr-1">
+                <p className="mt-1 text-base leading-relaxed text-indigo-900" lang={t.l1Language}>
+                  <span className="mr-1 text-xs font-bold uppercase tracking-wide text-indigo-600">
                     {L1_LABELS[t.l1Language] ?? t.l1Language}:
                   </span>
                   {t.l1Definition}
                 </p>
               )}
               {t.relatedVocab && (
-                <p className="mt-1 text-xs text-gray-600">Related: {t.relatedVocab}</p>
+                <p className="mt-1 text-sm text-gray-600">Related: {t.relatedVocab}</p>
               )}
             </li>
           ))}
@@ -73,8 +79,8 @@ export function VocabPanel({ terms, vocabSteps, vocabCheckAssessmentId, onContin
       )}
 
       {vocabSteps.map((step) => (
-        <div key={step.id} className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 mb-2">
+        <div key={step.id} className="rounded-2xl border-2 border-indigo-100 bg-indigo-50 p-4">
+          <p className="mb-2 font-display text-xs font-bold uppercase tracking-widest text-indigo-700">
             {step.title}
           </p>
           <LessonStepRenderer step={step} />
@@ -82,23 +88,23 @@ export function VocabPanel({ terms, vocabSteps, vocabCheckAssessmentId, onContin
       ))}
 
       {terms.length === 0 && vocabSteps.length === 0 && (
-        <p className="text-sm text-gray-600">
+        <p className="text-base text-gray-600">
           Review the key terms for this benchmark before diving into training.
         </p>
       )}
 
       {vocabCheckAssessmentId && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+        <div className="space-y-3 rounded-2xl border-2 border-gray-200 bg-gray-50 p-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-600">
+            <p className="font-display text-xs font-bold uppercase tracking-widest text-gray-600">
               Word Builder
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-base text-gray-600">
               Prove the terms are yours — a quick check locks them in before training.
             </p>
           </div>
           {wordBuilderDone ? (
-            <p className="flex items-center gap-2 text-sm font-medium text-green-700">
+            <p className="flex items-center gap-2 text-base font-bold text-green-700 animate-pop-in">
               <span aria-hidden="true">✅</span> Word Builder complete — terms unlocked!
             </p>
           ) : (
@@ -115,12 +121,12 @@ export function VocabPanel({ terms, vocabSteps, vocabCheckAssessmentId, onContin
           type="button"
           onClick={onContinue}
           disabled={continueGated}
-          className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
         >
           Terms Unlocked — Continue
         </button>
         {continueGated && (
-          <p className="text-xs text-amber-700">Finish the Word Builder to continue</p>
+          <p className="text-sm font-semibold text-amber-700">Finish the Word Builder to continue</p>
         )}
       </div>
     </div>

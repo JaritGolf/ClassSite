@@ -49,7 +49,7 @@ export function LoginButtons({ callbackUrl, showMockPanel, error }: LoginButtons
       {/* Primary SSO */}
       <button
         onClick={() => signIn('clever', { callbackUrl })}
-        className="flex items-center justify-center gap-3 rounded-lg bg-[#4274f6] px-6 py-3 text-white font-semibold hover:bg-[#2f5de0] transition-colors"
+        className="flex items-center justify-center gap-3 rounded-2xl border-b-4 border-[#2547b3] bg-[#4274f6] px-6 py-3 font-display font-bold text-white transition-colors hover:bg-[#2f5de0] active:translate-y-[3px] active:border-b-0"
       >
         Sign in with Clever
       </button>
@@ -57,7 +57,7 @@ export function LoginButtons({ callbackUrl, showMockPanel, error }: LoginButtons
       {/* Fallback */}
       <button
         onClick={() => signIn('google', { callbackUrl })}
-        className="flex items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-6 py-3 text-gray-700 font-semibold hover:bg-gray-50 transition-colors"
+        className="flex items-center justify-center gap-3 rounded-2xl border-2 border-b-4 border-gray-300 bg-white px-6 py-3 font-display font-bold text-gray-700 transition-colors hover:bg-gray-50 active:translate-y-[2px] active:border-b-2"
       >
         Sign in with Google
       </button>

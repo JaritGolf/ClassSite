@@ -17,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { parseStepContent, type CheckOption } from '@/lib/lesson-content'
 import { buildGlossaryAnnotations, type GlossaryTerm } from '@/lib/reading-load'
 import { StimulusDisplay, renderAnnotatedText } from '@/components/reading-load/StimulusDisplay'
+import { Mascot } from '@/components/ui/Mascot'
 
 export interface LessonStepView {
   id: string
@@ -109,21 +110,21 @@ function NoteView({ text, glossaryTerms }: { text: string; glossaryTerms?: Gloss
           <button
             type="button"
             aria-label={isSpeaking ? 'Stop reading' : 'Read this section aloud'}
-            title={isSpeaking ? 'Stop' : 'Read aloud'}
             onClick={toggleReadAloud}
-            className={`p-1.5 rounded-md text-sm transition-colors ${
+            className={`flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-sm font-semibold transition-colors ${
               isSpeaking
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'border-sky-300 bg-sky-100 text-sky-800'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50'
             }`}
           >
-            {isSpeaking ? '⏹' : '🔊'}
+            <span aria-hidden="true">{isSpeaking ? '⏹' : '🔊'}</span>
+            {isSpeaking ? 'Stop' : 'Read aloud'}
           </button>
         </div>
       )}
-      <div className="text-sm leading-relaxed text-gray-700 space-y-3">
+      <div className="max-w-prose space-y-4 text-base leading-7 text-gray-800">
         {paragraphs.map((para, i) => (
-          <p key={i} className="whitespace-pre-line">
+          <p key={i} className={`whitespace-pre-line ${i === 0 ? 'text-lg leading-8' : ''}`}>
             {annotations.length > 0 ? renderAnnotatedText(para, annotations) : para}
           </p>
         ))}
@@ -144,30 +145,30 @@ function TimelineView({
   events: { marker: string; label: string; detail?: string }[]
 }) {
   return (
-    <div className="space-y-3">
-      {intro && <p className="text-sm leading-relaxed text-gray-700">{intro}</p>}
+    <div className="space-y-4">
+      {intro && <p className="max-w-prose text-base leading-7 text-gray-800">{intro}</p>}
       <ol className="space-y-0">
         {events.map((event, i) => (
-          <li key={i} className="flex gap-3">
+          <li key={i} className="flex gap-4">
             {/* Marker column */}
             <div className="flex flex-col items-center">
-              <span className="min-w-[64px] rounded-full bg-indigo-600 px-2 py-1 text-center text-xs font-bold text-white">
+              <span className="min-w-[72px] rounded-full border-b-2 border-indigo-800 bg-gradient-to-b from-indigo-500 to-indigo-600 px-2.5 py-1.5 text-center font-display text-xs font-bold text-white">
                 {event.marker}
               </span>
               {i < events.length - 1 && (
-                <div className="flex flex-1 flex-col items-center py-0.5" aria-hidden="true">
-                  <span className="w-0.5 flex-1 bg-indigo-200" />
+                <div className="flex flex-1 flex-col items-center py-1" aria-hidden="true">
+                  <span className="w-1 flex-1 rounded-full bg-indigo-200" />
                   {connector === 'arrow' && (
-                    <span className="text-indigo-400 text-xs leading-none">▼</span>
+                    <span className="text-sm leading-none text-indigo-400">▼</span>
                   )}
                 </div>
               )}
             </div>
             {/* Event content */}
-            <div className={i < events.length - 1 ? 'pb-4' : ''}>
-              <p className="text-sm font-semibold text-gray-900 leading-snug">{event.label}</p>
+            <div className={i < events.length - 1 ? 'pb-5' : ''}>
+              <p className="text-base font-bold leading-snug text-gray-900">{event.label}</p>
               {event.detail && (
-                <p className="mt-0.5 text-sm leading-relaxed text-gray-600">{event.detail}</p>
+                <p className="mt-1 max-w-prose text-base leading-7 text-gray-600">{event.detail}</p>
               )}
             </div>
           </li>
@@ -195,21 +196,26 @@ function WorkedExampleView({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
-          The problem
-        </p>
-        <p className="text-sm leading-relaxed text-gray-800 whitespace-pre-line">{problem}</p>
+      <div className="flex items-start gap-3 rounded-2xl border-2 border-gray-200 bg-gray-50 p-4">
+        <Mascot pose="thinking" className="h-14 w-14 flex-shrink-0" />
+        <div>
+          <p className="font-display text-xs font-bold uppercase tracking-widest text-gray-600">
+            The problem
+          </p>
+          <p className="mt-1 whitespace-pre-line text-base leading-7 text-gray-800">{problem}</p>
+        </div>
       </div>
 
       {revealed > 0 && (
         <ol className="space-y-2" aria-label="Expert thinking steps">
           {thinkAloud.slice(0, revealed).map((thought, i) => (
-            <li key={i} className="flex gap-3">
-              <span className="mt-0.5 h-6 w-6 flex-shrink-0 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold flex items-center justify-center">
+            <li key={i} className="flex gap-3 animate-pop-in">
+              <span className="mt-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-indigo-600 font-display text-sm font-bold text-white">
                 {i + 1}
               </span>
-              <p className="text-sm leading-relaxed text-gray-700">{thought}</p>
+              <p className="rounded-2xl rounded-tl-md border-2 border-indigo-100 bg-indigo-50 px-4 py-2.5 text-base leading-7 text-indigo-950">
+                {thought}
+              </p>
             </li>
           ))}
         </ol>
@@ -219,23 +225,23 @@ function WorkedExampleView({
         <button
           type="button"
           onClick={() => setRevealed((n) => n + 1)}
-          className="rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 transition-colors"
+          className="rounded-2xl border-2 border-b-4 border-indigo-300 bg-white px-5 py-2.5 font-display text-base font-bold text-indigo-700 transition-colors hover:bg-indigo-50 active:translate-y-[2px] active:border-b-2"
         >
           {revealed === 0 ? 'Show my thinking →' : 'Next thought →'}
         </button>
       ) : (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-green-300 bg-green-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-green-700 mb-1">
+        <div className="space-y-3 animate-pop-in">
+          <div className="rounded-2xl border-2 border-green-300 bg-green-50 p-4">
+            <p className="font-display text-xs font-bold uppercase tracking-widest text-green-700">
               Answer
             </p>
-            <p className="text-sm font-semibold text-green-900">{answer}</p>
+            <p className="mt-1 text-base font-bold leading-7 text-green-900">{answer}</p>
           </div>
-          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700 mb-1">
+          <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4">
+            <p className="font-display text-xs font-bold uppercase tracking-widest text-indigo-700">
               Why this works
             </p>
-            <p className="text-sm leading-relaxed text-indigo-900">{whyItWorks}</p>
+            <p className="mt-1 text-base leading-7 text-indigo-950">{whyItWorks}</p>
           </div>
         </div>
       )}
@@ -299,44 +305,57 @@ export function CheckQuestion({
 
   return (
     <div className="space-y-3">
-      <p className="text-sm font-semibold text-gray-900 leading-relaxed">{question}</p>
-      <div className="space-y-2" role="group" aria-label="Answer choices">
+      <p className="text-base font-bold leading-7 text-gray-900">{question}</p>
+      <div className="space-y-2.5" role="group" aria-label="Answer choices">
         {options.map((opt, i) => {
           const isSelected = selected === i
           const showState = revealed && isSelected
           const stateClasses = showState
             ? opt.correct
               ? 'border-green-500 bg-green-50'
-              : 'border-amber-500 bg-amber-50'
+              : 'border-amber-500 bg-amber-50 animate-wiggle'
             : isSelected
             ? 'border-indigo-500 bg-indigo-50'
-            : 'border-gray-300 bg-white hover:border-indigo-400'
+            : 'border-gray-200 bg-white hover:border-indigo-300 hover:bg-indigo-50/50'
+          const letterClasses = showState
+            ? opt.correct
+              ? 'bg-green-500 text-white'
+              : 'bg-amber-500 text-white'
+            : isSelected
+            ? 'bg-indigo-600 text-white'
+            : 'bg-gray-100 text-gray-600'
           return (
             <div key={i}>
               <button
                 type="button"
                 onClick={() => choose(i)}
                 aria-pressed={isSelected}
-                className={`w-full text-left rounded-lg border px-3 py-2.5 text-sm text-gray-800 transition-colors ${stateClasses}`}
+                className={`flex w-full items-start gap-3 rounded-2xl border-2 px-4 py-3 text-left text-base leading-snug text-gray-800 transition-colors ${stateClasses}`}
               >
-                <span className="font-bold text-gray-500 mr-2">{letters[i] ?? '•'}</span>
-                {opt.text}
+                <span
+                  className={`mt-px flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg font-display text-sm font-bold ${letterClasses}`}
+                >
+                  {showState ? (opt.correct ? '✓' : '✗') : letters[i] ?? '•'}
+                </span>
+                <span className="pt-0.5">{opt.text}</span>
               </button>
               {showState && (
-                <p
+                <div
                   role="status"
-                  className={`mt-1 ml-1 text-sm leading-relaxed ${
-                    opt.correct ? 'text-green-800' : 'text-amber-800'
+                  className={`mt-1.5 rounded-xl border px-3 py-2 text-base leading-7 animate-pop-in ${
+                    opt.correct
+                      ? 'border-green-200 bg-green-50 text-green-900'
+                      : 'border-amber-200 bg-amber-50 text-amber-900'
                   }`}
                 >
                   {opt.correct ? '✓ ' : ''}
                   {opt.feedback}
                   {confidence && (
-                    <span className="block mt-0.5 text-xs text-gray-600 italic">
+                    <span className="mt-1 block text-sm italic text-gray-600">
                       {calibrationNudge(opt.correct, confidence)}
                     </span>
                   )}
-                </p>
+                </div>
               )}
             </div>
           )
@@ -344,17 +363,17 @@ export function CheckQuestion({
       </div>
 
       {selected !== null && !revealed && (
-        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
-          <p className="text-xs font-semibold text-indigo-800 mb-2">How sure are you?</p>
+        <div className="rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-3 animate-pop-in">
+          <p className="mb-2 font-display text-sm font-bold text-indigo-800">How sure are you?</p>
           <div className="flex flex-wrap gap-2" role="group" aria-label="Confidence">
             {CONFIDENCE_CHOICES.map((c) => (
               <button
                 key={c.key}
                 type="button"
                 onClick={() => chooseConfidence(c.key)}
-                className="rounded-lg border border-indigo-300 bg-white px-3 py-1.5 text-sm font-medium text-indigo-800 hover:bg-indigo-100 transition-colors"
+                className="rounded-xl border-2 border-b-4 border-indigo-200 bg-white px-4 py-2 text-sm font-bold text-indigo-800 transition-colors hover:bg-indigo-100 active:translate-y-[2px] active:border-b-2"
               >
-                <span aria-hidden="true" className="mr-1">
+                <span aria-hidden="true" className="mr-1.5">
                   {c.emoji}
                 </span>
                 {c.label}
@@ -406,11 +425,11 @@ function SourceAnalysisView({
         fromVariant={false}
         glossaryAnnotations={[]}
       />
-      <p className="text-xs text-gray-600 italic">{sourceAttribution}</p>
+      <p className="text-sm italic text-gray-600">{sourceAttribution}</p>
 
       {guidingQuestions.map((gq, qi) => (
-        <div key={qi} className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-600 mb-2">
+        <div key={qi} className="rounded-2xl border-2 border-indigo-100 bg-white p-4 shadow-card">
+          <p className="mb-2 font-display text-xs font-bold uppercase tracking-widest text-indigo-600">
             Guiding question {qi + 1} of {guidingQuestions.length}
           </p>
           <CheckQuestion

@@ -112,9 +112,9 @@ export default async function MissionPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-6">
-        <p className="text-xs font-mono text-gray-600">{benchmark.code}</p>
-        <h1 className="text-2xl font-bold text-gray-900">{benchmark.title}</h1>
-        {lesson && <p className="mt-1 text-sm text-indigo-700">{lesson.studentFriendlyTarget}</p>}
+        <p className="font-mono text-xs text-gray-600">{benchmark.code}</p>
+        <h1 className="font-display text-3xl font-bold text-indigo-900">{benchmark.title}</h1>
+        {lesson && <p className="mt-1 text-base font-semibold text-indigo-700">{lesson.studentFriendlyTarget}</p>}
       </div>
       <MissionFlow mission={missionData} />
     </div>

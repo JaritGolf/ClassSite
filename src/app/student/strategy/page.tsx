@@ -25,9 +25,9 @@ export default async function StrategyPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
       <header>
-        <p className="text-xs font-medium uppercase tracking-wide text-purple-600">Parallel Track</p>
-        <h1 className="text-2xl font-bold text-gray-900">Strategist Missions</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="font-display text-xs font-bold uppercase tracking-widest text-purple-600">Parallel Track</p>
+        <h1 className="font-display text-3xl font-bold text-indigo-900">Strategist Missions</h1>
+        <p className="mt-1 text-base text-gray-600">
           Smart test-taking habits for the EOC. {completedCount} of {missions.length} complete.
         </p>
       </header>

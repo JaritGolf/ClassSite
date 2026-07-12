@@ -55,7 +55,10 @@ export default async function MapPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Mission Map</h1>
+      <h1 className="mb-1 font-display text-3xl font-bold text-indigo-900">Mission Map</h1>
+      <p className="mb-6 text-base text-gray-600">
+        Follow the trail, master each mission, and build the Republic region by region.
+      </p>
       <MissionMap map={mapData} />
     </div>
   )

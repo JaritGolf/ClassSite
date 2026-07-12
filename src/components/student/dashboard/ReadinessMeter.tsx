@@ -1,3 +1,5 @@
+import { TrackIcon } from '@/components/ui/TrackIcon'
+
 interface ReadinessMeterProps {
   pct: number
   ciLow: number
@@ -6,24 +8,36 @@ interface ReadinessMeterProps {
 
 export function ReadinessMeter({ pct, ciLow, ciHigh }: ReadinessMeterProps) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-700">EOC Readiness Estimate</h2>
-        <span className="text-lg font-bold text-indigo-700">{pct}%</span>
+        <div className="flex items-center gap-2">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white">
+            <TrackIcon name="target" className="h-5 w-5" />
+          </span>
+          <h2 className="font-display text-base font-bold text-gray-800">EOC Readiness</h2>
+        </div>
+        <span className="font-display text-2xl font-bold text-indigo-700">{pct}%</span>
       </div>
-      <div className="relative h-4 w-full rounded-full bg-gray-100 overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+      <div
+        className="relative h-5 w-full overflow-hidden rounded-full bg-indigo-100"
+        role="progressbar"
+        aria-label="EOC readiness estimate"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
         {/* CI shading */}
         <div
-          className="absolute top-0 h-full bg-indigo-100"
+          className="absolute top-0 h-full bg-indigo-200"
           style={{ left: `${ciLow}%`, width: `${ciHigh - ciLow}%` }}
         />
         {/* Main bar */}
         <div
-          className="absolute top-0 left-0 h-full rounded-full bg-indigo-600 transition-all duration-500"
+          className="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 transition-all duration-500"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs text-gray-400">
+      <p className="text-sm text-gray-500">
         Confidence interval: {ciLow}%–{ciHigh}% · Calibrated from benchmark mastery
       </p>
     </div>
