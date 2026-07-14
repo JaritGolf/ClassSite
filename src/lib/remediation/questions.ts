@@ -11,6 +11,7 @@
  */
 
 import { prisma } from '@/lib/db'
+import { seededShuffle } from '@/lib/shuffle'
 
 // ── Result Types ──────────────────────────────────────────────────────────────
 
@@ -90,7 +91,7 @@ export async function fetchAlternateQuestions(
             optionText: true,
             // isCorrect deliberately OMITTED — never sent to student before submission
           },
-          orderBy: { id: 'asc' },
+          orderBy: { id: 'asc' }, // stable shuffle input (authored order)
         },
       },
     })
@@ -105,5 +106,9 @@ export async function fetchAlternateQuestions(
     questions = await buildQuery([])
   }
 
-  return questions
+  // Authored banks list the correct option first — shuffle at serve time.
+  return questions.map((q) => ({
+    ...q,
+    options: seededShuffle(q.options, `${studentId}:${q.id}`),
+  }))
 }

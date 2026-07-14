@@ -1,6 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  buildDrillReviewBody,
+  type ConfidenceValue,
+  type DrillReviewResponse,
+} from '@/lib/assessment/wire'
 import { ConfidenceSelector } from '@/components/student/assessment/ConfidenceSelector'
 
 interface DrillOption {
@@ -27,27 +32,33 @@ interface DrillCardProps {
 
 export function DrillCard({ item, onComplete }: DrillCardProps) {
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null)
-  const [confidence, setConfidence] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<{ correct: boolean; message: string } | null>(null)
+  const [confidence, setConfidence] = useState<ConfidenceValue | null>(null)
+  const [feedback, setFeedback] = useState<{
+    correct: boolean
+    message: string
+    correctOptionText?: string | null
+    explanation?: string | null
+  } | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit() {
-    if (!selectedOptionId || !confidence) return
+    if (!selectedOptionId || confidence === null) return
     setSubmitting(true)
     try {
       const res = await fetch(`/api/drill/${item.benchmarkId}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          questionId: item.questionId,
-          selectedOptionId,
-          confidenceRating: confidence,
-        }),
+        body: JSON.stringify(
+          buildDrillReviewBody({ questionId: item.questionId, selectedOptionId, confidence })
+        ),
       })
-      const data = await res.json()
+      if (!res.ok) throw new Error('Submission failed')
+      const data: DrillReviewResponse = await res.json()
       setFeedback({
-        correct: data.correct,
-        message: data.correct ? 'Correct! Well done.' : 'Not quite — keep reviewing this one.',
+        correct: data.isCorrect,
+        message: data.isCorrect ? 'Correct! Well done.' : 'Not quite — keep reviewing this one.',
+        correctOptionText: data.isCorrect ? null : data.correctOptionText,
+        explanation: data.selectedFeedback,
       })
     } catch {
       setFeedback({ correct: false, message: 'Submission failed. Please try again.' })
@@ -105,7 +116,7 @@ export function DrillCard({ item, onComplete }: DrillCardProps) {
 
           <button
             onClick={handleSubmit}
-            disabled={!selectedOptionId || !confidence || submitting}
+            disabled={!selectedOptionId || confidence === null || submitting}
             className="w-full rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0 disabled:active:border-b-4"
           >
             Submit
@@ -125,6 +136,14 @@ export function DrillCard({ item, onComplete }: DrillCardProps) {
             {feedback.correct ? '✓ ' : ''}
             {feedback.message}
           </p>
+          {feedback.correctOptionText && (
+            <p className="mt-2 text-base">
+              The answer was: <strong>{feedback.correctOptionText}</strong>
+            </p>
+          )}
+          {feedback.explanation && (
+            <p className="mt-1.5 text-sm leading-relaxed">{feedback.explanation}</p>
+          )}
           <button
             onClick={onComplete}
             className="mt-3 rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-4 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"

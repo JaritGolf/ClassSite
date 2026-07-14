@@ -1,15 +1,11 @@
 'use client'
 
-interface ConfidenceSelectorProps {
-  value: string | null
-  onChange: (value: string) => void
-}
+import { CONFIDENCE_LEVELS, type ConfidenceValue } from '@/lib/assessment/wire'
 
-const OPTIONS = [
-  { value: 'NOT_SURE', label: 'Not sure', emoji: '🤔' },
-  { value: 'PRETTY_SURE', label: 'Pretty sure', emoji: '🙂' },
-  { value: 'VERY_SURE', label: 'Very sure', emoji: '😎' },
-]
+interface ConfidenceSelectorProps {
+  value: ConfidenceValue | null
+  onChange: (value: ConfidenceValue) => void
+}
 
 export function ConfidenceSelector({ value, onChange }: ConfidenceSelectorProps) {
   return (
@@ -18,7 +14,7 @@ export function ConfidenceSelector({ value, onChange }: ConfidenceSelectorProps)
         How confident are you in your answer?
       </legend>
       <div className="flex gap-2.5">
-        {OPTIONS.map((opt) => (
+        {CONFIDENCE_LEVELS.map((opt) => (
           <button
             key={opt.value}
             type="button"

@@ -48,6 +48,9 @@ interface AnswerResponse {
     | 'REMEDIATION_ESCALATED'
     | 'SESSION_COMPLETE'
   remediationAssigned?: boolean
+  /** Post-answer reveal — populated by the answer endpoint after grading. */
+  correctOptionText?: string | null
+  selectedFeedback?: string | null
 }
 
 interface PracticeArenaProps {
@@ -69,6 +72,8 @@ type Phase =
       nextAction: AnswerResponse['nextAction']
       remediationAssigned: boolean
       wasNearTransfer: boolean
+      correctOptionText: string | null
+      selectedFeedback: string | null
     }
   | {
       kind: 'worked-example'
@@ -162,6 +167,8 @@ export function PracticeArena({ assessmentId, onFinish, itemTarget = 5 }: Practi
         nextAction: data.nextAction,
         remediationAssigned: Boolean(data.remediationAssigned),
         wasNearTransfer,
+        correctOptionText: data.correctOptionText ?? null,
+        selectedFeedback: data.selectedFeedback ?? null,
       })
     } catch (e) {
       setPhase({ kind: 'error', message: e instanceof Error ? e.message : 'Something went wrong.' })
@@ -377,6 +384,26 @@ export function PracticeArena({ assessmentId, onFinish, itemTarget = 5 }: Practi
             ? '✗ Not quite. A Training Mission was added to your dashboard to rebuild this skill — keep going for now.'
             : '✗ Not quite — keep going, the next one is a fresh start.'}
         </p>
+        {(phase.selectedFeedback || (!phase.isCorrect && phase.correctOptionText)) && (
+          <div
+            className={`rounded-2xl border-2 p-4 animate-pop-in ${
+              phase.isCorrect
+                ? 'border-green-200 bg-green-50 text-green-900'
+                : 'border-amber-200 bg-amber-50 text-amber-900'
+            }`}
+          >
+            {!phase.isCorrect && phase.correctOptionText && (
+              <p className="text-base">
+                The answer was: <strong>{phase.correctOptionText}</strong>
+              </p>
+            )}
+            {phase.selectedFeedback && (
+              <p className={`text-sm leading-relaxed ${!phase.isCorrect && phase.correctOptionText ? 'mt-1.5' : ''}`}>
+                {phase.selectedFeedback}
+              </p>
+            )}
+          </div>
+        )}
         <button
           type="button"
           onClick={() => handleContinue(phase)}

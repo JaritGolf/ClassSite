@@ -31,7 +31,7 @@ export default async function MissionPage({ params }: PageProps) {
           },
           approvalStatus: 'APPROVED',
         },
-        select: { id: true, assessmentType: true },
+        select: { id: true, assessmentType: true, title: true },
       },
     },
   })
@@ -73,14 +73,55 @@ export default async function MissionPage({ params }: PageProps) {
     student
       ? prisma.studentProgress.findUnique({
           where: { studentId_benchmarkId: { studentId: student.id, benchmarkId: benchmark.id } },
-          select: { currentStepId: true },
+          select: { currentStepId: true, status: true },
         })
       : Promise.resolve(null),
   ])
 
+  // DB-derived resume: a student who already passed the Readiness Check (or
+  // mastered the benchmark) must not be dumped back into Guided Training when
+  // localStorage is empty (new device / cleared storage).
+  let derivedResumeStep: 'mastery-challenge' | null = null
+  if (student) {
+    if (progress?.status === 'MASTERED') {
+      derivedResumeStep = 'mastery-challenge'
+    } else {
+      const passedReadiness = await prisma.assessmentAttempt.findFirst({
+        where: {
+          studentId: student.id,
+          passed: true,
+          voided: false,
+          assessment: { benchmarkId: benchmark.id, assessmentType: 'READINESS_CHECK' },
+        },
+        select: { id: true },
+      })
+      if (passedReadiness) derivedResumeStep = 'mastery-challenge'
+    }
+  }
+
   const lesson = benchmark.lessons[0]
   const idForType = (t: string) =>
     benchmark.assessments.find((a) => a.assessmentType === t)?.id ?? null
+
+  // Mastery form rotation: forms A/B/… are served round-robin by the number of
+  // submitted mastery attempts, so a retry gets different questions instead of
+  // the identical 5 (memorize-by-elimination defense). Off-ramp counting is by
+  // benchmark + type, so attempts aggregate correctly across forms.
+  const masteryForms = benchmark.assessments
+    .filter((a) => a.assessmentType === 'MASTERY_CHALLENGE')
+    .sort((a, b) => a.title.localeCompare(b.title))
+  let masteryAssessmentId: string | null = masteryForms[0]?.id ?? null
+  if (student && masteryForms.length > 1) {
+    const submittedMasteryAttempts = await prisma.assessmentAttempt.count({
+      where: {
+        studentId: student.id,
+        voided: false,
+        submittedAt: { not: null },
+        assessment: { benchmarkId: benchmark.id, assessmentType: 'MASTERY_CHALLENGE' },
+      },
+    })
+    masteryAssessmentId = masteryForms[submittedMasteryAttempts % masteryForms.length].id
+  }
 
   const missionData = {
     benchmarkCode: benchmark.code,
@@ -90,12 +131,13 @@ export default async function MissionPage({ params }: PageProps) {
     studentFriendlyTarget: lesson?.studentFriendlyTarget ?? benchmark.title,
     preCheckAssessmentId: idForType('PRE_CHECK'),
     readinessAssessmentId: idForType('READINESS_CHECK'),
-    assessmentId: idForType('MASTERY_CHALLENGE'),
+    assessmentId: masteryAssessmentId,
     practiceAssessmentId: idForType('PRACTICE'),
     vocabCheckAssessmentId: idForType('VOCAB_CHECK'),
     lessonSteps: lesson?.steps ?? [],
     glossaryTerms,
     resumeStepId: progress?.currentStepId ?? null,
+    derivedResumeStep,
     /** Scopes client-side resume state to this student on shared devices. */
     progressKey: session.user.userId,
     terms: termRows.map((t) => {

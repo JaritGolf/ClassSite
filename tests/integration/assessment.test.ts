@@ -19,6 +19,7 @@ import {
   AssessmentError,
 } from '@/lib/assessment'
 import type { SubmitInput } from '@/lib/assessment'
+import { passReadinessCheck } from '../helpers/readiness'
 
 const prisma = new PrismaClient()
 
@@ -117,6 +118,9 @@ beforeAll(async () => {
     create: { userId: testUser.id },
   })
   studentId = testStudent.id
+
+  // Satisfy the server-side readiness→mastery gate for the seeded benchmark.
+  await passReadinessCheck(prisma, studentId, benchmark!.id)
 })
 
 afterAll(async () => {
@@ -141,6 +145,10 @@ afterAll(async () => {
   await prisma.confidenceCalibrationSnapshot.deleteMany({
     where: { student: { user: { cleverId: 'test-phase3-student-001' } } },
   })
+  // The passReadinessCheck helper attempt lives on the SEEDED readiness
+  // assessment — sweep all of this student's remaining attempts before
+  // deleting the student.
+  await prisma.assessmentAttempt.deleteMany({ where: { studentId } })
   // Remove the dedicated test student + user created by this suite
   await prisma.student.deleteMany({
     where: { user: { cleverId: 'test-phase3-student-001' } },
@@ -486,5 +494,86 @@ describe('gradeAndSubmit — edge cases (Audit 3 item 7)', () => {
     // Cleanup
     await prisma.student.delete({ where: { id: otherStudent.id } })
     await prisma.user.delete({ where: { id: otherUser.id } })
+  })
+})
+
+// ── Server-side readiness→mastery gate ───────────────────────────────────────
+
+describe('startAttempt — readiness gate on Mastery Challenges', () => {
+  it('blocks a student who has not passed the Readiness Check (READINESS_REQUIRED)', async () => {
+    // Fresh student with no readiness pass — deep-linking the mastery URL.
+    const gateUser = await prisma.user.upsert({
+      where: { cleverId: 'test-phase3-gate-student' },
+      update: {},
+      create: {
+        cleverId: 'test-phase3-gate-student',
+        firstName: 'Gate',
+        lastName: 'TestStudent',
+        role: 'STUDENT',
+        status: 'ACTIVE',
+      },
+    })
+    const gateStudent = await prisma.student.upsert({
+      where: { userId: gateUser.id },
+      update: {},
+      create: { userId: gateUser.id },
+    })
+
+    await expect(startAttempt(masteryAssessmentId, gateStudent.id)).rejects.toMatchObject({
+      code: 'READINESS_REQUIRED',
+    })
+
+    // No attempt row may exist after the refusal.
+    const attempts = await prisma.assessmentAttempt.count({
+      where: { studentId: gateStudent.id },
+    })
+    expect(attempts).toBe(0)
+
+    await prisma.student.delete({ where: { id: gateStudent.id } })
+    await prisma.user.delete({ where: { id: gateUser.id } })
+  })
+
+  it('allows the student once a passed Readiness Check exists (suite beforeAll)', async () => {
+    // The suite's beforeAll called passReadinessCheck for studentId.
+    const result = await startAttempt(masteryAssessmentId, studentId)
+    expect(result.attemptId).toBeTruthy()
+    await prisma.assessmentAttempt.delete({ where: { id: result.attemptId } })
+  })
+
+  it('exempts mastery challenges on benchmarks with no Readiness Check configured', async () => {
+    // Unit 2 benchmarks have no seeded assessments (content is NEEDS_REVIEW).
+    const bareBenchmark = await prisma.benchmark.findUnique({
+      where: { code: 'SS.7.CG.1.7' },
+      select: { id: true },
+    })
+    expect(bareBenchmark).not.toBeNull()
+    const readinessCount = await prisma.assessment.count({
+      where: { benchmarkId: bareBenchmark!.id, assessmentType: 'READINESS_CHECK' },
+    })
+    expect(readinessCount).toBe(0)
+
+    const adHoc = await prisma.assessment.create({
+      data: {
+        benchmarkId: bareBenchmark!.id,
+        title: 'Test ad-hoc Mastery (gate exemption)',
+        assessmentType: 'MASTERY_CHALLENGE',
+        masteryThreshold: 0.8,
+        approvalStatus: 'APPROVED',
+        questions: {
+          create: questions.slice(0, 1).map((q) => ({
+            questionId: q.questionId,
+            sequenceOrder: 1,
+            points: 1.0,
+          })),
+        },
+      },
+    })
+
+    const result = await startAttempt(adHoc.id, studentId)
+    expect(result.attemptId).toBeTruthy()
+
+    await prisma.assessmentAttempt.deleteMany({ where: { assessmentId: adHoc.id } })
+    await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: adHoc.id } })
+    await prisma.assessment.delete({ where: { id: adHoc.id } })
   })
 })

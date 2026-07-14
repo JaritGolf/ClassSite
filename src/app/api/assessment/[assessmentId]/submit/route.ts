@@ -20,6 +20,8 @@ import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { gradeAndSubmit, SubmitSchema, AssessmentError } from '@/lib/assessment'
 import { updateProgressAfterAttempt } from '@/lib/mastery'
+import { recordActivity } from '@/lib/streak'
+import { evaluateAndAwardBadges } from '@/lib/badges'
 
 interface RouteParams {
   params: { assessmentId: string }
@@ -76,6 +78,17 @@ export async function POST(req: NextRequest, { params: _params }: RouteParams) {
       )
     }
 
+    // Streak credit for real academic work (not just dashboard visits), then
+    // badge evaluation (streak badges may depend on the updated streak).
+    // Non-fatal; recordActivity is idempotent for same-day repeats and
+    // evaluateAndAwardBadges upserts on (studentId, badgeId).
+    try {
+      await recordActivity(student.id, new Date())
+      await evaluateAndAwardBadges(student.id)
+    } catch (hookErr) {
+      console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
+    }
+
     return NextResponse.json(result)
   } catch (err) {
     if (err instanceof AssessmentError) {
@@ -85,6 +98,7 @@ export async function POST(req: NextRequest, { params: _params }: RouteParams) {
         ALREADY_SUBMITTED: 409,
         CONFIDENCE_REQUIRED: 422,
         INVALID_CONTENT: 422,
+        READINESS_REQUIRED: 409,
       } as const
       return NextResponse.json(
         { error: err.message, code: err.code },

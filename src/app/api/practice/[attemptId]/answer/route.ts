@@ -30,6 +30,8 @@ import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { submitPracticeAnswer, AdaptiveError } from '@/lib/adaptive-difficulty'
+import { recordActivity } from '@/lib/streak'
+import { evaluateAndAwardBadges } from '@/lib/badges'
 
 interface RouteParams {
   params: { attemptId: string }
@@ -87,6 +89,15 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       parsed.data.confidence,
       parsed.data.timeSeconds
     )
+
+    // Streak credit + badge evaluation — non-fatal, both idempotent.
+    try {
+      await recordActivity(student.id, new Date())
+      await evaluateAndAwardBadges(student.id)
+    } catch (hookErr) {
+      console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
+    }
+
     return NextResponse.json(result)
   } catch (err) {
     if (err instanceof AdaptiveError) {

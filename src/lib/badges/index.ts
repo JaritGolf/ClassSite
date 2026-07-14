@@ -1,0 +1,1 @@
+export { evaluateAndAwardBadges } from './award'

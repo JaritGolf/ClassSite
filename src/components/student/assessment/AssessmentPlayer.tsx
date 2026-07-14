@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { buildAssessmentSubmitBody, type ConfidenceValue } from '@/lib/assessment/wire'
 import { ConfidenceSelector } from './ConfidenceSelector'
 import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
 import { Mascot } from '@/components/ui/Mascot'
@@ -59,6 +60,8 @@ interface AssessmentPlayerProps {
     passed: boolean
     score: number
     reviewTopics?: string[] | null
+    /** True when the assessment had no questions and was skipped, not taken. */
+    skipped?: boolean
   }) => void
 }
 
@@ -91,7 +94,7 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   const [meta, setMeta] = useState<AssessmentMeta | null>(null)
   const [attemptId, setAttemptId] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, { optionId: string; confidence: string | null }>>({})
+  const [answers, setAnswers] = useState<Record<string, { optionId: string; confidence: ConfidenceValue | null }>>({})
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{
     passed: boolean
@@ -111,7 +114,14 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
         setMeta(data)
 
         const startRes = await fetch(`/api/assessment/${assessmentId}/start`, { method: 'POST' })
-        if (!startRes.ok) throw new Error('Failed to start attempt')
+        if (!startRes.ok) {
+          const body = await startRes.json().catch(() => null)
+          throw new Error(
+            body?.code === 'READINESS_REQUIRED'
+              ? 'Pass the Training Check first — it unlocks this Mastery Challenge.'
+              : 'Failed to start attempt'
+          )
+        }
         const { attemptId: id } = await startRes.json()
         setAttemptId(id)
       } catch (e) {
@@ -129,6 +139,34 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
 
   const needsConfidence = CONFIDENCE_REQUIRED.has(meta.assessmentType)
   const questions = meta.questions
+
+  // Content-authoring gap guard: an assessment with zero questions must not
+  // crash the player or softlock a gated step — offer a way through instead.
+  if (questions.length === 0 && !submitted) {
+    return (
+      <div className="space-y-4 rounded-2xl border-2 border-amber-200 bg-amber-50 p-5 text-center">
+        <Mascot pose="thinking" className="mx-auto h-20 w-20" />
+        <p className="text-base font-semibold text-amber-900">
+          This check has no questions yet — nothing to answer here.
+        </p>
+        {onComplete ? (
+          <button
+            onClick={() => onComplete({ passed: false, score: 0, skipped: true })}
+            className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
+          >
+            Continue →
+          </button>
+        ) : (
+          <a
+            href="/student/map"
+            className="inline-block rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
+          >
+            Back to the Mission Map
+          </a>
+        )}
+      </div>
+    )
+  }
 
   if (submitted && result) {
     return (
@@ -193,22 +231,18 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   const currentQ = questions[currentIndex]
   const currentAnswer = answers[currentQ.questionId]
   const isLast = currentIndex === questions.length - 1
-  const canAdvance = !!currentAnswer?.optionId && (!needsConfidence || !!currentAnswer?.confidence)
+  const canAdvance =
+    !!currentAnswer?.optionId && (!needsConfidence || currentAnswer?.confidence !== null)
   const letters = ['A', 'B', 'C', 'D', 'E', 'F']
 
   async function handleSubmit() {
     if (!meta || !attemptId) return
     setLoading(true)
     try {
-      const responses = Object.entries(answers).map(([questionId, { optionId, confidence }]) => ({
-        questionId,
-        selectedOptionId: optionId,
-        confidenceRating: confidence,
-      }))
       const res = await fetch(`/api/assessment/${assessmentId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId, responses }),
+        body: JSON.stringify(buildAssessmentSubmitBody(attemptId, answers)),
       })
       const data = await res.json()
       // A non-2xx response is a failed submission — never render the completion

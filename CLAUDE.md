@@ -148,6 +148,83 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**STUDENT-WORKFLOW REPAIR (2026-07-14) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN
+(1124/1124, 121 suites) + full in-browser verification.** Owner asked for an antagonistic
+review of the student flow ("every correct answer is A, pre-check = vocab check"). The review
+found — and this session FIXED — three critical defects plus the integrity/quality tier:
+(1) **Confidence wire-contract bug (critical):** `AssessmentPlayer`/`DrillCard` sent
+`confidenceRating:'NOT_SURE'` strings while servers demand `confidence: 0|1|2` — zod
+silently stripped the key, so **every Mastery/Republic/Final-Trial submit 422'd and every
+drill answer 400'd** (the mastery + SM-2 loops were dead in the UI; the third wire-drift bug
+after questionId/position). Fix: new client-safe **`src/lib/assessment/wire.ts`** — canonical
+`CONFIDENCE_LEVELS` (0=NOT_SURE,1=PRETTY_SURE,2=VERY_SURE, matches sm2 computeQuality),
+payload builders both clients now use, `DrillReviewSchema`/`DrillReviewResponse` shared by
+route + client. Durable guard: `tests/unit/assessment/wire-contract.test.ts` parses the
+builders' EXACT output through the server schemas and asserts confidence SURVIVES parsing
+(+ regression cases for the old bug). Also fixed in passing: DrillCard read `data.correct`
+but route returns `isCorrect` (feedback always said "Not quite"), a falsy-zero
+`!confidence` disable (picking "Not sure"=0 bricked Submit — caught in-browser), and
+DrillCard state leaking across items (now keyed per question).
+(2) **Correct answer always "A" (critical):** 100% of 246 authored MCQs list the correct
+option first; options served `orderBy id` (=authored order); nothing shuffled. Fix: new pure
+**`src/lib/shuffle.ts`** (`seededShuffle` — FNV-1a+mulberry32+Fisher-Yates, deterministic per
+seed so refreshes don't reshuffle) wired into ALL serving paths: question-fetcher (seed
+`studentId:questionId` — covers all fixed forms + Republic Challenge), drill (+ seeded
+day-stable alternate pick that now EXCLUDES mastery-form questions), adaptive next-item
+(seed `attemptId:questionId`; added missing orderBy on worked-example fetch), remediation
+alternates, and lesson CheckQuestion (client mount-shuffle; ungraded). Grading is by
+optionId so shuffle is grading-safe; keys still never leak.
+(3) **Overlapping assessment forms (critical):** `seed/assessments.ts` sliced the front of
+one externalKey-ordered pool for every type → PRE_CHECK ≡ VOCAB_CHECK, PRACTICE ≡
+READINESS, UNIT_REVIEW ⊂ MASTERY. Fix: disjoint allocation via a shared `used` set
+(mastery first, then unit-review/vocab/pre-check/readiness/practice); VOCAB_CHECK now picks
+genuinely `category:'vocabulary'` items via new `categoryByExternalKey()` in
+`seed/questions/registry.ts` (authoring category read from the banks at seed time — still
+not persisted); READINESS prefers level-2+ (mirrors mastery difficulty). **Mastery form
+rotation (owner choice):** 2 rotating 5-item level-2+ forms per 30-question benchmark
+("— Form A/B" rows; formula scales to 3 when banks grow; legacy row adopted as Form A so
+attempt history survives), served round-robin by submitted-attempt count in the mission
+page; off-ramp counts by benchmark+type so the 3-strike rule aggregates across forms.
+Seeder now RECONCILES existing rows (rewrites AssessmentQuestion sets in a txn, assessment
+ids preserved) — `npm run db:seed` fixes live DBs, idempotent (proven by test).
+Driver: `tests/integration/assessment-allocation.test.ts` (37 tests: pairwise disjoint,
+pre-check∩vocab=∅, forms level-2+, idempotent re-seed).
+(4) **Server-side readiness→mastery gate:** `startAttempt` now refuses MASTERY_CHALLENGE
+(409 `READINESS_REQUIRED`) unless the student has a passed READINESS_CHECK for the
+benchmark (benchmarks with no readiness check are exempt); previously the gate was
+client-state only and the mastery id ships in page props. Friendly player message; new
+`tests/helpers/readiness.ts` `passReadinessCheck` swept into the 4 suites that start
+mastery attempts directly. Verified live: deep-link → 409.
+(5) **Learning-quality tier:** Practice Arena + Drill now return/render post-answer
+`correctOptionText` + the authored `selectedFeedback` explanation (post-submission,
+non-secure surfaces — rule #2 intact); PRE_CHECK now returns `reviewTopics` and MissionFlow
+shows a "Scouting report: here's what this mission will teach you" topic-chip recap (the
+pre-check result was previously thrown away); streak `recordActivity` now fires on
+assessment submit + drill review + practice answer (was dashboard-visits only); empty
+assessments render a skip-through guard instead of crashing/softlocking the Word Builder.
+(6) **Badge engine (was inert — badges were NEVER awarded at runtime):** new
+`src/lib/badges/award.ts` `evaluateAndAwardBadges` evaluates all `criteriaJson` against DB
+truth (benchmark_mastered/unit_complete/reporting_category_mastered/streak_days/
+drill_complete/source_decoder_level/strategy_mission/strategy_track_complete;
+tag-scoped + reading-track counters have no data source → never met, forward-compatible),
+idempotent upsert on (studentId,badgeId), retroactive, hooked non-fatally into the same 3
+routes. Driver: `tests/integration/badges.test.ts`.
+(7) **Cross-device resume from DB truth:** mission page derives `derivedResumeStep`
+(readiness passed / MASTERED → `mastery-challenge`) and MissionFlow prefers it when
+localStorage is empty — students no longer get dumped back into Guided Training on a new
+device. Verified live (cleared storage → landed on Mastery step).
+**Verification:** `tsc` 0 errors; jest **1124/1124 (121 suites)** — run WITHOUT the dev
+server up (concurrent dev server + jest = the documented Postgres connection contention →
+nondeterministic failures); browser walk as demo student: drill submit 200 + truthful
+✓/✗ + explanation + SM-2 interval 1d→6d, correct answers landing on B/C/D across items,
+Mastery Form B served → submit **200** → Mission Complete 100% + Founder card + calibration
+card, deep-link gate 409, badge/streak hooks clean.
+**Deferred (backlog):** pre-check adaptivity (skip-ahead), mission step-order pedagogy,
+readiness form rotation, per-attempt sampling, server-recorded training completion,
+reading-track badge counters.
+
+---
+
 **VISUAL REDESIGN — BRIGHT LEARNING-GAME (2026-07-11) — Tier 1 `tsc` GREEN + Tier 2 jest
 GREEN (1063/1063, 117 suites).** Owner asked for the visual layer to "do everything possible
 to improve student outcomes"; chose (via AskUserQuestion) **bright learning-game** art
@@ -500,6 +577,30 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-07-14 (Student-workflow repair — antagonistic review + fixes):** Owner
+reported "every correct answer is A" and "pre-check questions = vocab questions" and asked
+for an antagonistic review of the whole student flow. Review confirmed both, plus the real
+headline: the confidence wire-contract mismatch meant NO student could ever submit a
+Mastery Challenge (422) or drill answer (400) through the UI — masked because seeds call
+the domain layer directly (same masking as the July-10 questionId bug). Owner chose (via
+AskUserQuestion): fix everything incl. badge engine + resume, build mastery form rotation
+now, pre-check gets a results recap. Built all of it — see Current Build Phase for the full
+inventory (wire.ts contract + drift-proof tests, seeded option shuffle on 5 serving paths,
+disjoint form allocation + reconciling seeder + Form A/B rotation, server readiness gate,
+practice/drill explanations, pre-check recap, streak-on-work, empty-assessment guard,
+badge award engine, DB-derived resume). **Verification:** `tsc` 0 errors; jest 1124/1124
+(121 suites — +61 tests); re-seeded (reconciler rewrote live assessment forms in place);
+full browser walk as Alex (drill 200/truthful feedback/SM-2 advance, mastery Form B submit
+200 → 100% + calibration card, deep-link 409, resume-to-mastery with cleared storage).
+**In-browser catches during verification:** picking "Not sure" (now numeric 0) bricked the
+drill Submit via a falsy-zero `!confidence` check (fixed → `=== null`); DrillCard state
+leaked across queue items (fixed → keyed per question). **Env notes:** run jest with the
+dev server STOPPED (concurrent = nondeterministic connection-contention failures — observed
+live, 5 random suites); Browser-pane: `coordinate` clicks are in the REPORTED
+screenshot-pixel space while `ref` clicks use viewport space, refs go stale after
+layout-shifting interactions, and after `navigate` take a screenshot first or clicks
+silently no-op. Commit: `fix(phase-3/5/6/8): student-workflow repair`.
 
 **Session of 2026-07-11 (Visual redesign — bright learning-game):** Owner: "lets work on the
 visual aspect of the site... visually it is doing everything possible to improve student

@@ -95,7 +95,13 @@ export default function DailyDrillPage() {
           </a>
         </div>
       ) : (
-        <DrillCard item={items[currentIndex]} onComplete={handleComplete} />
+        // Keyed per question so answer/confidence/feedback state can't leak
+        // from one drill item into the next (React reuses the instance otherwise).
+        <DrillCard
+          key={items[currentIndex].questionId}
+          item={items[currentIndex]}
+          onComplete={handleComplete}
+        />
       )}
     </div>
   )

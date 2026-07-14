@@ -45,6 +45,8 @@ interface MissionData {
   glossaryTerms: GlossaryTerm[]
   /** Server-side resume point (StudentProgress.currentStepId), if any. */
   resumeStepId: string | null
+  /** DB-derived resume: readiness already passed / benchmark mastered. */
+  derivedResumeStep: 'mastery-challenge' | null
   /** Scopes device-local resume state to this student (shared Chromebooks). */
   progressKey: string
 }
@@ -68,6 +70,8 @@ export function MissionFlow({ mission }: MissionFlowProps) {
   const [currentStep, setCurrentStep] = useState<Step>('pre-check')
   const [completedSteps, setCompletedSteps] = useState<Step[]>([])
   const [preCheckDone, setPreCheckDone] = useState(false)
+  // Topic labels of pre-check misses → "here's what this mission will teach you".
+  const [preCheckTopics, setPreCheckTopics] = useState<string[] | null>(null)
   const [readinessResult, setReadinessResult] = useState<{
     passed: boolean
     reviewTopics?: string[] | null
@@ -101,6 +105,15 @@ export function MissionFlow({ mission }: MissionFlowProps) {
       }
     } catch {
       /* localStorage unavailable — fall through */
+    }
+    // DB truth outranks the training-step pointer: a student who already
+    // passed the Readiness Check (or mastered) resumes at the Mastery
+    // Challenge on a fresh device instead of being dumped back into training.
+    if (mission.derivedResumeStep) {
+      const idx = STEP_ORDER.indexOf(mission.derivedResumeStep)
+      setCurrentStep(mission.derivedResumeStep)
+      setCompletedSteps(STEP_ORDER.slice(0, idx) as Step[])
+      return
     }
     if (mission.resumeStepId) {
       const idx = trainingSteps.findIndex((s) => s.id === mission.resumeStepId)
@@ -175,15 +188,45 @@ export function MissionFlow({ mission }: MissionFlowProps) {
             </StepHeader>
             <AssessmentPlayer
               assessmentId={mission.preCheckAssessmentId}
-              onComplete={() => setPreCheckDone(true)}
+              onComplete={(r) => {
+                setPreCheckDone(true)
+                setPreCheckTopics(r.reviewTopics ?? null)
+              }}
             />
             {preCheckDone && (
-              <button
-                onClick={() => completeStep('pre-check')}
-                className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
-              >
-                Continue to Briefing →
-              </button>
+              <div className="space-y-3 rounded-2xl border-2 border-indigo-200 bg-indigo-50 p-4 animate-pop-in">
+                <div className="flex items-start gap-3">
+                  <Mascot pose="pointing" className="h-14 w-14 flex-shrink-0" />
+                  {preCheckTopics && preCheckTopics.length > 0 ? (
+                    <div className="pt-1">
+                      <p className="text-base font-semibold text-indigo-950">
+                        Scouting report: here&apos;s what this mission will teach you.
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {preCheckTopics.map((topic) => (
+                          <span
+                            key={topic}
+                            className="rounded-full border border-indigo-300 bg-white px-2.5 py-0.5 text-sm font-semibold text-indigo-900"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="pt-1 text-base font-semibold text-indigo-950">
+                      Scouting report: you already know some of this ground — the training will
+                      sharpen it and take you further.
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => completeStep('pre-check')}
+                  className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
+                >
+                  Continue to Briefing →
+                </button>
+              </div>
             )}
           </div>
         ) : (

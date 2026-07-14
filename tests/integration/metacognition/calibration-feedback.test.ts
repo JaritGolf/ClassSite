@@ -12,6 +12,7 @@
 import { PrismaClient } from '@prisma/client'
 import { startAttempt, gradeAndSubmit } from '@/lib/assessment'
 import type { SubmitInput } from '@/lib/assessment'
+import { passReadinessCheck } from '../../helpers/readiness'
 
 const prisma = new PrismaClient()
 
@@ -64,12 +65,18 @@ beforeAll(async () => {
     create: { userId: user.id },
   })
   studentId = student.id
+
+  // Satisfy the server-side readiness→mastery gate for the seeded benchmark.
+  await passReadinessCheck(prisma, studentId, benchmark!.id)
 })
 
 afterAll(async () => {
   await prisma.confidenceCalibrationSnapshot.deleteMany({ where: { studentId } })
   await prisma.attemptResponse.deleteMany({ where: { attempt: { assessmentId } } })
   await prisma.assessmentAttempt.deleteMany({ where: { assessmentId } })
+  // The passReadinessCheck helper attempt lives on the SEEDED readiness
+  // assessment — sweep this student's remaining attempts too.
+  await prisma.assessmentAttempt.deleteMany({ where: { studentId } })
   await prisma.assessmentQuestion.deleteMany({ where: { assessmentId } })
   await prisma.assessment.deleteMany({ where: { id: assessmentId } })
   await prisma.student.deleteMany({ where: { user: { cleverId: CLEVER_ID } } })

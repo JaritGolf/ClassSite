@@ -14,16 +14,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { gradeReviewAnswer, submitReview, ReviewError } from '@/lib/spaced-retrieval'
+import { DrillReviewSchema } from '@/lib/assessment/wire'
+import { recordActivity } from '@/lib/streak'
+import { evaluateAndAwardBadges } from '@/lib/badges'
 import { prisma } from '@/lib/db'
-
-const ReviewSchema = z.object({
-  questionId: z.string().min(1),
-  selectedOptionId: z.string().min(1),
-  confidence: z.union([z.literal(0), z.literal(1), z.literal(2)]),
-})
 
 export async function POST(
   request: NextRequest,
@@ -45,7 +41,7 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const parsed = ReviewSchema.safeParse(body)
+  const parsed = DrillReviewSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Invalid request', details: parsed.error.flatten() },
@@ -69,6 +65,19 @@ export async function POST(
   // Server-side grading — never trust client
   const isCorrect = await gradeReviewAnswer(questionId, selectedOptionId)
 
+  // Post-answer learning support (rule #2 protects keys BEFORE submission;
+  // revealing the correct answer after answering is standard retrieval practice).
+  const [correctOption, selectedOption] = await Promise.all([
+    prisma.questionOption.findFirst({
+      where: { questionId, isCorrect: true },
+      select: { optionText: true },
+    }),
+    prisma.questionOption.findUnique({
+      where: { id: selectedOptionId },
+      select: { feedback: true },
+    }),
+  ])
+
   try {
     const result = await submitReview(
       student.id,
@@ -78,12 +87,22 @@ export async function POST(
       confidence
     )
 
+    // Streak credit + badge evaluation — non-fatal, both idempotent.
+    try {
+      await recordActivity(student.id, new Date())
+      await evaluateAndAwardBadges(student.id)
+    } catch (hookErr) {
+      console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
+    }
+
     return NextResponse.json({
       isCorrect,
       quality: result.quality,
       newIntervalDays: result.newIntervalDays,
       dueAt: result.dueAt,
       offRampRecovered: result.offRampRecovered,
+      correctOptionText: correctOption?.optionText ?? null,
+      selectedFeedback: selectedOption?.feedback ?? null,
     })
   } catch (err) {
     if (err instanceof ReviewError && err.code === 'NO_STATE') {

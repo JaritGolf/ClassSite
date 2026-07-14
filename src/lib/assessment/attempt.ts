@@ -32,6 +32,7 @@ export class AssessmentError extends Error {
       | 'ALREADY_SUBMITTED'
       | 'CONFIDENCE_REQUIRED'
       | 'INVALID_CONTENT'
+      | 'READINESS_REQUIRED'
   ) {
     super(message)
     this.name = 'AssessmentError'
@@ -104,6 +105,8 @@ const CONFIDENCE_REQUIRED_TYPES = new Set([
  * @param assessmentId - The assessment to attempt
  * @param studentId    - The Student.id (not User.id) of the attempting student
  * @throws AssessmentError NOT_FOUND if assessment does not exist
+ * @throws AssessmentError READINESS_REQUIRED for a Mastery Challenge whose
+ *         benchmark has a Readiness Check the student has not yet passed
  */
 export async function startAttempt(
   assessmentId: string,
@@ -111,7 +114,7 @@ export async function startAttempt(
 ): Promise<StartAttemptResult> {
   const assessment = await prisma.assessment.findUnique({
     where: { id: assessmentId },
-    select: { id: true, assessmentType: true, masteryThreshold: true },
+    select: { id: true, assessmentType: true, masteryThreshold: true, benchmarkId: true },
   })
 
   if (!assessment) {
@@ -119,6 +122,40 @@ export async function startAttempt(
       `Assessment ${assessmentId} not found`,
       'NOT_FOUND'
     )
+  }
+
+  // Server-side readiness gate (spec §10.4 steps 6–7): the readiness→mastery
+  // order must not live only in client state — a student who deep-links the
+  // mastery assessment URL would otherwise skip all learning. Benchmarks with
+  // no readiness check configured are exempt (ad-hoc assessments still work).
+  if (assessment.assessmentType === 'MASTERY_CHALLENGE' && assessment.benchmarkId) {
+    const readiness = await prisma.assessment.findFirst({
+      where: {
+        benchmarkId: assessment.benchmarkId,
+        assessmentType: 'READINESS_CHECK',
+      },
+      select: { id: true },
+    })
+    if (readiness) {
+      const passedReadiness = await prisma.assessmentAttempt.findFirst({
+        where: {
+          studentId,
+          passed: true,
+          voided: false,
+          assessment: {
+            benchmarkId: assessment.benchmarkId,
+            assessmentType: 'READINESS_CHECK',
+          },
+        },
+        select: { id: true },
+      })
+      if (!passedReadiness) {
+        throw new AssessmentError(
+          'Pass the Training Check for this mission before starting the Mastery Challenge',
+          'READINESS_REQUIRED'
+        )
+      }
+    }
   }
 
   // Determine next attempt number
@@ -298,11 +335,18 @@ export async function gradeAndSubmit(
     }))
   }
 
-  // 9b. Readiness review topics — which concepts to revisit, at topic level only
+  // 9b. Review topics — which concepts to revisit, at topic level only
   //     (no per-question correctness, no keys). Missed = wrong OR unanswered.
+  //     READINESS_CHECK (fail): points the student back at the right training.
+  //     PRE_CHECK (any score): powers the "here's what this mission will teach
+  //     you" recap — the pre-check result is otherwise thrown away.
   let reviewTopics: string[] | null = null
 
-  if (assessment.assessmentType === 'READINESS_CHECK' && !passed) {
+  const wantsReviewTopics =
+    (assessment.assessmentType === 'READINESS_CHECK' && !passed) ||
+    assessment.assessmentType === 'PRE_CHECK'
+
+  if (wantsReviewTopics) {
     const answeredCorrectly = new Set(
       grades.filter((g) => g.isCorrect).map((g) => g.questionId)
     )

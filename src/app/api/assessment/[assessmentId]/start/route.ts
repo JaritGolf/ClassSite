@@ -43,6 +43,9 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
     if (err instanceof AssessmentError && err.code === 'NOT_FOUND') {
       return NextResponse.json({ error: err.message }, { status: 404 })
     }
+    if (err instanceof AssessmentError && err.code === 'READINESS_REQUIRED') {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: 409 })
+    }
     console.error('[assessment/start]', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

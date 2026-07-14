@@ -31,6 +31,7 @@ import {
   RemediationError,
 } from '@/lib/remediation'
 import type { SubmitInput } from '@/lib/assessment'
+import { passReadinessCheck } from '../helpers/readiness'
 
 const prisma = new PrismaClient()
 
@@ -253,6 +254,10 @@ beforeAll(async () => {
   })
   teacherId = teacher.id
   teacherUserId = teacherUser.id
+
+  // Satisfy the server-side readiness→mastery gate for both test students.
+  await passReadinessCheck(prisma, studentId, benchmarkId)
+  await passReadinessCheck(prisma, otherStudentId, benchmarkId)
 })
 
 afterAll(async () => {
@@ -293,6 +298,11 @@ afterAll(async () => {
   })
   await prisma.assessmentAttempt.deleteMany({
     where: { assessmentId: masteryAssessmentId },
+  })
+  // The passReadinessCheck helper attempts live on the SEEDED readiness
+  // assessment — sweep the test students' remaining attempts too.
+  await prisma.assessmentAttempt.deleteMany({
+    where: { studentId: { in: testStudentIds } },
   })
 
   // AssessmentQuestion → Assessment

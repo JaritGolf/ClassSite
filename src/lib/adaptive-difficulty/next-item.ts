@@ -14,6 +14,7 @@
  */
 
 import { prisma } from '@/lib/db'
+import { seededShuffle } from '@/lib/shuffle'
 import type { CognitiveComplexity } from '@prisma/client'
 import type { AdaptiveState } from './transitions'
 import { acknowledgeWorkedExample } from './transitions'
@@ -101,6 +102,7 @@ export async function getNextItem(
       state.currentComplexity,
       excludeIds,
       null, // no skill-tag filter — any same-complexity question works
+      attemptId,
       effectiveReadingLevel
     )
     if (!nearTransfer) return { type: 'NO_ITEMS_AVAILABLE' }
@@ -122,7 +124,14 @@ async function getNextRegularQuestion(
   const benchmarkId = await getBenchmarkId(attemptId)
   const seenIds = await getSeenQuestionIds(attemptId)
 
-  const question = await selectQuestion(benchmarkId, complexity, seenIds, skillTag, effectiveReadingLevel)
+  const question = await selectQuestion(
+    benchmarkId,
+    complexity,
+    seenIds,
+    skillTag,
+    attemptId,
+    effectiveReadingLevel
+  )
   if (!question) return { type: 'NO_ITEMS_AVAILABLE' }
   return { type: 'QUESTION', question }
 }
@@ -142,6 +151,7 @@ async function buildWorkedExamplePayload(
       skillTag: true,
       options: {
         select: { id: true, optionText: true, isCorrect: true, feedback: true },
+        orderBy: { id: 'asc' }, // stable shuffle input (authored order)
       },
     },
   })
@@ -156,7 +166,10 @@ async function buildWorkedExamplePayload(
     prompt: question.prompt,
     cognitiveComplexity: question.cognitiveComplexity,
     skillTag: question.skillTag,
-    options: question.options.map((o) => ({ id: o.id, optionText: o.optionText })),
+    options: seededShuffle(
+      question.options.map((o) => ({ id: o.id, optionText: o.optionText })),
+      `${attemptId}:${question.id}`
+    ),
   }
 
   // Pre-fetch a near-transfer question (same complexity, different ID)
@@ -166,7 +179,8 @@ async function buildWorkedExamplePayload(
     benchmarkId,
     state.currentComplexity, // near-transfer is at the (already-bumped-down) complexity
     [...seenIds, workedExampleQuestionId],
-    null
+    null,
+    attemptId
   )
 
   return {
@@ -188,6 +202,7 @@ async function selectQuestion(
   complexity: CognitiveComplexity | null,
   seenIds: string[],
   skillTag: string | null,
+  shuffleSeedPrefix: string,
   effectiveReadingLevel?: number
 ): Promise<SafeQuestion | null> {
   const question = await prisma.question.findFirst({
@@ -210,12 +225,18 @@ async function selectQuestion(
       options: {
         select: { id: true, optionText: true },
         // isCorrect deliberately omitted
-        orderBy: { id: 'asc' },
+        orderBy: { id: 'asc' }, // stable shuffle input (authored order)
       },
     },
   })
 
-  return question as SafeQuestion | null
+  if (!question) return null
+
+  // Authored banks list the correct option first — shuffle at serve time.
+  return {
+    ...question,
+    options: seededShuffle(question.options, `${shuffleSeedPrefix}:${question.id}`),
+  } as SafeQuestion
 }
 
 async function getBenchmarkId(attemptId: string): Promise<string> {

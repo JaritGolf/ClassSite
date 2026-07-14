@@ -15,6 +15,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { parseStepContent, type CheckOption } from '@/lib/lesson-content'
+import { seededShuffle } from '@/lib/shuffle'
 import { buildGlossaryAnnotations, type GlossaryTerm } from '@/lib/reading-load'
 import { StimulusDisplay, renderAnnotatedText } from '@/components/reading-load/StimulusDisplay'
 import { Mascot } from '@/components/ui/Mascot'
@@ -44,6 +45,7 @@ export function LessonStepRenderer({ step, onAttempted, glossaryTerms }: LessonS
   if (parsed.kind === 'interactive-check') {
     return (
       <CheckQuestion
+        key={step.id}
         question={parsed.question}
         options={parsed.options}
         onFirstAttempt={() => onAttempted?.(step.id)}
@@ -281,6 +283,12 @@ export function CheckQuestion({
   options: CheckOption[]
   onFirstAttempt?: () => void
 }) {
+  // Authored check JSON lists the correct option first — shuffle once on mount
+  // so the right answer isn't predictably "A" (ungraded self-check, so a
+  // client-side shuffle is safe; feedback travels with each option object).
+  const [shuffledOptions] = useState<CheckOption[]>(() =>
+    seededShuffle(options, `${Math.random()}`)
+  )
   const [selected, setSelected] = useState<number | null>(null)
   const [confidence, setConfidence] = useState<ConfidenceKey | null>(null)
   const [revealed, setRevealed] = useState(false)
@@ -307,7 +315,7 @@ export function CheckQuestion({
     <div className="space-y-3">
       <p className="text-base font-bold leading-7 text-gray-900">{question}</p>
       <div className="space-y-2.5" role="group" aria-label="Answer choices">
-        {options.map((opt, i) => {
+        {shuffledOptions.map((opt, i) => {
           const isSelected = selected === i
           const showState = revealed && isSelected
           const stateClasses = showState

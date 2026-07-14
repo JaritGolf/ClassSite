@@ -13,12 +13,13 @@
  */
 
 import type { PrismaClient } from '@prisma/client'
-import type { QuestionSeedDef } from './_seeder'
+import type { QuestionCategory, QuestionSeedDef } from './_seeder'
 import {
   UNIT2_QUESTIONS_BY_BENCHMARK,
   UNIT2_COMPLETE_BENCHMARKS,
   seedUnit2Questions,
 } from './unit2'
+import { UNIT1_BACKFILL_BY_BENCHMARK } from './unit1_backfill'
 
 export interface QuestionBank {
   unitId: string
@@ -36,3 +37,24 @@ export const ALL_QUESTION_BANKS: QuestionBank[] = [
     seed: seedUnit2Questions,
   },
 ]
+
+/**
+ * externalKey → §13.2 authoring category, for every authored QuestionSeedDef
+ * (registry banks + the Unit 1 backfill, which predates the registry format).
+ *
+ * The category is deliberately NOT persisted to the DB (see _seeder.ts) — the
+ * assessments seeder uses this map to pick genuinely vocabulary-tagged items
+ * for the Word Builder (VOCAB_CHECK) instead of a complexity heuristic.
+ * Unit 1's original 15/benchmark carry no category and are simply absent.
+ */
+export function categoryByExternalKey(): Map<string, QuestionCategory> {
+  const map = new Map<string, QuestionCategory>()
+  const allDefLists: QuestionSeedDef[][] = [
+    ...ALL_QUESTION_BANKS.flatMap((bank) => Object.values(bank.questionsByBenchmark)),
+    ...Object.values(UNIT1_BACKFILL_BY_BENCHMARK),
+  ]
+  for (const defs of allDefLists) {
+    for (const def of defs) map.set(def.externalKey, def.category)
+  }
+  return map
+}

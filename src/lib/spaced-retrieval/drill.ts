@@ -20,6 +20,7 @@
  */
 
 import { prisma } from '@/lib/db'
+import { seededShuffle } from '@/lib/shuffle'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -82,12 +83,34 @@ export async function getDrillQueue(
   })
   const seenQuestionIds = new Set(seenEvents.map((e) => e.questionId))
 
+  // 2b. Mastery-form question IDs per due benchmark — the drill should serve
+  //     ALTERNATE retrieval items, not re-serve the mastery questions themselves.
+  const masteryQuestions = await prisma.assessmentQuestion.findMany({
+    where: {
+      assessment: {
+        benchmarkId: { in: dueStates.map((s) => s.benchmarkId) },
+        assessmentType: 'MASTERY_CHALLENGE',
+      },
+    },
+    select: { questionId: true, assessment: { select: { benchmarkId: true } } },
+  })
+  const masteryIdsByBenchmark = new Map<string, Set<string>>()
+  for (const mq of masteryQuestions) {
+    const bid = mq.assessment.benchmarkId
+    if (!bid) continue
+    if (!masteryIdsByBenchmark.has(bid)) masteryIdsByBenchmark.set(bid, new Set())
+    masteryIdsByBenchmark.get(bid)!.add(mq.questionId)
+  }
+
   // 3. For each due benchmark, pick one alternate question
   const rawItems: Array<DrillItem | null> = await Promise.all(
     dueStates.map(async (state) => {
       const question = await pickAlternateQuestion(
         state.benchmarkId,
-        seenQuestionIds
+        seenQuestionIds,
+        masteryIdsByBenchmark.get(state.benchmarkId) ?? new Set(),
+        studentId,
+        now
       )
       if (!question) return null
 
@@ -119,14 +142,21 @@ export async function getDrillQueue(
 
 /**
  * Pick one question from a benchmark that the student has not previously
- * reviewed, preferring questions not seen in any spaced review event.
+ * reviewed, preferring questions that are neither in prior spaced-review
+ * events nor on the benchmark's Mastery Challenge forms (alternate retrieval,
+ * not re-serving the mastery items).
  *
- * Falls back to any approved question from the benchmark if all have been seen.
- * Returns null if the benchmark has no approved questions at all.
+ * Falls back progressively (unseen → any approved) so small pools never
+ * empty out. Returns null only if the benchmark has no approved questions.
+ * The pick is seeded per (student, benchmark, day) so a page refresh serves
+ * the same item, but different students/days rotate through the pool.
  */
 async function pickAlternateQuestion(
   benchmarkId: string,
-  seenQuestionIds: Set<string>
+  seenQuestionIds: Set<string>,
+  masteryQuestionIds: Set<string>,
+  studentId: string,
+  now: Date
 ): Promise<{
   id: string
   prompt: string
@@ -146,19 +176,27 @@ async function pickAlternateQuestion(
       options: {
         select: { id: true, optionText: true },
         // isCorrect: DELIBERATELY OMITTED
-        orderBy: { id: 'asc' },
+        orderBy: { id: 'asc' }, // stable shuffle input (authored order)
       },
     },
   })
 
   if (questions.length === 0) return null
 
-  // Prefer unseen questions
+  // Preference ladder: unseen + non-mastery → unseen → all approved
   const unseen = questions.filter((q) => !seenQuestionIds.has(q.id))
-  const pool = unseen.length > 0 ? unseen : questions
+  const unseenAlternates = unseen.filter((q) => !masteryQuestionIds.has(q.id))
+  const pool =
+    unseenAlternates.length > 0 ? unseenAlternates : unseen.length > 0 ? unseen : questions
 
-  // Pick deterministically (first in pool — ordering is stable by id)
-  return pool[0]
+  const daySeed = now.toISOString().slice(0, 10)
+  const picked = seededShuffle(pool, `${studentId}:${benchmarkId}:${daySeed}`)[0]
+
+  return {
+    ...picked,
+    // Authored banks list the correct option first — shuffle at serve time.
+    options: seededShuffle(picked.options, `${studentId}:${picked.id}`),
+  }
 }
 
 /**

@@ -50,6 +50,14 @@ export interface AnswerResult {
   nextAction: NextAction
   newComplexity: CognitiveComplexity
   remediationAssigned: boolean
+  /**
+   * Post-answer learning support (practice is a non-secure surface; revealing
+   * the answer AFTER the response is recorded is standard retrieval practice —
+   * rule #2 protects keys before submission on secure assessments only).
+   */
+  correctOptionText: string | null
+  /** The authored feedback on the option the student picked. */
+  selectedFeedback: string | null
 }
 
 // ── Main function ──────────────────────────────────────────────────────────
@@ -98,7 +106,7 @@ export async function submitPracticeAnswer(
   // 2. Grade server-side: load correct option from DB
   const option = await prisma.questionOption.findUnique({
     where: { id: selectedOptionId },
-    select: { isCorrect: true, questionId: true },
+    select: { isCorrect: true, questionId: true, feedback: true },
   })
 
   if (!option) {
@@ -106,6 +114,15 @@ export async function submitPracticeAnswer(
   }
 
   const isCorrect = option.isCorrect
+  const selectedFeedback = option.feedback ?? null
+
+  // Post-answer reveal: the correct option's text (only needed on a miss, but
+  // cheap to fetch either way and lets the client confirm on a hit too).
+  const correctOption = await prisma.questionOption.findFirst({
+    where: { questionId, isCorrect: true },
+    select: { optionText: true },
+  })
+  const correctOptionText = correctOption?.optionText ?? null
 
   // 3. Write AttemptResponse
   await prisma.attemptResponse.create({
@@ -134,6 +151,8 @@ export async function submitPracticeAnswer(
       nextAction: 'NEXT_QUESTION',
       newComplexity: 'LOW',
       remediationAssigned: false,
+      correctOptionText,
+      selectedFeedback,
     }
   }
 
@@ -187,5 +206,7 @@ export async function submitPracticeAnswer(
     nextAction,
     newComplexity: state.currentComplexity,
     remediationAssigned,
+    correctOptionText,
+    selectedFeedback,
   }
 }

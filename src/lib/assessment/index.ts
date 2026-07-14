@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod'
+import { ConfidenceValueSchema } from './wire'
 
 // ── Zod Request Schemas ───────────────────────────────────────────────────────
 
@@ -26,7 +27,8 @@ export const SubmitSchema = z.object({
         selectedOptionId: z.string().cuid('selectedOptionId must be a valid cuid'),
         // Confidence: 0 = "Not sure", 1 = "Pretty sure", 2 = "Very sure"
         // Required for MASTERY_CHALLENGE — enforced in attempt.ts gradeAndSubmit()
-        confidence: z.union([z.literal(0), z.literal(1), z.literal(2)]).optional(),
+        // Canonical schema lives in ./wire so clients share the exact contract.
+        confidence: ConfidenceValueSchema.optional(),
         timeSeconds: z.number().int().min(0).max(7200).optional(),
         // Note: isCorrect, pointsAwarded, and any other fields are NOT in this schema.
         // Zod strips them automatically — tamper-safe by design.
@@ -47,3 +49,18 @@ export type { SafeQuestion, SafeOption, AssessmentMeta } from './question-fetche
 
 export { gradeResponses, computeScore } from './grader'
 export type { ResponseInput, GradeResult } from './grader'
+
+export {
+  CONFIDENCE_LEVELS,
+  ConfidenceValueSchema,
+  buildAssessmentSubmitBody,
+  buildDrillReviewBody,
+  DrillReviewSchema,
+} from './wire'
+export type {
+  ConfidenceValue,
+  AssessmentSubmitBody,
+  AssessmentSubmitResponseEntry,
+  DrillReviewBody,
+  DrillReviewResponse,
+} from './wire'

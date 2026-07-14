@@ -19,6 +19,7 @@ import {
   submitPracticeAnswer,
   getNextItem,
 } from '@/lib/adaptive-difficulty'
+import { passReadinessCheck } from '../helpers/readiness'
 
 const prisma = new PrismaClient()
 
@@ -125,6 +126,9 @@ beforeAll(async () => {
     create: { userId: user.id },
   })
   studentId = s.id
+
+  // Satisfy the server-side readiness→mastery gate for the seeded benchmark.
+  await passReadinessCheck(prisma, studentId, benchmarkId)
 })
 
 afterAll(async () => {
@@ -142,6 +146,9 @@ afterAll(async () => {
   await prisma.assessmentAttempt.deleteMany({
     where: { assessmentId: { in: assessmentIds } },
   })
+  // The passReadinessCheck helper attempt lives on the SEEDED readiness
+  // assessment — sweep this student's remaining attempts too.
+  await prisma.assessmentAttempt.deleteMany({ where: { studentId } })
   await prisma.assessmentQuestion.deleteMany({
     where: { assessmentId: { in: assessmentIds } },
   })

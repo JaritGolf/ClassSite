@@ -14,6 +14,7 @@
  */
 
 import { prisma } from '@/lib/db'
+import { seededShuffle } from '@/lib/shuffle'
 import {
   getEffectiveReadingLevel,
   getStudentAccommodations,
@@ -91,7 +92,7 @@ export async function fetchAssessmentForStudent(
                   // isCorrect: DELIBERATELY OMITTED
                   // feedback:  DELIBERATELY OMITTED (returned post-submission for practice only)
                 },
-                orderBy: { id: 'asc' }, // stable ordering
+                orderBy: { id: 'asc' }, // stable shuffle input (authored order)
               },
             },
           },
@@ -149,7 +150,13 @@ export async function fetchAssessmentForStudent(
         itemType: aq.question.itemType,
         cognitiveComplexity: aq.question.cognitiveComplexity,
         readingLoadLevel: aq.question.readingLoadLevel,
-        options: aq.question.options,
+        // Authored banks list the correct option first — shuffle at serve time
+        // (seeded: stable across refreshes, different across students).
+        // Grading matches by optionId, so order carries no meaning server-side.
+        options: seededShuffle(
+          aq.question.options,
+          `${studentId ?? 'anon'}:${aq.question.id}`
+        ),
         stimulus,
       }
     })
