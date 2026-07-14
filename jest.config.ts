@@ -22,17 +22,23 @@ const config: Config = {
     // Tier 1 gate). See ADR 0006.
     '^.+\\.tsx?$': ['ts-jest', { tsconfig: { moduleResolution: 'node' } }],
   },
-  // CRITICAL: do NOT let jest-haste-map crawl these directories at bootstrap.
+  // CRITICAL: do NOT let jest-haste-map crawl junk directories at bootstrap.
   // Abandoned agent git worktrees under `.claude/worktrees/*` each carry a full
   // `node_modules.nosync` copy (≈2000 package.json files across several worktrees);
   // crawling them froze jest at startup before any test ran — the long-standing
-  // "jest hangs at bootstrap" issue (Phases 12–14). `.nosync` is the iCloud-sync
-  // duplicate pattern; `node_modules N` are cloud-sync dupes. Ignoring them here
-  // makes a pure unit test run in ~0.3s instead of timing out at 40–70s.
+  // "jest hangs at bootstrap" issue (Phases 12–14). `roots` confines the crawl to
+  // the real source dirs, so root-level cruft (`.claude/`, `.next.nosync/`,
+  // `node_modules 2/`, iCloud dupes) is never visited at all.
+  roots: ['<rootDir>/src', '<rootDir>/tests', '<rootDir>/seed', '<rootDir>/scripts'],
+  // Belt-and-suspenders for anything reached despite `roots`. NOTE: the live
+  // dependency tree is `node_modules -> node_modules.nosync` (symlinked out of
+  // iCloud sync since 2026-07-13 — eviction stalled `next dev` boots for many
+  // minutes), so a broad `\.nosync/` pattern here would match realpath-resolved
+  // modules and break the loader; keep patterns anchored and specific.
   modulePathIgnorePatterns: [
     '<rootDir>/\\.claude/',
     '<rootDir>/\\.next/',
-    '\\.nosync/',
+    '<rootDir>/\\.next\\.nosync/',
     '<rootDir>/node_modules \\d',
   ],
   // Integration tests share a real PostgreSQL database; running suites in
