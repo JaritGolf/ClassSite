@@ -16,3 +16,6 @@ export type { ReviewResult } from './review'
 
 export { getDecayingBenchmarks, getClassDecayRates } from './decay'
 export type { DecayingBenchmark, ClassDecayRate } from './decay'
+
+export { reprimeClass, ReprimeError } from './reprime'
+export type { ReprimeResult } from './reprime'

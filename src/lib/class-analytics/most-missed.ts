@@ -21,10 +21,12 @@ export async function getMostMissedQuestions(
   const roster = await getTeacherRoster(teacherUserId)
   if (roster.allStudentIds.length === 0) return []
 
-  // Pull attempt responses for students in the roster
+  // Pull attempt responses for students in the roster.
+  // Exclude voided attempts — a teacher voids a bad attempt precisely so it
+  // stops counting; its responses must not inflate miss rates.
   const responses = await prisma.attemptResponse.findMany({
     where: {
-      attempt: { studentId: { in: roster.allStudentIds } },
+      attempt: { studentId: { in: roster.allStudentIds }, voided: false },
     },
     select: {
       questionId: true,
@@ -89,11 +91,12 @@ export async function getCommonMisconceptions(
   const roster = await getTeacherRoster(teacherUserId)
   if (roster.allStudentIds.length === 0) return []
 
-  // Pull incorrect responses where the selected option has a misconception
+  // Pull incorrect responses where the selected option has a misconception.
+  // Exclude voided attempts (see getMostMissedQuestions).
   const responses = await prisma.attemptResponse.findMany({
     where: {
       isCorrect: false,
-      attempt: { studentId: { in: roster.allStudentIds } },
+      attempt: { studentId: { in: roster.allStudentIds }, voided: false },
       selectedOption: { misconceptionId: { not: null } },
     },
     select: {

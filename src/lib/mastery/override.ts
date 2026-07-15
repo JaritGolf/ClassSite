@@ -9,6 +9,7 @@
  */
 
 import { prisma } from '@/lib/db'
+import { assertStudentInTeacherClass, RosterError } from '@/lib/teacher-roster'
 import type { StudentProgressStatus, TeacherOverrideAction } from '@prisma/client'
 
 // ── Error Types ───────────────────────────────────────────────────────────────
@@ -74,6 +75,21 @@ export async function applyTeacherOverride(
       `User ${teacherUserId} does not have a teacher profile`,
       'FORBIDDEN'
     )
+  }
+
+  // 1b. Roster scope: a teacher may only override a student in one of their
+  // own classes. Without this, any teacher could mutate any student's progress
+  // in the district by passing an arbitrary studentId (IDOR).
+  try {
+    await assertStudentInTeacherClass(teacherUserId, studentId)
+  } catch (err) {
+    if (err instanceof RosterError) {
+      throw new OverrideError(
+        `Student ${studentId} is not in any of this teacher's classes`,
+        'FORBIDDEN'
+      )
+    }
+    throw err
   }
 
   // 2. Apply the override effect on StudentProgress

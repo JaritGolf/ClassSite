@@ -41,7 +41,7 @@ export default async function ReportingCategoriesPage() {
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <p className="text-sm text-gray-500">
           Class: <span className="font-medium text-gray-800">{firstClass.name}</span> · Overall EOC
-          readiness: <span className="font-semibold text-indigo-700">{readiness.overallPercent}%</span>
+          readiness: <span className="font-semibold text-indigo-700">{Math.round(readiness.overallPercent)}%</span>
         </p>
       </div>
 
@@ -68,9 +68,9 @@ export default async function ReportingCategoriesPage() {
                     {mastery ? `${mastery.masteryRatePercent}%` : '—'}
                   </td>
                   <td className="py-2 pr-4 font-medium text-indigo-700">
-                    {c.readinessPercent}%{' '}
+                    {Math.round(c.readinessPercent)}%{' '}
                     <span className="text-xs font-normal text-gray-400">
-                      ({c.readinessLow}–{c.readinessHigh}%)
+                      ({Math.round(c.readinessLow)}–{Math.round(c.readinessHigh)}%)
                     </span>
                   </td>
                 </tr>

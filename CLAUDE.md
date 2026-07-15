@@ -148,6 +148,58 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**TEACHER-WORKFLOW REPAIR (2026-07-15) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN
+(1131/1131, 124 suites) + full in-browser verification.** Owner asked for the same
+antagonistic review on the teacher side. The review found — and this session FIXED — two
+exploitable authorization holes plus correctness and dead-end defects:
+(1) **IDOR on teacher override + accommodation (critical, exploitable):** `applyTeacherOverride`
+(`src/lib/mastery/override.ts`) and `setAccommodation` (`src/lib/reading-load/accommodation.ts`)
+verified the caller was *a* teacher but NEVER that the target student was in the caller's
+roster — so any signed-in teacher could `MARK_MASTERED`/`UNLOCK`/`ASSIGN_REMEDIATION` or
+grant/revoke accommodations for **any student in the district** by passing an arbitrary
+`studentId`. Confirmed live (200 on an out-of-roster student), while the sibling routes
+(profile GET, reset, export, parent-summary) all already enforced `assertStudentInTeacherClass`.
+Fix: both domain fns + the accommodation GET route (teacher path) now call
+`assertStudentInTeacherClass`, mapping `RosterError`→ their own `FORBIDDEN`; admins still read
+any student. Re-verified live: all three probes now **403**; roster-student positive path still
+200. Durable guard: new `tests/integration/teacher-roster-guard.test.ts` + enrollment helper
+`tests/helpers/roster.ts` (`enrollStudentWithTeacher`/`cleanupTestRoster`) swept into the 4
+suites that call these fns directly.
+(2) **EOC readiness rendered raw floats:** the flagship dashboard showed
+"2.6315789473684212%" and "9.090909090909092% (4.233…–18.448…%)". `computeClassReadiness`
+must stay precise (audit10/02 recomputes overall from per-category within 0.05), so rounding
+is at the two display sites (`teacher/eoc-readiness`, `teacher/reporting-categories`) via
+`Math.round`; parent-summary already rounded in its VM. Now "3%" / "9% (4–18%)".
+(3) **Voided attempts still drove analytics:** `class-analytics` (most-missed, misconceptions,
+overconfidence, small-groups) queried `attemptResponse` with no `voided:false`, so a
+teacher-reset attempt still inflated miss rates / formed reteach groups. Added `voided:false`
+to all four; driver `tests/integration/class-analytics-voided.test.ts`.
+(4) **Sub-prep notes never loaded back:** settings rendered `SubNotesEditor` with no
+`initialNotes` and `getTeacherRoster` didn't select `subPrepNotes` — write worked, read was
+missing (re-save silently overwrote). Added `subPrepNotes` to the roster + passed it through.
+Verified live (set note → reload → textarea populated).
+(5) **Silent approve/archive:** `ApprovalQueueRow` fetched with no `res.ok` check; a 403
+(sub-mode) or 500 re-rendered unchanged. Now surfaces a per-row error.
+(6) **Intervention tools had no UI (dead ends):** the `reset`, `override`, and `reprime`
+routes existed but nothing invoked them, and the Interventions page advised actions with no
+controls. Built `VoidAttemptButton` (per attempt row) + `OverrideControl` (per-benchmark panel)
+on the student profile, and `ReprimeButton` on the benchmark-detail + decay pages. All wired
+to the existing routes; verified live (override 200, reprime 200 own-class / 403 bogus-class).
+(7) **Reprime was a stub:** the route only wrote an audit log ("deferred to Phase 10"). New
+`src/lib/spaced-retrieval/reprime.ts` `reprimeClass` actually halves SM-2 intervals (reuses
+`halveInterval`) and pulls `dueAt` forward (never delaying an item), roster-scoped, in a txn;
+driver `tests/integration/reprime.test.ts`.
+**Verification:** `tsc` 0 errors; jest **1131/1131 (124 suites, +7 tests, +3 suites)** run
+with the dev server STOPPED; browser walk as Ms Teacher (mock-teacher-001): IDOR probes
+403, positive paths 200, rounded readiness, void column + override panel + reprime section
+render, sub-notes load. All verification probe rows cleaned from the demo DB.
+**Deferred (backlog):** most-missed is still response-weighted across all assessment types
+(practice inflates); EOC-readiness/eoc-export hardwired to `roster.classes[0]` (no class
+picker); overconfidence window is global not per-student; Unit-1 lessons show duplicate
+NEEDS_REVIEW rows in the approval queue.
+
+---
+
 **STUDENT-WORKFLOW REPAIR (2026-07-14) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN
 (1124/1124, 121 suites) + full in-browser verification.** Owner asked for an antagonistic
 review of the student flow ("every correct answer is A, pre-check = vocab check"). The review
@@ -577,6 +629,33 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-07-15 (Teacher-workflow repair — antagonistic review + fixes):** Owner
+asked for the same antagonistic review on the teacher side. Static pass over every teacher
+page/route/component/analytics-lib + live walk as Ms Teacher + authorization probes against
+a planted out-of-roster student. Headline finding: **two IDOR holes** — `applyTeacherOverride`
+and `setAccommodation` never roster-checked the target student (confirmed live: 200 acting on
+another teacher's student; a teacher could mutate any student's mastery/accommodations in the
+district). Owner chose (via AskUserQuestion): **fix everything + build the missing intervention
+UI + implement the reprime stub.** Built all of it — see Current Build Phase: roster guards
+(`assertStudentInTeacherClass`) in both domain fns + accommodation GET, enrollment test helper
+swept into 4 suites + new IDOR regression suite; EOC readiness float rounding at display
+(lib stays precise for audit10/02); `voided:false` across the 4 class-analytics queries;
+`subPrepNotes` threaded into the roster so sub-notes load; `res.ok`/error surfacing on
+approve/archive; `VoidAttemptButton` + `OverrideControl` + `ReprimeButton` wired to existing
+routes; real `reprimeClass` interval-halving replacing the stub. **Verification:** `tsc` 0
+errors; jest **1131/1131 (124 suites, +7 tests)** with the dev server STOPPED; browser walk
+confirmed IDOR probes now 403 (positive paths 200), readiness reads "3%" / "9% (4–18%)", the
+new void/override/reprime controls render and work (reprime 200 own-class / 403 bogus-class),
+sub-notes populate on reload. **All verification probe rows cleaned from the demo DB** (Alex
+back to ACC-CHUNK only, 0 leftover overrides/outsiders). **Env notes:** same as the student
+session — run jest with the dev server stopped (Postgres connection contention); adding the
+roster guard broke 4 existing suites that created a teacher+student but never enrolled them,
+fixed with the shared enrollment helper (mirrors the `passReadinessCheck` pattern). Commit:
+`fix(phase-9): teacher-workflow repair — roster IDOR guards, readiness rounding, voided-attempt
+filtering, intervention UI, reprime`. **Deferred backlog:** most-missed response-weighting +
+practice inclusion, multi-class picker for EOC readiness/export, per-student overconfidence
+window, duplicate NEEDS_REVIEW lesson rows in the approval queue.
 
 **Session of 2026-07-14 (Student-workflow repair — antagonistic review + fixes):** Owner
 reported "every correct answer is A" and "pre-check questions = vocab questions" and asked
@@ -1023,6 +1102,9 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-07-11] Journey-map geometry is a fixed 320px column (PATH_ROW_H 152px, offsets 0/+72/0/-72) so the dotted SVG trail through node centers needs no measurement/JS; fits the 375px mobile viewport. Node states are icon+text (never color-only); the visual path is aria-hidden decoration over a semantic `<ol>`; `data-testid="benchmark-node"` unchanged for e2e.
 - [2026-07-11] Motion is CSS-only (tailwind keyframes incl. the assessment-pass confetti burst) and `.cq-reduce-motion`/`prefers-reduced-motion` now also zero `animation-delay` — otherwise staggered `animation-fill-mode: both` reveals would leave content invisible for the delay when durations are zeroed. No timer-based punishments (rule: freeze tokens, not timers).
 - [2026-07-13] `node_modules` moved out of iCloud sync: `node_modules -> node_modules.nosync` symlink (same convention as `.next -> .next.nosync`), fresh `npm install` through the link. Root cause of the "server won't boot" incident: the repo lives in iCloud-synced Documents, and with the disk down to ~21GB free, macOS evicted dependency files — `next dev` then hung for many minutes blocked in a `read()` on a 3KB dataless `node_modules` file while iCloud rematerialized it. jest side: replaced the broad `\.nosync/` modulePathIgnorePattern (it would match realpath-resolved modules through the symlink and break the loader) with anchored patterns + a `roots` allowlist (src/tests/seed/scripts) so haste-map never crawls root-level cruft at all. Use `npm install`, NOT `npm ci`, after wiping the tree — `npm ci` deletes the `node_modules` symlink itself and recreates a real (synced) directory. Reversible by `rm node_modules && mv node_modules.nosync node_modules`.
+- [2026-07-15] Roster IDOR guard in the domain layer, not just the route: `applyTeacherOverride` / `setAccommodation` call `assertStudentInTeacherClass` internally (mapping `RosterError`→ their own `FORBIDDEN`) so every caller — routes, future code, tests — is protected, not only the one API route. Admins have no teacher roster, so admin-only paths bypass (accommodation GET does the roster check only for `role==='TEACHER'`; admin POST already fails the pre-existing teacher-record lookup). Cost: 4 suites that created a teacher+student but never enrolled them now need `enrollStudentWithTeacher` (new `tests/helpers/roster.ts`). Reversible by moving the check to the routes if a legit non-roster caller ever appears.
+- [2026-07-15] EOC readiness rounding at display, not in `computeClassReadiness`: `audit10/02` recomputes `overallPercent` from the per-category `readinessPercent` within 0.05, so rounding inside the lib (both the categories and the overall) breaks that invariant. Kept the lib returning precise floats; wrapped the two teacher display sites in `Math.round` (parent-summary already rounds in its VM). Reversible by adding a rounded projection type if more surfaces need it.
+- [2026-07-15] Reprime `dueAt` never delays an item: `reprimeClass` sets `dueAt = min(currentDueAt, now + halvedInterval)` — for a future-scheduled review it pulls it forward, for an already-overdue one it leaves it due. Halving `intervalDays` uses the existing `halveInterval` (floor, min 1). Reversible by choosing a different resurfacing policy (e.g. due-now) if teachers want a harder reset.
 
 ---
 

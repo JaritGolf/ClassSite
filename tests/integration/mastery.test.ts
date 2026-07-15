@@ -32,6 +32,7 @@ import {
 } from '@/lib/remediation'
 import type { SubmitInput } from '@/lib/assessment'
 import { passReadinessCheck } from '../helpers/readiness'
+import { enrollStudentWithTeacher, cleanupTestRoster } from '../helpers/roster'
 
 const prisma = new PrismaClient()
 
@@ -255,6 +256,11 @@ beforeAll(async () => {
   teacherId = teacher.id
   teacherUserId = teacherUser.id
 
+  // Roster scope: applyTeacherOverride now refuses students outside the
+  // teacher's classes, so enroll both test students in a class the teacher owns.
+  await enrollStudentWithTeacher(prisma, teacherUserId, studentId)
+  await enrollStudentWithTeacher(prisma, teacherUserId, otherStudentId)
+
   // Satisfy the server-side readiness→mastery gate for both test students.
   await passReadinessCheck(prisma, studentId, benchmarkId)
   await passReadinessCheck(prisma, otherStudentId, benchmarkId)
@@ -335,6 +341,9 @@ afterAll(async () => {
   await prisma.confidenceCalibrationSnapshot.deleteMany({
     where: { student: { user: { cleverId: { startsWith: 'test-phase4-' } } } },
   })
+
+  // Test roster class + enrollments (FK: must precede student/teacher deletes)
+  await cleanupTestRoster(prisma, teacherUserId)
 
   // Students + Users (test-phase4- prefix only)
   await prisma.student.deleteMany({

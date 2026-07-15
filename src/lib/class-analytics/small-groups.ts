@@ -46,7 +46,7 @@ export async function getRecommendedSmallGroups(
   const incorrectResponses = await prisma.attemptResponse.findMany({
     where: {
       isCorrect: false,
-      attempt: { studentId: { in: roster.allStudentIds } },
+      attempt: { studentId: { in: roster.allStudentIds }, voided: false },
       question: { benchmarkId: { in: activeBenchmarkIds } },
       selectedOption: { misconceptionId: { not: null } },
     },

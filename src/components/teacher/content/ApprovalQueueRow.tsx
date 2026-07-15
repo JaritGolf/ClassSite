@@ -16,19 +16,38 @@ interface ApprovalQueueRowProps {
   item: QueueItem
 }
 
+const ERROR_MESSAGES: Record<string, string> = {
+  SUB_MODE_READ_ONLY: 'Substitute mode is on — turn it off in Settings to approve content.',
+}
+
 export function ApprovalQueueRow({ item }: ApprovalQueueRowProps) {
   const router = useRouter()
   const [loading, setLoading] = useState<'approve' | 'archive' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  function describeError(status: number, code?: string): string {
+    if (code && ERROR_MESSAGES[code]) return ERROR_MESSAGES[code]
+    if (status === 403) return 'Not allowed (403).'
+    return `Failed (${status}). Please try again.`
+  }
 
   async function handleApprove() {
     setLoading('approve')
+    setError(null)
     try {
-      await fetch('/api/teacher/content/approve', {
+      const res = await fetch('/api/teacher/content/approve', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ entityType: item.entityType, entityId: item.id }),
       })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        setError(describeError(res.status, data.error))
+        return
+      }
       router.refresh()
+    } catch {
+      setError('Network error. Please try again.')
     } finally {
       setLoading(null)
     }
@@ -39,13 +58,21 @@ export function ApprovalQueueRow({ item }: ApprovalQueueRowProps) {
     if (!reason) return
 
     setLoading('archive')
+    setError(null)
     try {
-      await fetch('/api/teacher/content/archive', {
+      const res = await fetch('/api/teacher/content/archive', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ entityType: item.entityType, entityId: item.id, reason }),
       })
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string }
+        setError(describeError(res.status, data.error))
+        return
+      }
       router.refresh()
+    } catch {
+      setError('Network error. Please try again.')
     } finally {
       setLoading(null)
     }
@@ -78,6 +105,11 @@ export function ApprovalQueueRow({ item }: ApprovalQueueRowProps) {
         >
           {loading === 'archive' ? '…' : 'Archive'}
         </button>
+        {error && (
+          <p role="alert" className="mt-1 text-xs text-red-600">
+            {error}
+          </p>
+        )}
       </td>
     </tr>
   )

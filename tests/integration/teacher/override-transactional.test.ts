@@ -9,6 +9,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import { applyTeacherOverride } from '@/lib/mastery/override'
+import { enrollStudentWithTeacher, cleanupTestRoster } from '../../helpers/roster'
 
 const prisma = new PrismaClient()
 
@@ -42,6 +43,10 @@ beforeAll(async () => {
   })
   studentId = student.id
 
+  // Roster scope: applyTeacherOverride now requires the student to be in the
+  // teacher's class.
+  await enrollStudentWithTeacher(prisma, teacherUserId, studentId)
+
   const bm = await prisma.benchmark.findFirst({ select: { id: true } })
   if (!bm) throw new Error('No benchmark in DB')
   benchmarkId = bm.id
@@ -58,6 +63,7 @@ afterAll(async () => {
   await prisma.auditLog.deleteMany({ where: { actorUserId: teacherUserId } })
   await prisma.teacherOverride.deleteMany({ where: { teacher: { userId: teacherUserId } } })
   await prisma.studentProgress.deleteMany({ where: { studentId } })
+  await cleanupTestRoster(prisma, teacherUserId)
   await prisma.student.deleteMany({ where: { id: studentId } })
   await prisma.user.deleteMany({ where: { cleverId: { in: [T_CLEVERID, S_CLEVERID] } } })
   await prisma.$disconnect()

@@ -11,6 +11,8 @@ import { SpacedRetrievalStatus } from '@/components/teacher/student/SpacedRetrie
 import { RemediationHistoryTable } from '@/components/teacher/student/RemediationHistoryTable'
 import { OverrideHistoryTable } from '@/components/teacher/student/OverrideHistoryTable'
 import { AccommodationEditor } from '@/components/teacher/student/AccommodationEditor'
+import { VoidAttemptButton } from '@/components/teacher/student/VoidAttemptButton'
+import { OverrideControl } from '@/components/teacher/student/OverrideControl'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
 import Link from 'next/link'
 
@@ -31,6 +33,18 @@ export default async function StudentProfilePage({ params }: PageProps) {
     orderBy: { code: 'asc' },
     select: { code: true, name: true },
   })
+
+  // Full benchmark list for the override control (any benchmark can be a target;
+  // UNLOCK creates a progress row where none exists).
+  const benchmarkRows = await prisma.benchmark.findMany({
+    orderBy: { sequenceOrder: 'asc' },
+    select: { id: true, code: true, title: true },
+  })
+  const overrideBenchmarks = benchmarkRows.map((b) => ({
+    benchmarkId: b.id,
+    code: b.code,
+    title: b.title,
+  }))
 
   return (
     <div className="space-y-6">
@@ -104,6 +118,7 @@ export default async function StudentProfilePage({ params }: PageProps) {
                   <th className="pb-2 text-right font-medium text-gray-400">Score</th>
                   <th className="pb-2 text-left font-medium text-gray-400">Result</th>
                   <th className="pb-2 text-left font-medium text-gray-400">Submitted</th>
+                  <th className="pb-2 text-right font-medium text-gray-400">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -136,6 +151,13 @@ export default async function StudentProfilePage({ params }: PageProps) {
                         ? new Date(a.submittedAt).toLocaleDateString()
                         : '—'}
                     </td>
+                    <td className="py-2 text-right">
+                      {a.voided ? (
+                        <span className="text-[10px] text-gray-300">—</span>
+                      ) : (
+                        <VoidAttemptButton attemptId={a.id} />
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -144,7 +166,10 @@ export default async function StudentProfilePage({ params }: PageProps) {
         )}
       </div>
 
-      {/* Remediation + Override */}
+      {/* Apply a new override */}
+      <OverrideControl studentId={params.studentId} benchmarks={overrideBenchmarks} />
+
+      {/* Remediation + Override history */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <RemediationHistoryTable history={profile.remediationHistory} />
         <OverrideHistoryTable history={profile.overrideHistory} />

@@ -118,7 +118,7 @@ export async function getStudentsNeedingAction(
   // 4. Overconfidence: high-confidence correct rate vs high-confidence accuracy
   const recentResponses = await prisma.attemptResponse.findMany({
     where: {
-      attempt: { studentId: { in: roster.allStudentIds } },
+      attempt: { studentId: { in: roster.allStudentIds }, voided: false },
       confidence: { not: null },
     },
     select: {

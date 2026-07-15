@@ -23,6 +23,8 @@ import { StimulusTypeBreakdown } from '@/components/teacher/benchmark/StimulusTy
 import { DistractorAnalysis } from '@/components/teacher/benchmark/DistractorAnalysis'
 import { RemediationStudentList } from '@/components/teacher/benchmark/RemediationStudentList'
 import { BenchmarkSpacedHealthCard } from '@/components/teacher/benchmark/BenchmarkSpacedHealthCard'
+import { ReprimeButton } from '@/components/teacher/benchmark/ReprimeButton'
+import { getTeacherRoster } from '@/lib/teacher-roster'
 import Link from 'next/link'
 
 interface Props {
@@ -34,7 +36,7 @@ export default async function BenchmarkDetailPage({ params }: Props) {
   const userId = session.user.userId
   const { benchmarkId } = params
 
-  const [overview, readingLoad, complexity, stimulusType, distractors, remediation, spacedHealth] =
+  const [overview, readingLoad, complexity, stimulusType, distractors, remediation, spacedHealth, roster] =
     await Promise.all([
       getBenchmarkClassPerformance(userId, benchmarkId),
       getPerformanceByReadingLoad(userId, benchmarkId),
@@ -43,6 +45,7 @@ export default async function BenchmarkDetailPage({ params }: Props) {
       getDistractorsByMisconception(userId, benchmarkId),
       getStudentsInRemediation(userId, benchmarkId),
       getBenchmarkSpacedHealth(userId, benchmarkId),
+      getTeacherRoster(userId),
     ])
 
   return (
@@ -79,8 +82,14 @@ export default async function BenchmarkDetailPage({ params }: Props) {
       {/* Distractor Analysis */}
       <DistractorAnalysis rows={distractors} />
 
-      {/* Spaced Health */}
-      <BenchmarkSpacedHealthCard health={spacedHealth} />
+      {/* Spaced Health + re-prime intervention */}
+      <div>
+        <BenchmarkSpacedHealthCard health={spacedHealth} />
+        <ReprimeButton
+          benchmarkId={benchmarkId}
+          classes={roster.classes.map((c) => ({ id: c.id, name: c.name }))}
+        />
+      </div>
 
       {/* Remediation Roster */}
       <RemediationStudentList rows={remediation} />

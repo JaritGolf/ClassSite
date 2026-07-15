@@ -12,6 +12,7 @@ export interface TeacherRoster {
     id: string
     name: string
     period: string | null
+    subPrepNotes: string | null
     studentIds: string[]
   }>
   allStudentIds: string[]
@@ -32,6 +33,7 @@ export async function getTeacherRoster(
           id: true,
           name: true,
           period: true,
+          subPrepNotes: true,
           enrollments: {
             where: { status: 'ACTIVE' },
             select: { studentId: true },
@@ -49,6 +51,7 @@ export async function getTeacherRoster(
     id: c.id,
     name: c.name,
     period: c.period,
+    subPrepNotes: c.subPrepNotes,
     studentIds: c.enrollments.map((e) => e.studentId),
   }))
 

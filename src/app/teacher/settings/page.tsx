@@ -35,6 +35,7 @@ export default async function SettingsPage() {
               classId={cls.id}
               className={cls.name}
               period={cls.period}
+              initialNotes={cls.subPrepNotes ?? ''}
             />
           ))}
         </div>

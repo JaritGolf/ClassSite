@@ -8,6 +8,7 @@
  */
 
 import { prisma } from '@/lib/db'
+import { assertStudentInTeacherClass, RosterError } from '@/lib/teacher-roster'
 import { resolveAccommodationLevel, LEVEL_1_ACCOMMODATION_CODES } from './variant-selector'
 
 // ── Error type ─────────────────────────────────────────────────────────────
@@ -122,6 +123,22 @@ export async function setAccommodation(
       'Only teachers may set student accommodations',
       'FORBIDDEN'
     )
+  }
+
+  // Roster scope: a teacher may only set accommodations on a student in one of
+  // their own classes. Without this, any teacher could grant/revoke
+  // accommodations on any student in the district by passing an arbitrary
+  // studentId (IDOR).
+  try {
+    await assertStudentInTeacherClass(teacherUserId, studentId)
+  } catch (err) {
+    if (err instanceof RosterError) {
+      throw new AccommodationError(
+        'Student is not in any of this teacher\'s classes',
+        'FORBIDDEN'
+      )
+    }
+    throw err
   }
 
   // Look up the accommodation by code

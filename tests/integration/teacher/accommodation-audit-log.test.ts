@@ -11,6 +11,7 @@
 
 import { PrismaClient } from '@prisma/client'
 import { setAccommodation } from '@/lib/reading-load'
+import { enrollStudentWithTeacher, cleanupTestRoster } from '../../helpers/roster'
 
 const prisma = new PrismaClient()
 
@@ -63,6 +64,10 @@ beforeAll(async () => {
   })
   studentId = student.id
 
+  // Roster scope: setAccommodation now requires the student to be in the
+  // teacher's class.
+  await enrollStudentWithTeacher(prisma, teacherUserId, studentId)
+
   // Accommodation
   await prisma.accommodation.upsert({
     where: { code: ACC_CODE },
@@ -82,6 +87,7 @@ afterAll(async () => {
   })
   await prisma.auditLog.deleteMany({ where: { actorUserId: teacherUserId, action: 'ACCOMMODATION_SET' } })
   await prisma.accommodation.deleteMany({ where: { code: ACC_CODE } })
+  await cleanupTestRoster(prisma, teacherUserId)
   await prisma.student.deleteMany({ where: { id: studentId } })
   await prisma.user.deleteMany({ where: { cleverId: { in: [T_CLEVERID, S_CLEVERID] } } })
   await prisma.$disconnect()

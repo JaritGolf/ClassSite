@@ -18,6 +18,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { assertStudentInTeacherClass, RosterError } from '@/lib/teacher-roster'
 import {
   getStudentAccommodations,
   getEffectiveReadingLevel,
@@ -58,6 +59,19 @@ export async function GET(req: NextRequest) {
         { error: 'Query param studentId is required for TEACHER/ADMIN' },
         { status: 400 }
       )
+    }
+    // Teachers may only read a student in their own roster; admins may read
+    // any student. Without this, any teacher could read any student's
+    // accommodation profile by studentId (IDOR).
+    if (session.user.role === 'TEACHER') {
+      try {
+        await assertStudentInTeacherClass(session.user.userId, qStudentId)
+      } catch (e) {
+        if (e instanceof RosterError) {
+          return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+        }
+        throw e
+      }
     }
     studentId = qStudentId
   } else {

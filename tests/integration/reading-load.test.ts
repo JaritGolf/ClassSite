@@ -17,6 +17,7 @@ import {
   fetchStimulusForQuestion,
 } from '@/lib/reading-load'
 import { gradeAndSubmit } from '@/lib/assessment'
+import { enrollStudentWithTeacher, cleanupTestRoster } from '../helpers/roster'
 
 // ── Test data IDs (filled in beforeAll) ────────────────────────────────────
 
@@ -113,6 +114,10 @@ beforeAll(async () => {
     select: { id: true },
   })
   studentId = student.id
+
+  // Roster scope: setAccommodation now refuses students outside the teacher's
+  // classes, so enroll this student in a class the test teacher owns.
+  await enrollStudentWithTeacher(prisma, teacherUserId, studentId)
 
   // ── Create Stimulus with variants ─────────────────────────────────────
   const existingStimulus = await prisma.stimulus.findFirst({
@@ -291,6 +296,9 @@ afterAll(async () => {
   // Remove test stimulus and variants (cascade)
   await prisma.stimulusVariant.deleteMany({ where: { stimulusId } })
   await prisma.stimulus.deleteMany({ where: { id: stimulusId } })
+
+  // Test roster class + enrollments (FK: must precede student/teacher deletes)
+  await cleanupTestRoster(prisma, teacherUserId)
 
   // Remove test users
   await prisma.teacher.deleteMany({ where: { userId: teacherUserId } })

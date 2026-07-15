@@ -40,7 +40,7 @@ export default async function EocReadinessPage() {
 
       <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-5">
         <p className="text-sm text-indigo-700">Class: {firstClass.name}</p>
-        <p className="mt-1 text-3xl font-bold text-indigo-800">{readiness.overallPercent}%</p>
+        <p className="mt-1 text-3xl font-bold text-indigo-800">{Math.round(readiness.overallPercent)}%</p>
         <p className="text-xs text-indigo-600">
           Overall Republic Strength across {readiness.studentCount} student(s) — an internal
           preparation estimate, not a predicted EOC score.
@@ -63,9 +63,9 @@ export default async function EocReadinessPage() {
                 <tr key={c.reportingCategoryId} className="border-b border-gray-100">
                   <td className="py-2 pr-4 text-gray-800">{c.name}</td>
                   <td className="py-2 pr-4 font-medium text-indigo-700">
-                    {c.readinessPercent}%{' '}
+                    {Math.round(c.readinessPercent)}%{' '}
                     <span className="text-xs font-normal text-gray-400">
-                      ({c.readinessLow}–{c.readinessHigh}%)
+                      ({Math.round(c.readinessLow)}–{Math.round(c.readinessHigh)}%)
                     </span>
                   </td>
                   <td className="py-2 pr-4 text-gray-600">
