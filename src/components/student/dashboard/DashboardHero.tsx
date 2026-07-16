@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Mascot } from '@/components/ui/Mascot'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface DashboardHeroProps {
   currentMission: { benchmarkCode: string; title: string; status: string } | null
@@ -27,9 +28,15 @@ export function DashboardHero({ currentMission, studentName }: DashboardHeroProp
           </h1>
           {currentMission ? (
             <>
-              <p className="mt-2 font-display text-xs font-bold uppercase tracking-widest text-indigo-200">
-                Current mission
-              </p>
+              <ExplainerHover
+                title="Current Mission"
+                text="Your next benchmark to master. Missions unlock in order — finish this one's Mastery Challenge to open the next."
+                variant="plain"
+              >
+                <p className="mt-2 font-display text-xs font-bold uppercase tracking-widest text-indigo-200">
+                  Current mission
+                </p>
+              </ExplainerHover>
               <p className="mt-0.5 text-lg font-bold leading-snug">{currentMission.title}</p>
               <p className="font-mono text-xs text-indigo-200">{currentMission.benchmarkCode}</p>
               <Link

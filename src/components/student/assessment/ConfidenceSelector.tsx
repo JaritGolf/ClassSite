@@ -1,6 +1,7 @@
 'use client'
 
 import { CONFIDENCE_LEVELS, type ConfidenceValue } from '@/lib/assessment/wire'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface ConfidenceSelectorProps {
   value: ConfidenceValue | null
@@ -11,7 +12,13 @@ export function ConfidenceSelector({ value, onChange }: ConfidenceSelectorProps)
   return (
     <fieldset>
       <legend className="mb-2 font-display text-sm font-bold text-gray-800">
-        How confident are you in your answer?
+        <ExplainerHover
+          title="Why we ask this"
+          text="Being honest about how sure you are — not just getting the right answer — helps you learn to trust your own thinking. It doesn't affect whether your answer is marked correct."
+          variant="plain"
+        >
+          How confident are you in your answer?
+        </ExplainerHover>
       </legend>
       <div className="flex gap-2.5">
         {CONFIDENCE_LEVELS.map((opt) => (

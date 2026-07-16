@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { BadgeMedal, medalForIconKey } from '@/components/ui/BadgeMedal'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface BadgeItem {
   id: string
@@ -31,16 +32,14 @@ export function BadgeRack({ badges }: BadgeRackProps) {
           {badges.map((badge) => {
             const medal = medalForIconKey(badge.iconKey)
             return (
-              <div
-                key={badge.id}
-                title={badge.description}
-                className="flex w-24 flex-col items-center gap-1 rounded-2xl border border-indigo-100 bg-indigo-50 p-3"
-              >
-                <BadgeMedal color={medal.color} icon={medal.icon} earned className="h-14 w-14" />
-                <p className="line-clamp-2 text-center text-xs font-semibold leading-tight text-gray-700">
-                  {badge.name}
-                </p>
-              </div>
+              <ExplainerHover key={badge.id} title={badge.name} text={badge.description} variant="plain">
+                <div className="flex w-24 flex-col items-center gap-1 rounded-2xl border border-indigo-100 bg-indigo-50 p-3">
+                  <BadgeMedal color={medal.color} icon={medal.icon} earned className="h-14 w-14" />
+                  <p className="line-clamp-2 text-center text-xs font-semibold leading-tight text-gray-700">
+                    {badge.name}
+                  </p>
+                </div>
+              </ExplainerHover>
             )
           })}
         </div>

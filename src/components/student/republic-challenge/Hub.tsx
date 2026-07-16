@@ -1,4 +1,5 @@
 import { ModeCard } from './ModeCard'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface HubConfig {
   featureEocReviewEnabled: boolean
@@ -22,7 +23,13 @@ export function Hub({ config }: { config: HubConfig }) {
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
       <header>
-        <h1 className="font-display text-3xl font-bold text-indigo-900">Republic Challenge</h1>
+        <ExplainerHover
+          title="Republic Challenge"
+          text="Optional review sessions that mix questions across missions — great for staying sharp between Mastery Challenges and building up to the real EOC."
+          variant="plain"
+        >
+          <h1 className="font-display text-3xl font-bold text-indigo-900">Republic Challenge</h1>
+        </ExplainerHover>
         <p className="mt-1 text-base text-gray-600">
           Cumulative review to consolidate everything you&apos;ve mastered.
         </p>
@@ -78,6 +85,7 @@ export function Hub({ config }: { config: HubConfig }) {
           description="Build stamina. Today's length is based on the time of year."
           startUrl="/api/republic-challenge/endurance/start"
           meta={`${config.stamina.length} questions · ${config.stamina.label}`}
+          metaExplainer="Endurance sessions get longer as the school year goes on, so your test-taking stamina builds up gradually toward the real EOC."
           icon="flame"
         />
 

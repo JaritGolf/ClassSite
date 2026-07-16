@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface BenchmarkNodeProps {
   id: string
@@ -43,6 +44,18 @@ const STATUS_LABELS: Record<string, string> = {
 
 const LOCKED_STATUSES = new Set(['NOT_STARTED'])
 
+const STATUS_EXPLAINERS: Record<string, string> = {
+  MASTERED: "You've hit 80%+ on this mission's Mastery Challenge. It's done — nice work.",
+  IN_PROGRESS: "You've started this mission's training but haven't taken (or passed) the Mastery Challenge yet.",
+  READY_FOR_MASTERY: "You've finished training on this mission — take the Mastery Challenge to lock it in.",
+  NEEDS_REMEDIATION: "A Mastery Challenge attempt came up short. Finish the review activity here to try again.",
+  REMEDIATION_COMPLETE: "You've finished the review activity — you're ready to retake the Mastery Challenge.",
+  EXPOSURE_COMPLETE: 'This mission moved on after 3 tries plus review (an "off-ramp") — not a fail, and it unlocked the next mission. It shows up more often in your Daily Drill.',
+  TEACHER_OVERRIDE: 'Your teacher manually updated this mission\'s status.',
+  INTERVENTION_REQUIRED: "This mission needs extra help — check in with your teacher.",
+  NOT_STARTED: 'Locked — master the mission before this one to unlock it.',
+}
+
 export function BenchmarkNode({ code, title, status, masteryScore, offsetX }: BenchmarkNodeProps) {
   const locked = LOCKED_STATUSES.has(status)
   const node = STATUS_NODE[status] ?? STATUS_NODE.NOT_STARTED
@@ -78,9 +91,15 @@ export function BenchmarkNode({ code, title, status, masteryScore, offsetX }: Be
       </div>
       <p className="mt-2 font-mono text-[10px] text-gray-500">{code}</p>
       <p className="text-xs font-bold leading-tight text-gray-800 line-clamp-2">{title}</p>
-      <span className={`mt-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${node.chip}`}>
-        {label}
-      </span>
+      <ExplainerHover
+        title={label}
+        text={STATUS_EXPLAINERS[status] ?? STATUS_EXPLAINERS.NOT_STARTED}
+        variant="plain"
+      >
+        <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-xs font-semibold ${node.chip}`}>
+          {label}
+        </span>
+      </ExplainerHover>
     </div>
   )
 

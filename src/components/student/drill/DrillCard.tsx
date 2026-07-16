@@ -7,6 +7,7 @@ import {
   type DrillReviewResponse,
 } from '@/lib/assessment/wire'
 import { ConfidenceSelector } from '@/components/student/assessment/ConfidenceSelector'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface DrillOption {
   id: string
@@ -75,7 +76,13 @@ export function DrillCard({ item, onComplete }: DrillCardProps) {
         <span className="rounded-full bg-amber-100 px-2.5 py-0.5 font-mono text-xs font-semibold text-amber-800">
           {item.benchmarkCode}
         </span>
-        <span className="text-sm text-gray-500">Interval: {item.intervalDays}d</span>
+        <ExplainerHover
+          title="Review Interval"
+          text="How many days until this question comes back around in your drill. Get it right and the interval grows — get it wrong and it comes back sooner."
+          variant="plain"
+        >
+          <span className="text-sm text-gray-500">Interval: {item.intervalDays}d</span>
+        </ExplainerHover>
       </div>
 
       <p className="text-base font-bold leading-7 text-gray-900">{item.prompt}</p>

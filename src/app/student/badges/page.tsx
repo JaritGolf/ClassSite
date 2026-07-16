@@ -1,6 +1,7 @@
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { BadgeMedal, medalForIconKey } from '@/components/ui/BadgeMedal'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 export const metadata = { title: 'Badges — Civics Quest' }
 
@@ -38,6 +39,13 @@ export default async function BadgesPage() {
     ENGAGEMENT: 'Engagement',
   }
 
+  const TRACK_EXPLAINERS: Record<string, string> = {
+    MASTERY: 'Earned by mastering missions and reporting categories.',
+    READING: 'Earned through the Source Decoder reading-skills track.',
+    STRATEGY: 'Earned by completing test-taking strategy missions.',
+    ENGAGEMENT: 'Earned for streaks and other everyday habits.',
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-8 px-4 py-8">
       <div>
@@ -66,9 +74,15 @@ export default async function BadgesPage() {
 
       {Array.from(byTrack.entries()).map(([track, badges]) => (
         <section key={track}>
-          <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-gray-600">
-            {TRACK_LABELS[track] ?? track}
-          </h2>
+          <ExplainerHover
+            title={TRACK_LABELS[track] ?? track}
+            text={TRACK_EXPLAINERS[track] ?? 'A group of related badges.'}
+            variant="plain"
+          >
+            <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-widest text-gray-600">
+              {TRACK_LABELS[track] ?? track}
+            </h2>
+          </ExplainerHover>
           <div className="grid grid-cols-2 gap-3">
             {badges.map((badge) => {
               const earned = earnedIds.has(badge.id)

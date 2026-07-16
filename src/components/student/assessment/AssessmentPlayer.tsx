@@ -5,6 +5,7 @@ import { buildAssessmentSubmitBody, type ConfidenceValue } from '@/lib/assessmen
 import { ConfidenceSelector } from './ConfidenceSelector'
 import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
 import { Mascot } from '@/components/ui/Mascot'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import type { GlossaryAnnotation } from '@/lib/reading-load'
 
 interface Option {
@@ -269,9 +270,15 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-bold text-gray-900">{meta.title}</h2>
-        <span className="flex-shrink-0 rounded-full bg-indigo-100 px-3 py-1 font-display text-xs font-bold text-indigo-800">
-          {currentIndex + 1} / {questions.length}
-        </span>
+        <ExplainerHover
+          title="Progress"
+          text="Which question you're on out of the total for this assessment."
+          variant="plain"
+        >
+          <span className="flex-shrink-0 rounded-full bg-indigo-100 px-3 py-1 font-display text-xs font-bold text-indigo-800">
+            {currentIndex + 1} / {questions.length}
+          </span>
+        </ExplainerHover>
       </div>
 
       <div

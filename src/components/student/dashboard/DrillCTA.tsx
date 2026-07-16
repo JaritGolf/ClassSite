@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { TrackIcon } from '@/components/ui/TrackIcon'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface DrillCTAProps {
   drillCount: number
@@ -22,7 +23,12 @@ export function DrillCTA({ drillCount }: DrillCTAProps) {
           <TrackIcon name="bolt" className="h-6 w-6" />
         </span>
         <div>
-          <p className="font-display text-base font-bold text-gray-900">Daily Republic Drill</p>
+          <ExplainerHover
+            title="Daily Republic Drill"
+            text="A short daily review that brings back questions you're starting to forget, timed to when you're about to forget them. Answering keeps things fresh for the real EOC."
+          >
+            <p className="font-display text-base font-bold text-gray-900">Daily Republic Drill</p>
+          </ExplainerHover>
           <p className="text-sm text-amber-800">
             {due
               ? `${drillCount} item${drillCount !== 1 ? 's' : ''} due today — keep your streak alive!`

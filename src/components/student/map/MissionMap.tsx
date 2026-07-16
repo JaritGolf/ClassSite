@@ -1,4 +1,5 @@
 import { Mascot } from '@/components/ui/Mascot'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import { BenchmarkNode, PATH_COLUMN_W, PATH_ROW_H, NODE_R } from './BenchmarkNode'
 
 interface BenchmarkData {
@@ -96,9 +97,15 @@ export function MissionMap({ map }: MissionMapProps) {
           <section key={unit.id} className="animate-pop-in" style={{ animationDelay: `${unitIdx * 120}ms` }}>
             {/* Region banner */}
             <div className={`rounded-3xl border-b-4 ${theme.border} bg-gradient-to-br ${theme.grad} p-5 text-white`}>
-              <p className="font-display text-xs font-bold uppercase tracking-widest text-white/90">
-                Unit {unit.sequenceOrder} · Region
-              </p>
+              <ExplainerHover
+                title="Region"
+                text="Each region is one unit of missions. Follow the winding path below in order — mastering one mission unlocks the next."
+                variant="plain"
+              >
+                <p className="font-display text-xs font-bold uppercase tracking-widest text-white/90">
+                  Unit {unit.sequenceOrder} · Region
+                </p>
+              </ExplainerHover>
               <h2 className="font-display text-2xl font-bold leading-tight">{unit.gameRegionName}</h2>
               <p className="mt-0.5 text-sm font-semibold text-white/90">{unit.title}</p>
               <div className="mt-3 flex items-center gap-3">

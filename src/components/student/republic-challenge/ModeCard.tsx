@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface ModeCardProps {
   title: string
@@ -12,6 +13,8 @@ interface ModeCardProps {
   length?: number
   /** Optional badge text shown in the corner (e.g. "10 questions"). */
   meta?: string
+  /** Optional explainer text for the meta badge, when it needs more context (e.g. stamina ladder). */
+  metaExplainer?: string
   /** When true the card is rendered as a non-actionable disabled state. */
   disabled?: boolean
   /** Optional explanatory text shown when disabled. */
@@ -79,10 +82,18 @@ export function ModeCard(props: ModeCardProps) {
           </span>
           <h3 className="font-display text-base font-bold">{props.title}</h3>
         </div>
-        {props.meta && (
-          <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-800">
-            {props.meta}
-          </span>
+        {props.meta && props.metaExplainer ? (
+          <ExplainerHover title={props.title} text={props.metaExplainer} variant="plain">
+            <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-800">
+              {props.meta}
+            </span>
+          </ExplainerHover>
+        ) : (
+          props.meta && (
+            <span className="rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-800">
+              {props.meta}
+            </span>
+          )
         )}
       </div>
       <p className="mt-2 text-sm leading-relaxed text-gray-600">{props.description}</p>

@@ -17,6 +17,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { GlossaryPopover } from './GlossaryPopover'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import type { GlossaryAnnotation } from '@/lib/reading-load'
 
 interface StimulusDisplayProps {
@@ -154,46 +155,63 @@ export function StimulusDisplay({
           <h3 className="font-display text-base font-bold text-gray-800">
             {title}
           </h3>
-          <span className="mt-0.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-            {LEVEL_LABELS[resolvedLevel] ?? `Level ${resolvedLevel}`}
-          </span>
+          <ExplainerHover
+            title="Reading Level"
+            text="How this passage is presented — Simplified (paraphrased with glossary help), Standard (chunked excerpt, matches the real EOC), or Original Source (the raw historical text)."
+            variant="plain"
+          >
+            <span className="mt-0.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+              {LEVEL_LABELS[resolvedLevel] ?? `Level ${resolvedLevel}`}
+            </span>
+          </ExplainerHover>
         </div>
 
         {/* Toolbar */}
         <div className="flex flex-shrink-0 items-center gap-2">
           {/* Read-aloud button */}
           {hasSpeechSupport && (
-            <button
-              type="button"
-              aria-label={isSpeaking ? 'Stop reading' : 'Read passage aloud'}
-              title={isSpeaking ? 'Stop' : 'Read aloud'}
-              onClick={toggleReadAloud}
-              className={[
-                'rounded-full border-2 px-2.5 py-1 text-sm font-semibold transition-colors',
-                isSpeaking
-                  ? 'border-sky-300 bg-sky-100 text-sky-800'
-                  : 'border-amber-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50',
-              ].join(' ')}
+            <ExplainerHover
+              title={isSpeaking ? 'Stop' : 'Read Aloud'}
+              text="Have this passage read out loud by your device. Click again to stop."
+              variant="plain"
             >
-              {isSpeaking ? '⏹' : '🔊'}
-            </button>
+              <button
+                type="button"
+                aria-label={isSpeaking ? 'Stop reading' : 'Read passage aloud'}
+                onClick={toggleReadAloud}
+                className={[
+                  'rounded-full border-2 px-2.5 py-1 text-sm font-semibold transition-colors',
+                  isSpeaking
+                    ? 'border-sky-300 bg-sky-100 text-sky-800'
+                    : 'border-amber-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50',
+                ].join(' ')}
+              >
+                {isSpeaking ? '⏹' : '🔊'}
+              </button>
+            </ExplainerHover>
           )}
 
           {/* Sentence-chunking toggle */}
-          <button
-            type="button"
-            aria-pressed={chunkingEnabled}
-            title={chunkingEnabled ? 'Disable sentence chunking' : 'Enable sentence chunking'}
-            onClick={() => setChunkingEnabled((v) => !v)}
-            className={[
-              'rounded-full border-2 px-2.5 py-1 text-sm font-semibold transition-colors',
-              chunkingEnabled
-                ? 'border-green-300 bg-green-100 text-green-800'
-                : 'border-amber-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50',
-            ].join(' ')}
+          <ExplainerHover
+            title="Sentence Chunking"
+            text="Break the passage into one sentence per line, so it's easier to read one idea at a time."
+            variant="plain"
           >
-            ¶
-          </button>
+            <button
+              type="button"
+              aria-pressed={chunkingEnabled}
+              aria-label={chunkingEnabled ? 'Disable sentence chunking' : 'Enable sentence chunking'}
+              onClick={() => setChunkingEnabled((v) => !v)}
+              className={[
+                'rounded-full border-2 px-2.5 py-1 text-sm font-semibold transition-colors',
+                chunkingEnabled
+                  ? 'border-green-300 bg-green-100 text-green-800'
+                  : 'border-amber-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50',
+              ].join(' ')}
+            >
+              ¶
+            </button>
+          </ExplainerHover>
         </div>
       </div>
 

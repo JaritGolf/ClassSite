@@ -1,4 +1,5 @@
 import { TrackIcon } from '@/components/ui/TrackIcon'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface ReadinessMeterProps {
   pct: number
@@ -14,7 +15,12 @@ export function ReadinessMeter({ pct, ciLow, ciHigh }: ReadinessMeterProps) {
           <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white">
             <TrackIcon name="target" className="h-5 w-5" />
           </span>
-          <h2 className="font-display text-base font-bold text-gray-800">EOC Readiness</h2>
+          <ExplainerHover
+            title="EOC Readiness"
+            text="Our best guess at your score if you took the real state EOC test today. It updates as you master more missions — it isn't a grade, just a helpful estimate."
+          >
+            <h2 className="font-display text-base font-bold text-gray-800">EOC Readiness</h2>
+          </ExplainerHover>
         </div>
         <span className="font-display text-2xl font-bold text-indigo-700">{pct}%</span>
       </div>
