@@ -1,4 +1,5 @@
 import type { ClassStatusDistribution } from '@/lib/class-analytics'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface StatusDistributionProps {
   distribution: ClassStatusDistribution
@@ -22,7 +23,13 @@ export function StatusDistribution({ distribution }: StatusDistributionProps) {
   if (total === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <ExplainerHover
+        title="Status Distribution"
+        text="How your roster's progress is spread across mastery statuses right now, at a glance."
+        theme="admin"
+      >
         <h2 className="mb-3 text-sm font-semibold text-gray-700">Status Distribution</h2>
+      </ExplainerHover>
         <p className="text-sm text-gray-400">No student progress data yet.</p>
       </div>
     )
@@ -30,7 +37,13 @@ export function StatusDistribution({ distribution }: StatusDistributionProps) {
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">Status Distribution</h2>
+      <ExplainerHover
+        title="Status Distribution"
+        text="How your roster's progress is spread across mastery statuses right now, at a glance."
+        theme="admin"
+      >
+        <h2 className="mb-3 text-sm font-semibold text-gray-700">Status Distribution</h2>
+      </ExplainerHover>
       {/* Stacked bar */}
       <div
         className="flex h-6 w-full rounded-lg overflow-hidden"

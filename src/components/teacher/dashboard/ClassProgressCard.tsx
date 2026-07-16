@@ -1,5 +1,6 @@
 import type { UnitMasteryRow } from '@/lib/class-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface ClassProgressCardProps {
   unitMastery: UnitMasteryRow[]
@@ -9,7 +10,13 @@ export function ClassProgressCard({ unitMastery }: ClassProgressCardProps) {
   if (unitMastery.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <ExplainerHover
+        title="Progress by Unit"
+        text="How many benchmarks in each unit your class has mastered so far."
+        theme="admin"
+      >
         <h2 className="mb-3 text-sm font-semibold text-gray-700">Progress by Unit</h2>
+      </ExplainerHover>
         <EmptyState title="No units yet" body="Progress will appear once students begin." />
       </div>
     )
@@ -17,7 +24,13 @@ export function ClassProgressCard({ unitMastery }: ClassProgressCardProps) {
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">Progress by Unit</h2>
+      <ExplainerHover
+        title="Progress by Unit"
+        text="How many benchmarks in each unit your class has mastered so far."
+        theme="admin"
+      >
+        <h2 className="mb-3 text-sm font-semibold text-gray-700">Progress by Unit</h2>
+      </ExplainerHover>
       <ul className="space-y-3" role="list">
         {unitMastery.map((row) => (
           <li key={row.unitId}>

@@ -5,6 +5,7 @@
 import type { DimensionBreakdown } from '@/lib/benchmark-analytics'
 import { BarRow } from '@/components/teacher/shared/BarRow'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 const LEVEL_LABELS: Record<string, string> = {
   '1': 'Level 1 (Paraphrase)',
@@ -21,9 +22,15 @@ export function ReadingLoadBreakdown({ data }: Props) {
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-        By Reading-Load Level
-      </h3>
+      <ExplainerHover
+        title="Reading-Load Level"
+        text="Correct rate by how much scaffolding the passage had: Level 1 is paraphrased with glossary help, Level 2 matches real EOC difficulty, Level 3 is the raw historical text. A drop from Level 1 to 3 suggests a reading-skill gap, not a content gap."
+        theme="admin"
+      >
+        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+          By Reading-Load Level
+        </h3>
+      </ExplainerHover>
       {!hasData ? (
         <EmptyState title="No data" body="No responses for this benchmark yet." />
       ) : (

@@ -148,6 +148,81 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**EXPLAINER HOVERS — PHASE 1 (STUDENT UI) + PHASE 2 (TEACHER UI) (2026-07-16) — Tier 1
+`tsc` GREEN + Tier 2 jest GREEN (1193/1193, 128 suites — unchanged, styling-only) +
+in-browser verification on both roles.**
+
+**Phase 2 addendum (teacher UI, same day, second half of session):** extended
+`ExplainerHover` with a `theme` prop — `'game'` (default, unchanged) vs. new `'admin'`
+(gray border, no `font-display`, tighter text) — because teacher/admin pages use a plain
+LMS aesthetic and aren't wrapped in the `.cq-*` accommodation theming student pages get,
+so leaning on the bright student card style would have looked out of place. Wired across
+the teacher dashboard (`StatCard` gained an optional `explain` prop; all analytics widget
+headers — Status Distribution, Most Missed Questions, Misconceptions, Decay Alerts,
+Off-Ramp, Progress by Unit, EOC Trend, Recommended Small Groups), the student profile page
+(stat mini-cards, Assessment Attempts header, Confidence Calibration + Overconfidence Gap,
+Spaced Retrieval stats, the **Void**/**Teacher Override**/**Accommodations** intervention
+controls — the highest-stakes, most jargon-heavy actions on the site), and the benchmark
+detail + calibration + decay pages (Cognitive Complexity/Reading-Load/Stimulus-Type/
+Distractor breakdowns, Re-prime, Class Calibration Trend, Confidence Gap/Severity columns,
+Decaying/Rate columns, Spike explainer). **Verification:** `tsc` 0 errors; jest
+**1193/1193 (128 suites)** with the dev server stopped; browser walk as Ms Teacher —
+confirmed the admin-theme popover renders correctly (plain gray card, matches LMS look)
+on the dashboard, student profile (incl. after a viewport resize + scroll), and a
+benchmark detail page. **Env note:** a concurrent session was actively editing this same
+repo during this work (confirmed by file-mtime forensics after a transient, self-resolving
+`tsc` error in an unrelated test file, and later by an explicit hook notice) — `CLAUDE.md`
+and two page files (`teacher/dashboard/page.tsx`,
+`teacher/students/[studentId]/page.tsx`) had that session's uncommitted work interleaved
+with mine; committed only my own hunks (reset-to-HEAD + reapply-my-edit-only, verified via
+`git diff` before staging) rather than sweep in unreviewed changes under this commit.
+Commit message when ready: `feat(phase-9): explainer hovers for teacher UI (admin theme +
+dashboard/profile/benchmark rollout)`.
+
+---
+
+**EXPLAINER HOVERS — PHASE 1, STUDENT UI (2026-07-16) — Tier 1 `tsc` GREEN + Tier 2 jest
+GREEN (1162/1162, 126 suites — unchanged, styling-only) + in-browser verification.** Owner
+asked for hover explainer popovers "for as many things as possible... anyone can understand
+what they're looking at." Scoped via AskUserQuestion: **hover-only** trigger (mouse, ~1s
+delay — no keyboard/touch yet, an explicit owner-approved deviation from rule #10, see
+ADR 0016); **one role fully first** (student game UI, not a thin pass everywhere); **I draft
+the copy** inline. New generic `src/components/ui/ExplainerHover.tsx` (distinct from the
+vocabulary-scoped `GlossaryPopover`): single-span trigger (see bug note below) + timed
+open + auto-flip-below near the viewport top + `role="tooltip"`/`aria-describedby` wiring +
+indigo card styling that rides the existing `.cq-high-contrast` override lists for free.
+Wired across dashboard (ReadinessMeter, StreakWidget freeze tokens, BadgeRack, DrillCTA,
+DashboardHero), mission map (BenchmarkNode status chips, region banner), mission flow
+(StepIndicator per-step, ConfidenceSelector "why we ask"), AssessmentPlayer progress chip,
+DrillCard review interval, Republic Challenge Hub + ModeCard stamina meta, StrategyTrackList
+use-counters, badges page track headers, StimulusDisplay read-aloud/chunking buttons +
+reading-level chip (replacing bare native `title=` attributes with richer popovers in the
+process). **Bug found + fixed during verification:** the first component draft used two
+nested spans (outer positioning span + inner trigger span with the handlers); under
+sub-pixel layout — reproduced specifically on `StepIndicator`'s small flex-col items inside
+a horizontally-scrollable row — the browser's hit-test could land on the outer span's
+hairline edge instead of the inner one, silently swallowing the hover with no error.
+Fixed by merging into one span (handlers + positioning + trigger styling together, no seam
+to fall into); confirmed fixed live post-fix, confirmed no regression on the
+already-working dashboard/map instances. **Verification:** `tsc` 0 errors; jest
+**1162/1162 (126 suites)** run with the dev server STOPPED (concurrent run reintroduces the
+documented Postgres connection-contention failures — hit this live, diagnosed, restopped,
+reran clean); browser walk as demo student Alex — hover-and-wait confirmed on EOC Readiness,
+Freeze Tokens, a map status chip, and (post-fix) a StepIndicator step, incl. content
+correctness; high-contrast mode confirmed live (popover border/text auto-neutralize to
+black-on-white, no new CSS needed); mobile viewport (375px) confirmed nothing breaks for
+non-hover users (dotted-underline cues render, just non-interactive as expected for this
+pass). Settings toggle used for the high-contrast test was reset back to off afterward
+(demo account left clean). **Deferred (backlog, tracked in ADR 0016 as required, not
+optional):** keyboard-focus and touch/tap triggers (WCAG 2.1 AA gap — `GlossaryPopover`
+already proves the ~10-line pattern to add); teacher/parent/admin explainer passes (separate
+follow-up sessions, one role at a time); horizontal viewport-edge collision (only vertical
+flip was built — a StepIndicator step near the far right of its scrollable row can render
+its popover partially off-screen; same limitation `GlossaryPopover` already has). NOT
+committed — awaiting owner review.
+
+---
+
 **TEACHER-WORKFLOW REPAIR (2026-07-15) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN
 (1131/1131, 124 suites) + full in-browser verification.** Owner asked for the same
 antagonistic review on the teacher side. The review found — and this session FIXED — two
@@ -629,6 +704,35 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+_(Update this at the end of every session.)_
+
+**Session of 2026-07-16 (Explainer hovers — Phase 2, teacher UI, continued same session):**
+After committing Phase 1 (student UI, `b00b5d1`), owner said "commit this then start the
+next section" — proceeded straight to the teacher rollout without re-entering plan mode
+(pattern already approved; this was applying it to new surfaces, not a new design
+decision). Added an `'admin'` theme to `ExplainerHover` since teacher pages use a plain LMS
+look, not the bright student game style. Wired across the teacher dashboard, student
+profile (incl. the Void/Override/Accommodations intervention controls), and benchmark
+detail/calibration/decay pages — see Current Build Phase for the full inventory.
+**Discovered mid-session that a second Claude Code session was concurrently editing this
+same repo** (the "lesson rich media" work, ADR 0015) — diagnosed via file-mtime forensics
+after a transient `tsc` error, later confirmed by an explicit tool hook. Handled by
+committing only my own hunks in the two files where our edits landed in the same file
+(`CLAUDE.md`, `teacher/dashboard/page.tsx`, `teacher/students/[studentId]/page.tsx`):
+reset each to HEAD, reapplied only my diff, verified with `git diff` before staging,
+rather than sweeping the other session's uncommitted, unreviewed work into this commit.
+Commit message when ready: `feat(phase-9): explainer hovers for teacher UI`.
+
+**Session of 2026-07-16 (Explainer hovers — Phase 1, student UI):** Owner asked for hover
+explainer popovers across the site so anyone can understand any feature on screen — "hover
+for a second or more, show a popup that explains what it is and does." Used plan mode:
+2 Explore agents (existing hover/popover patterns incl. `GlossaryPopover`'s hover+focus+tap
+implementation; a catalog of student/teacher/parent/admin UI surfaces), then
+AskUserQuestion to scope the first pass — see Current Build Phase for the full build
+inventory and the mid-session hit-testing bug found and fixed during browser verification
+(two-span trigger → merged into one span). Committed as
+`feat(phase-8): explainer hovers for student UI` (`b00b5d1`).
+
 
 **Session of 2026-07-15 (Teacher-workflow repair — antagonistic review + fixes):** Owner
 asked for the same antagonistic review on the teacher side. Static pass over every teacher

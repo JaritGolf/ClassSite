@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface Props {
   attemptId: string
@@ -47,13 +48,19 @@ export function VoidAttemptButton({ attemptId }: Props) {
 
   return (
     <>
-      <button
-        onClick={handleVoid}
-        disabled={busy}
-        className="rounded border border-red-200 px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+      <ExplainerHover
+        title="Void Attempt"
+        text="Keeps this attempt for the audit trail but removes it from mastery calculations and analytics — use it for a technical glitch or an attempt that shouldn't count, not as an undo for a genuine wrong answer."
+        theme="admin"
       >
-        {busy ? '…' : 'Void'}
-      </button>
+        <button
+          onClick={handleVoid}
+          disabled={busy}
+          className="rounded border border-red-200 px-2 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+        >
+          {busy ? '…' : 'Void'}
+        </button>
+      </ExplainerHover>
       {error && (
         <span role="alert" className="ml-1 text-[10px] text-red-600">
           {error}

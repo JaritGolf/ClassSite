@@ -1,5 +1,6 @@
 import type { MissedQuestionRow } from '@/lib/class-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface MostMissedQuestionsTableProps {
   rows: MissedQuestionRow[]
@@ -9,7 +10,13 @@ export function MostMissedQuestionsTable({ rows }: MostMissedQuestionsTableProps
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <ExplainerHover
+        title="Most Missed Questions"
+        text="The specific questions students get wrong most often, weighted across all assessment attempts — a fast way to spot a confusing item or a real gap."
+        theme="admin"
+      >
         <h2 className="mb-3 text-sm font-semibold text-gray-700">Most Missed Questions</h2>
+      </ExplainerHover>
         <EmptyState title="No data yet" body="Missed questions will appear after students attempt assessments." />
       </div>
     )
@@ -17,7 +24,13 @@ export function MostMissedQuestionsTable({ rows }: MostMissedQuestionsTableProps
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">Most Missed Questions</h2>
+      <ExplainerHover
+        title="Most Missed Questions"
+        text="The specific questions students get wrong most often, weighted across all assessment attempts — a fast way to spot a confusing item or a real gap."
+        theme="admin"
+      >
+        <h2 className="mb-3 text-sm font-semibold text-gray-700">Most Missed Questions</h2>
+      </ExplainerHover>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>

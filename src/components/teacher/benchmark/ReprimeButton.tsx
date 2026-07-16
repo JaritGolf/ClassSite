@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface ClassOption {
   id: string
@@ -78,13 +79,19 @@ export function ReprimeButton({ benchmarkId, classes }: Props) {
           ))}
         </select>
       )}
-      <button
-        onClick={handleReprime}
-        disabled={busy}
-        className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+      <ExplainerHover
+        title="Re-prime"
+        text="Brings this benchmark back into students' Daily Drill sooner by halving their spaced-review intervals — good after a class-wide decay spike or before a unit test, doesn't touch mastery status."
+        theme="admin"
       >
-        {busy ? 'Re-priming…' : 'Re-prime this benchmark'}
-      </button>
+        <button
+          onClick={handleReprime}
+          disabled={busy}
+          className="rounded-md bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+        >
+          {busy ? 'Re-priming…' : 'Re-prime this benchmark'}
+        </button>
+      </ExplainerHover>
       {msg && (
         <span role="status" className={`text-xs ${msg.tone === 'ok' ? 'text-green-600' : 'text-red-600'}`}>
           {msg.text}

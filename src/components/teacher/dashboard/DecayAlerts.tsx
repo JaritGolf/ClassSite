@@ -1,5 +1,9 @@
 import type { ClassDecayRate } from '@/lib/spaced-retrieval/decay'
 import { AlertBadge } from '@/components/teacher/shared/AlertBadge'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
+
+const DECAY_EXPLAINER =
+  "Benchmarks where several students' spaced-review performance has recently dropped — a sign it's a good time for a class-wide refresher, not necessarily reteaching from scratch."
 
 interface DecayAlertsProps {
   decays: ClassDecayRate[]
@@ -12,7 +16,9 @@ export function DecayAlerts({ decays }: DecayAlertsProps) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4">
         <div className="flex items-center gap-2 mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">Decay Alerts</h2>
+          <ExplainerHover title="Decay Alerts" text={DECAY_EXPLAINER} theme="admin">
+            <h2 className="text-sm font-semibold text-gray-700">Decay Alerts</h2>
+          </ExplainerHover>
           <AlertBadge tone="info">All clear</AlertBadge>
         </div>
         <p className="text-xs text-gray-400">No benchmarks currently showing class-wide decay spikes.</p>

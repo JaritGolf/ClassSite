@@ -30,11 +30,13 @@ export function BenchmarkOverviewCard({ overview }: Props) {
               ? 'warn'
               : 'critical'
           }
+          explain="Share of your roster that has scored 80%+ on this benchmark's Mastery Challenge."
         />
         <StatCard
           label="Students in Remediation"
           value={overview.studentsInRemediationCount}
           alert={overview.studentsInRemediationCount > 0 ? 'warn' : undefined}
+          explain="Students currently assigned a review activity after a Mastery Challenge attempt came up short."
         />
         <StatCard
           label="Avg Score (last attempt)"
@@ -46,6 +48,7 @@ export function BenchmarkOverviewCard({ overview }: Props) {
                 )}%`
               : '—'
           }
+          explain="The class's average score on their most recent Mastery Challenge attempt for this benchmark."
         />
       </div>
 

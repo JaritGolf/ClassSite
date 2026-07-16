@@ -78,21 +78,28 @@ export default async function TeacherDashboard() {
 
       {/* Summary stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Students" value={totalStudents} />
+        <StatCard
+          label="Students"
+          value={totalStudents}
+          explain="Total students across all your active classes."
+        />
         <StatCard
           label="Avg Mastery Rate"
           value={`${masteryRateAll}%`}
           alert={masteryRateAll < 40 ? 'warn' : undefined}
+          explain="The average, across all benchmarks, of the share of your roster that has mastered each one."
         />
         <StatCard
           label="Needs Action"
           value={studentsNeedingAction.length}
           alert={studentsNeedingAction.length > 0 ? 'warn' : undefined}
+          explain="Students who are off-ramped, stuck in remediation, or otherwise flagged for a check-in."
         />
         <StatCard
           label="Decay Spikes"
           value={spikeCount}
           alert={spikeCount > 0 ? 'critical' : undefined}
+          explain="Benchmarks where several students' spaced-review performance has recently dropped — a sign the class needs a refresher."
         />
       </div>
 

@@ -4,6 +4,7 @@
 
 import type { ClassDecayRate } from '@/lib/spaced-retrieval/decay'
 import { AlertBadge } from '@/components/teacher/shared/AlertBadge'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
 
 interface Props {
@@ -24,9 +25,25 @@ export function ClassDecayTable({ decayRates }: Props) {
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
             <th className="px-4 py-3">Benchmark</th>
-            <th className="px-4 py-3 text-right">Decaying</th>
+            <th className="px-4 py-3 text-right">
+              <ExplainerHover
+                title="Decaying"
+                text="Students whose most recent spaced-review answer on this benchmark scored below quality 3 (SM-2's 'struggled' threshold)."
+                theme="admin"
+              >
+                Decaying
+              </ExplainerHover>
+            </th>
             <th className="px-4 py-3 text-right">Total</th>
-            <th className="px-4 py-3 text-right">Rate</th>
+            <th className="px-4 py-3 text-right">
+              <ExplainerHover
+                title="Decay Rate"
+                text="Decaying students divided by total students who have this benchmark in spaced review. 50%+ triggers a spike alert."
+                theme="admin"
+              >
+                Rate
+              </ExplainerHover>
+            </th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3"></th>
           </tr>

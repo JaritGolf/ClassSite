@@ -4,6 +4,7 @@
 
 import type { CalibrationTrendPoint } from '@/lib/calibration-analytics'
 import { TrendChart } from '@/components/teacher/shared/TrendChart'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface Props {
   points: CalibrationTrendPoint[]
@@ -20,7 +21,13 @@ export function ClassCalibrationTrend({ points }: Props) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-700">Class Calibration Trend</h2>
+        <ExplainerHover
+          title="Class Calibration Trend"
+          text="How well the class's confidence matches their accuracy over time — a rising line means fewer students are 'Very sure' about wrong answers."
+          theme="admin"
+        >
+          <h2 className="text-sm font-semibold text-gray-700">Class Calibration Trend</h2>
+        </ExplainerHover>
         {latest && (
           <span className="text-xs text-gray-500">
             Latest: {Math.round(latest.calibrationScore * 100)}% accuracy on high-confidence responses

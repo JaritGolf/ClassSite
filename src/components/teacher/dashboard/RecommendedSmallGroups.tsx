@@ -1,5 +1,6 @@
 import type { SmallGroup } from '@/lib/class-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface RecommendedSmallGroupsProps {
   groups: SmallGroup[]
@@ -9,7 +10,13 @@ export function RecommendedSmallGroups({ groups }: RecommendedSmallGroupsProps) 
   if (groups.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <ExplainerHover
+        title="Recommended Small Groups"
+        text="Groups form automatically when 2 or more students share the same top misconceptions on an active benchmark — a ready-made reteach group."
+        theme="admin"
+      >
         <h2 className="mb-3 text-sm font-semibold text-gray-700">Recommended Small Groups</h2>
+      </ExplainerHover>
         <EmptyState title="No groups suggested yet" body="Groups form when 2+ students share the same top misconceptions on an active benchmark." />
       </div>
     )
@@ -17,7 +24,13 @@ export function RecommendedSmallGroups({ groups }: RecommendedSmallGroupsProps) 
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">Recommended Small Groups</h2>
+      <ExplainerHover
+        title="Recommended Small Groups"
+        text="Groups form automatically when 2 or more students share the same top misconceptions on an active benchmark — a ready-made reteach group."
+        theme="admin"
+      >
+        <h2 className="mb-3 text-sm font-semibold text-gray-700">Recommended Small Groups</h2>
+      </ExplainerHover>
       <ul className="space-y-3" role="list">
         {groups.map((group) => (
           <li key={group.groupId} className="rounded-lg border border-indigo-100 bg-indigo-50 p-3">

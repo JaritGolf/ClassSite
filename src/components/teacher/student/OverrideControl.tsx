@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface BenchmarkOption {
   benchmarkId: string
@@ -73,7 +74,13 @@ export function OverrideControl({ studentId, benchmarks }: Props) {
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-1 text-sm font-semibold text-gray-700">Teacher Override</h2>
+      <ExplainerHover
+        title="Teacher Override"
+        text="Manually change a student's benchmark status — for a conference decision, a data-entry fix, or a case the engine's automatic rules don't fit. Every override is permanently recorded in the audit log with your reason."
+        theme="admin"
+      >
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">Teacher Override</h2>
+      </ExplainerHover>
       <p className="mb-3 text-xs text-gray-500">
         Manually adjust this student&apos;s progress on a benchmark. Every override is recorded in
         the audit log.

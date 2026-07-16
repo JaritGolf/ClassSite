@@ -14,6 +14,7 @@ import { AccommodationEditor } from '@/components/teacher/student/AccommodationE
 import { VoidAttemptButton } from '@/components/teacher/student/VoidAttemptButton'
 import { OverrideControl } from '@/components/teacher/student/OverrideControl'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
 
 interface PageProps {
@@ -74,19 +75,27 @@ export default async function StudentProfilePage({ params }: PageProps) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
           <p className="text-xl font-bold text-indigo-700">{profile.mastery.mastered.length}</p>
-          <p className="text-xs text-gray-400">Mastered</p>
+          <ExplainerHover title="Mastered" text="Benchmarks this student has scored 80%+ on the Mastery Challenge." theme="admin">
+            <p className="text-xs text-gray-400">Mastered</p>
+          </ExplainerHover>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
           <p className="text-xl font-bold text-yellow-600">{profile.mastery.needsRemediation.length}</p>
-          <p className="text-xs text-gray-400">Needs Remed.</p>
+          <ExplainerHover title="Needs Remediation" text="Benchmarks where a Mastery Challenge attempt came up short and a review activity is assigned." theme="admin">
+            <p className="text-xs text-gray-400">Needs Remed.</p>
+          </ExplainerHover>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
           <p className="text-xl font-bold text-gray-700">{profile.spacedRetrieval.itemsDueCount}</p>
-          <p className="text-xs text-gray-400">Due Today</p>
+          <ExplainerHover title="Due Today" text="Spaced-review items due in this student's Daily Drill today." theme="admin">
+            <p className="text-xs text-gray-400">Due Today</p>
+          </ExplainerHover>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
           <p className="text-xl font-bold text-red-600">{profile.decayFlags.length}</p>
-          <p className="text-xs text-gray-400">Decaying</p>
+          <ExplainerHover title="Decaying" text="Benchmarks where this student's recall is dropping faster than the spaced-review schedule expects." theme="admin">
+            <p className="text-xs text-gray-400">Decaying</p>
+          </ExplainerHover>
         </div>
       </div>
 
@@ -104,7 +113,13 @@ export default async function StudentProfilePage({ params }: PageProps) {
 
       {/* Attempts */}
       <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-gray-700">Assessment Attempts</h2>
+        <ExplainerHover
+          title="Assessment Attempts"
+          text="Every assessment this student has taken. A voided attempt stays here for the record but no longer counts toward mastery or analytics."
+          theme="admin"
+        >
+          <h2 className="mb-3 text-sm font-semibold text-gray-700">Assessment Attempts</h2>
+        </ExplainerHover>
         {profile.attempts.length === 0 ? (
           <EmptyState title="No attempts yet" body="Attempts will appear here once the student starts assessments." />
         ) : (

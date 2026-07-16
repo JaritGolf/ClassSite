@@ -26,6 +26,14 @@ interface ExplainerHoverProps {
    * read as interactive) but still applies cursor-help.
    */
   variant?: 'underline' | 'plain'
+  /**
+   * 'game' (default) matches the bright student-facing design system
+   * (font-display, indigo-200 border, shadow-card). 'admin' matches the
+   * plain teacher/admin LMS surfaces (gray border, no display font, tighter
+   * text) — those pages aren't wrapped in the `.cq-*` accommodation theming
+   * student pages get, so this theme intentionally doesn't lean on it.
+   */
+  theme?: 'game' | 'admin'
   /** Extra classes for trigger-visual tweaks. */
   className?: string
   /** Extra classes for flex/layout placement (e.g. "ml-auto"). */
@@ -41,6 +49,7 @@ export function ExplainerHover({
   text,
   delayMs = 1000,
   variant = 'underline',
+  theme = 'game',
   className = '',
   wrapperClassName = '',
   children,
@@ -110,13 +119,21 @@ export function ExplainerHover({
           id={popoverId.current}
           role="tooltip"
           className={[
-            'absolute left-1/2 z-50 w-64 max-w-xs -translate-x-1/2 rounded-2xl border-2 border-indigo-200',
-            'bg-white p-3 text-sm leading-relaxed text-gray-800 shadow-card animate-pop-in',
+            'absolute left-1/2 z-50 w-64 max-w-xs -translate-x-1/2 animate-pop-in',
             placement === 'above' ? 'bottom-full mb-2' : 'top-full mt-2',
+            theme === 'admin'
+              ? 'rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-600 shadow-lg'
+              : 'rounded-2xl border-2 border-indigo-200 bg-white p-3 text-sm leading-relaxed text-gray-800 shadow-card',
           ].join(' ')}
         >
           {title && (
-            <span className="mb-0.5 block font-display text-xs font-bold uppercase tracking-wide text-indigo-700">
+            <span
+              className={
+                theme === 'admin'
+                  ? 'mb-0.5 block text-xs font-semibold uppercase tracking-wide text-gray-500'
+                  : 'mb-0.5 block font-display text-xs font-bold uppercase tracking-wide text-indigo-700'
+              }
+            >
               {title}
             </span>
           )}

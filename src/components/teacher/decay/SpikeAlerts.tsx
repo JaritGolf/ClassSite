@@ -4,6 +4,7 @@
 
 import type { ClassDecayRate } from '@/lib/spaced-retrieval/decay'
 import { AlertBadge } from '@/components/teacher/shared/AlertBadge'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
 
 interface Props {
@@ -21,9 +22,15 @@ export function SpikeAlerts({ spikes }: Props) {
         <AlertBadge tone="critical">
           {spikes.length} decay spike{spikes.length !== 1 ? 's' : ''} detected
         </AlertBadge>
-        <span className="text-xs text-red-600">
-          50%+ of class is forgetting these benchmarks
-        </span>
+        <ExplainerHover
+          title="Decay Spike"
+          text="A spike means 50%+ of the class scored below quality 3 on their most recent spaced-review answer for this benchmark — worth a Re-prime or a quick class refresher."
+          theme="admin"
+        >
+          <span className="text-xs text-red-600">
+            50%+ of class is forgetting these benchmarks
+          </span>
+        </ExplainerHover>
       </div>
       <ul className="space-y-2" role="list">
         {spikes.map((spike) => (

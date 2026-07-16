@@ -4,6 +4,7 @@
 
 import type { OverconfidenceRow } from '@/lib/calibration-analytics'
 import { AlertBadge } from '@/components/teacher/shared/AlertBadge'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
 
 interface Props {
@@ -19,9 +20,33 @@ export function OverconfidencePatternList({ rows }: Props) {
         <thead>
           <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-400">
             <th className="px-4 py-3">Student</th>
-            <th className="px-4 py-3 text-right">Confidence Gap</th>
-            <th className="px-4 py-3 text-right">Sample Size</th>
-            <th className="px-4 py-3">Severity</th>
+            <th className="px-4 py-3 text-right">
+              <ExplainerHover
+                title="Confidence Gap"
+                text="How often this student says 'Very sure' but is wrong, versus how often 'Very sure' answers are actually right. Bigger gap = more overconfidence."
+                theme="admin"
+              >
+                Confidence Gap
+              </ExplainerHover>
+            </th>
+            <th className="px-4 py-3 text-right">
+              <ExplainerHover
+                title="Sample Size"
+                text="How many high-confidence responses this gap is calculated from — at least 5 are required before a student appears here."
+                theme="admin"
+              >
+                Sample Size
+              </ExplainerHover>
+            </th>
+            <th className="px-4 py-3">
+              <ExplainerHover
+                title="Severity"
+                text="High = 50%+ confidence gap. Moderate = 30-49%. Both are worth a quick check-in on test-taking habits."
+                theme="admin"
+              >
+                Severity
+              </ExplainerHover>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">

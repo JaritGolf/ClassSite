@@ -4,6 +4,10 @@
 
 import type { DistractorRow } from '@/lib/benchmark-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
+
+const DISTRACTOR_EXPLAINER =
+  'The wrong answers students pick most often for this benchmark, linked to a known misconception where one applies — useful for spotting a confusing question versus a real conceptual gap.'
 
 interface Props {
   rows: DistractorRow[]
@@ -13,9 +17,11 @@ export function DistractorAnalysis({ rows }: Props) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4">
-        <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
-          Distractor Analysis
-        </h3>
+        <ExplainerHover title="Distractor Analysis" text={DISTRACTOR_EXPLAINER} theme="admin">
+          <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+            Distractor Analysis
+          </h3>
+        </ExplainerHover>
         <EmptyState title="No distractor data" body="No incorrect responses recorded yet." />
       </div>
     )

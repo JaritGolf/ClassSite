@@ -1,5 +1,6 @@
 import type { MisconceptionRow } from '@/lib/class-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface MisconceptionsTableProps {
   rows: MisconceptionRow[]
@@ -9,7 +10,13 @@ export function MisconceptionsTable({ rows }: MisconceptionsTableProps) {
   if (rows.length === 0) {
     return (
       <div className="rounded-xl border border-gray-200 bg-white p-4">
+        <ExplainerHover
+        title="Common Misconceptions"
+        text="Wrong answers linked to a known misconception in the Appendix E inventory — not just any wrong answer, but a specific, recognized way of thinking that led to it."
+        theme="admin"
+      >
         <h2 className="mb-3 text-sm font-semibold text-gray-700">Common Misconceptions</h2>
+      </ExplainerHover>
         <EmptyState title="No misconceptions flagged" body="Misconceptions appear when students select distractors linked to Appendix E codes." />
       </div>
     )
@@ -17,7 +24,13 @@ export function MisconceptionsTable({ rows }: MisconceptionsTableProps) {
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold text-gray-700">Common Misconceptions</h2>
+      <ExplainerHover
+        title="Common Misconceptions"
+        text="Wrong answers linked to a known misconception in the Appendix E inventory — not just any wrong answer, but a specific, recognized way of thinking that led to it."
+        theme="admin"
+      >
+        <h2 className="mb-3 text-sm font-semibold text-gray-700">Common Misconceptions</h2>
+      </ExplainerHover>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
           <thead>

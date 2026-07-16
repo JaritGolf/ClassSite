@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import type { StudentProfileVM } from '@/lib/student-profile'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface CatalogItem {
   code: string
@@ -63,7 +64,13 @@ export function AccommodationEditor({
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-1 text-sm font-semibold text-gray-700">Accommodations</h2>
+      <ExplainerHover
+        title="Accommodations"
+        text="Grant a code here and it flows through every assessment automatically — reading-level adjustments, extra breaks, translated glosses, and more, without the student needing to do anything."
+        theme="admin"
+      >
+        <h2 className="mb-1 text-sm font-semibold text-gray-700">Accommodations</h2>
+      </ExplainerHover>
       <p className="mb-3 text-xs text-gray-500">
         Granted accommodations flow through every assessment automatically.
       </p>
