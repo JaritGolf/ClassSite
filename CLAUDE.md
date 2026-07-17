@@ -148,6 +148,35 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**EXPLAINER HOVERS — STUDENT TOP-NAV + POSITIONING FIXES (2026-07-17, extends ADR 0016) —
+Tier 1 `tsc` GREEN + in-browser verification (jest has unrelated pre-existing DB-debris
+failures, see Last Action).** Picked up two files left uncommitted from finishing the
+Phase 1 (student UI) explainer-hover rollout: `ExplainerHover.tsx` and `StudentNav.tsx`.
+(1) **`StudentNav` now wraps every top-nav item** (Dashboard/Mission Map/Daily
+Drill/Republic Challenge/Source Decoder/Strategy/Badges/Settings) in
+`<ExplainerHover variant="plain">` with a plain-language explainer, using the new
+`TrackIcon` set already built for the mission map/badges pass. (2) **`ExplainerHover`
+positioning rewritten to `position: fixed` computed from `getBoundingClientRect()`**
+instead of CSS `absolute` + `bottom-full`/`top-full`: a trigger inside the nav's
+`overflow-x-auto` row had its `overflow-y` silently coerced to `auto` too (CSS overflow
+spec — set one axis, get both), which clipped an absolutely-positioned popover popping up
+outside the row's own height even though it computed as visible/opacity-1. Auto-flips
+above/below off a 180px viewport-top threshold, clamps horizontally so it never runs off
+either edge. (3) Folded in the accumulated hard-won gotchas as code comments so they
+don't get silently reintroduced: single trigger span (no hit-testing seam), explicit
+`whitespace-normal` (fights inherited `whitespace-nowrap`), animation on the inner span
+only (an outer `animate-pop-in` would clobber the centering `translate(-50%,...)`), and
+`cursor-help`→`cursor-pointer` once open so a clickable trigger doesn't look dead.
+**Verification:** `tsc --noEmit` 0 errors; live browser walk as demo student Alex —
+hovered "Republic Challenge" (near viewport top, confirmed below-flip) and clicked
+through while its popover was open (the exact "shows but can't click" bug class this
+pass fixes) → navigated correctly; hovered "Settings" (rightmost nav item, confirmed
+horizontal clamp — popover stayed fully on-screen) and clicked through → navigated
+correctly; high-contrast mode spot-check on the nav popover (gray text + solid black
+border, no bright gradient bleed) — toggled on, verified, toggled back off, demo account
+left clean. Committed as
+`feat(phase-8): explainer hovers on student top nav + positioning fixes`.
+
 **TEACHER LESSON WALKTHROUGH — "walk it like a student" preview (2026-07-16, extends
 ADR 0015) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1313/1315 + the 2 intentional interim
 skips, 130 suites) + in-browser verification.** Owner: needed to preview lessons FAST from
@@ -843,6 +872,36 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-07-17 (Explainer hovers — student top-nav + positioning fixes,
+finishes the Phase 1 rollout):** Picked up two files left uncommitted at the end of the
+earlier explainer-hover session: `ExplainerHover.tsx` and `StudentNav.tsx`. Verified
+they were isolated from the large amount of other uncommitted work in this tree (Canva
+stimuli, lesson media, standards realignment, teacher walkthrough) via
+`git diff --stat` scoped to just those two files, then confirmed by stashing them and
+re-running the jest suite — the failures that showed up (`seed.test.ts`,
+`audit11/01`, `assessment-allocation.test.ts`, etc.) reproduced identically with my
+files fully reverted, confirming they're pre-existing DB-state debris (questions with 0
+options / null externalKey in the shared dev DB) unrelated to this change, not a
+regression from it. Also hit the documented concurrent-session hazard mid-session — a
+stray `next-server`/`next dev` from another session was running and had to be killed
+before jest would run cleanly; it later died on its own and had to be restarted via
+`preview_start` for the browser verification pass. Built: `StudentNav` now wraps all 8
+top-nav items in `ExplainerHover`; `ExplainerHover` positioning moved from CSS
+`absolute` to `position: fixed` off `getBoundingClientRect()` (the nav's
+`overflow-x-auto` was silently clipping the popover via the CSS overflow-axis-coercion
+rule), with auto-flip and horizontal clamping. **Verification:** `tsc` 0 errors; live
+browser walk as demo student Alex — below-flip case (Republic Challenge, near viewport
+top) and horizontal-clamp case (Settings, rightmost nav item) both confirmed visually,
+AND both confirmed click-through-able while the popover was showing (the specific bug
+class — "popover shows but you can't click through" — that this session's fixes
+target); high-contrast mode spot-checked on the nav popover (neutralizes to gray text +
+solid border, no bright bleed-through), then toggled back off to leave the demo account
+clean. Committed as `feat(phase-8): explainer hovers on student top nav + positioning
+fixes`. **Remaining scope (not done this session, still zero coverage per grep):**
+admin pages (`theme="admin"` — parents/retention/calibration/audit/users/eoc-scores +
+AdminNav), parent pages (`theme="admin"` — parent dashboard/student-detail/
+ParentSummaryView), and the deferred keyboard-focus/touch triggers tracked in ADR 0016.
 
 **Session of 2026-07-16 (Teacher lesson walkthrough — resumed rich-media session):** Owner
 asked for fast lesson previews from the teacher dashboard: move through a whole lesson
