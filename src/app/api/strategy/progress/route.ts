@@ -8,7 +8,7 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { getStrategyProgress, getStrategyMissions } from '@/lib/strategy-track'
+import { getStrategyProgress, getStrategyMissionsForStudent } from '@/lib/strategy-track'
 
 export async function GET() {
   const session = await getSession()
@@ -27,10 +27,17 @@ export async function GET() {
     return NextResponse.json({ error: 'Student profile not found' }, { status: 404 })
   }
 
-  const [{ progress, completedCount }, missions] = await Promise.all([
-    getStrategyProgress(student.id),
-    Promise.resolve(getStrategyMissions()),
-  ])
+  const { progress, classGlobal, totalOwed, missionsMet, missionsRequired } =
+    await getStrategyProgress(student.id)
+  // Missions served without answer keys (options shuffled per student).
+  const missions = getStrategyMissionsForStudent(student.id)
 
-  return NextResponse.json({ progress, completedCount, missions })
+  return NextResponse.json({
+    progress,
+    classGlobal,
+    totalOwed,
+    missionsMet,
+    missionsRequired,
+    missions,
+  })
 }

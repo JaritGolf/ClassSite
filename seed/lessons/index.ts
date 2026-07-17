@@ -9,13 +9,19 @@ import type { PrismaClient } from '@prisma/client'
 import { CONTENT_APPROVAL } from '../approval_mode'
 import { seedLessonDefs, type LessonSeedDef } from './_seeder'
 import { UNIT1_LESSONS } from './unit1'
+import { UNIT1_INTERIM_LESSONS } from './unit1_interim'
 
 export interface LessonBank {
   unitId: string
   lessons: LessonSeedDef[]
 }
 
-export const ALL_LESSON_BANKS: LessonBank[] = [{ unitId: 'unit-1', lessons: UNIT1_LESSONS }]
+export const ALL_LESSON_BANKS: LessonBank[] = [
+  { unitId: 'unit-1', lessons: UNIT1_LESSONS },
+  // ADR 0017: interim lessons for the repurposed official 1.1/1.2 rows —
+  // full content build (incl. media pass) tracked in the CLAUDE.md backlog.
+  { unitId: 'unit-1', lessons: UNIT1_INTERIM_LESSONS },
+]
 
 export async function seedLessons(prisma: PrismaClient): Promise<void> {
   let count = 0

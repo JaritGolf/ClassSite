@@ -21,14 +21,14 @@
 import type { PrismaClient } from '@prisma/client'
 import { seedQuestionDefs, type QuestionSeedDef } from './_seeder'
 
-// ── SS.7.CG.1.7 — Purposes of Government and the Preamble ────────────────────
+// ── SS.7.CG.1.8 — The Preamble: Purposes of Government (ADR 0017: was coded 1.7) ──
 // Skill tags: preamble-purposes · purposes-of-government
 // Remediation tags: remed-CG17-preamble · remed-CG17-purposes
 
 const SS7CG17: QuestionSeedDef[] = [
   // 1 — vocab · L1 · LOW
   {
-    externalKey: 'q-SS7CG17-001', benchmarkCode: 'SS.7.CG.1.7', category: 'vocabulary',
+    externalKey: 'q-SS7CG17-001', benchmarkCode: 'SS.7.CG.1.8', category: 'vocabulary',
     prompt: 'In the Preamble, what does the word "Preamble" mean?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'LOW', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -41,7 +41,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 2 — vocab · L1 · LOW
   {
-    externalKey: 'q-SS7CG17-002', benchmarkCode: 'SS.7.CG.1.7', category: 'vocabulary',
+    externalKey: 'q-SS7CG17-002', benchmarkCode: 'SS.7.CG.1.8', category: 'vocabulary',
     prompt: 'What does "domestic tranquility" mean in the Preamble?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'LOW', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -54,7 +54,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 3 — vocab · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-003', benchmarkCode: 'SS.7.CG.1.7', category: 'vocabulary',
+    externalKey: 'q-SS7CG17-003', benchmarkCode: 'SS.7.CG.1.8', category: 'vocabulary',
     prompt: 'The Preamble says government should "promote the general welfare." In this phrase, "general welfare" most nearly means the —',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -67,7 +67,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 4 — vocab · L1 · MOD
   {
-    externalKey: 'q-SS7CG17-004', benchmarkCode: 'SS.7.CG.1.7', category: 'vocabulary',
+    externalKey: 'q-SS7CG17-004', benchmarkCode: 'SS.7.CG.1.8', category: 'vocabulary',
     prompt: 'To "establish justice" means to set up a system that —',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -80,7 +80,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 5 — basic · L1 · LOW
   {
-    externalKey: 'q-SS7CG17-005', benchmarkCode: 'SS.7.CG.1.7', category: 'basic_concept',
+    externalKey: 'q-SS7CG17-005', benchmarkCode: 'SS.7.CG.1.8', category: 'basic_concept',
     prompt: 'Which phrase from the Preamble shows that the power of government comes from the people?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'LOW', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -93,7 +93,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 6 — basic · L1 · LOW
   {
-    externalKey: 'q-SS7CG17-006', benchmarkCode: 'SS.7.CG.1.7', category: 'basic_concept',
+    externalKey: 'q-SS7CG17-006', benchmarkCode: 'SS.7.CG.1.8', category: 'basic_concept',
     prompt: 'How many main purposes of government does the Preamble list?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'LOW', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -106,7 +106,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 7 — basic · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-007', benchmarkCode: 'SS.7.CG.1.7', category: 'basic_concept',
+    externalKey: 'q-SS7CG17-007', benchmarkCode: 'SS.7.CG.1.8', category: 'basic_concept',
     prompt: 'A city builds a new fire department and hires firefighters. Which purpose of government does this BEST serve?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -119,7 +119,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 8 — basic · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-008', benchmarkCode: 'SS.7.CG.1.7', category: 'basic_concept',
+    externalKey: 'q-SS7CG17-008', benchmarkCode: 'SS.7.CG.1.8', category: 'basic_concept',
     prompt: 'Why did the Founders begin the Constitution with a statement of purposes?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -132,7 +132,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 9 — scenario · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-009', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-009', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'A town passes a law requiring restaurants to pass health inspections before opening. Which purpose of government does this best illustrate?',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -145,7 +145,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 10 — scenario · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-010', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-010', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'After a natural disaster, the National Guard restores order and stops looting in a city. Which purpose of government is being carried out?',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -158,7 +158,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 11 — scenario · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-011', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-011', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'Congress votes to fund the U.S. military to protect the country from foreign attack. Which purpose of government does this serve?',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -171,7 +171,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 12 — scenario · L3 · HIGH
   {
-    externalKey: 'q-SS7CG17-012', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-012', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'A state government creates a public defender program so that people who cannot afford a lawyer still receive legal representation in criminal trials. Which TWO Preamble purposes are most directly advanced, and why?',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'HIGH', readingLoadLevel: 3,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -184,7 +184,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 13 — scenario · L3 · HIGH
   {
-    externalKey: 'q-SS7CG17-013', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-013', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'Two neighboring states disagree about the use of a shared river. The national government steps in to settle the dispute peacefully so the states do not come into conflict. Which Preamble purpose is BEST illustrated, and how does it connect to the weakness of the Articles of Confederation?',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'HIGH', readingLoadLevel: 3,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -197,7 +197,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 14 — scenario · L3 · HIGH
   {
-    externalKey: 'q-SS7CG17-014', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-014', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'A student argues: "Because the Preamble says government should promote the general welfare, the government can do absolutely anything it wants to help people." Why is this reasoning flawed?',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'HIGH', readingLoadLevel: 3,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -210,7 +210,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 15 — scenario · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-015', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-015', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'A community center offers free after-school tutoring funded by the city. A citizen asks which purpose of government this serves. The best answer is —',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -223,7 +223,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 16 — scenario · L3 · HIGH
   {
-    externalKey: 'q-SS7CG17-016', benchmarkCode: 'SS.7.CG.1.7', category: 'scenario',
+    externalKey: 'q-SS7CG17-016', benchmarkCode: 'SS.7.CG.1.8', category: 'scenario',
     prompt: 'A new nation is writing its first constitution. Its leaders want citizens to understand the document\'s goals before reading its detailed rules. Based on how the U.S. Constitution is organized, what should they include first, and why?',
     itemType: 'SCENARIO_MC', cognitiveComplexity: 'HIGH', readingLoadLevel: 3,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -236,7 +236,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 17 — source · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-017', benchmarkCode: 'SS.7.CG.1.7', category: 'source_analysis',
+    externalKey: 'q-SS7CG17-017', benchmarkCode: 'SS.7.CG.1.8', category: 'source_analysis',
     prompt: 'Read this excerpt from the Preamble: "We the People of the United States, in Order to form a more perfect Union, establish Justice..." The phrase "We the People" shows that the government\'s authority comes from —',
     itemType: 'SOURCE_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -249,7 +249,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 18 — source · L3 · HIGH
   {
-    externalKey: 'q-SS7CG17-018', benchmarkCode: 'SS.7.CG.1.7', category: 'source_analysis',
+    externalKey: 'q-SS7CG17-018', benchmarkCode: 'SS.7.CG.1.8', category: 'source_analysis',
     prompt: 'Excerpt: "...provide for the common defence, promote the general Welfare, and secure the Blessings of Liberty to ourselves and our Posterity..." The word "Posterity" tells the reader that the Founders intended the Constitution\'s benefits to —',
     itemType: 'SOURCE_MC', cognitiveComplexity: 'HIGH', readingLoadLevel: 3,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -262,7 +262,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 19 — source · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-019', benchmarkCode: 'SS.7.CG.1.7', category: 'source_analysis',
+    externalKey: 'q-SS7CG17-019', benchmarkCode: 'SS.7.CG.1.8', category: 'source_analysis',
     prompt: 'Excerpt: "...in Order to form a more perfect Union..." Compared with the Articles of Confederation, the phrase "more perfect Union" suggests the Founders wanted a national government that was —',
     itemType: 'SOURCE_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -275,7 +275,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 20 — source · L3 · HIGH
   {
-    externalKey: 'q-SS7CG17-020', benchmarkCode: 'SS.7.CG.1.7', category: 'source_analysis',
+    externalKey: 'q-SS7CG17-020', benchmarkCode: 'SS.7.CG.1.8', category: 'source_analysis',
     prompt: 'A historian writes: "The Preamble is not a source of government power; it is a statement of intent." Using the text of the Preamble, which idea BEST supports the historian\'s claim?',
     itemType: 'SOURCE_MC', cognitiveComplexity: 'HIGH', readingLoadLevel: 3,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -288,7 +288,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 21 — chart · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-021', benchmarkCode: 'SS.7.CG.1.7', category: 'chart_visual',
+    externalKey: 'q-SS7CG17-021', benchmarkCode: 'SS.7.CG.1.8', category: 'chart_visual',
     prompt: 'A table pairs Preamble phrases with examples:\n| Preamble Purpose | Example |\n| "establish Justice" | courts and fair trials |\n| "common defence" | armed forces |\n| "general Welfare" | ??? |\nWhich example best completes the table?',
     itemType: 'IMAGE_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -301,7 +301,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 22 — chart · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-022', benchmarkCode: 'SS.7.CG.1.7', category: 'chart_visual',
+    externalKey: 'q-SS7CG17-022', benchmarkCode: 'SS.7.CG.1.8', category: 'chart_visual',
     prompt: 'A diagram shows an arrow labeled "We the People" pointing toward a box labeled "Government," with the words "power flows from →". What core principle does this diagram represent?',
     itemType: 'IMAGE_MC', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -314,7 +314,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 23 — chart · L1 · LOW
   {
-    externalKey: 'q-SS7CG17-023', benchmarkCode: 'SS.7.CG.1.7', category: 'chart_visual',
+    externalKey: 'q-SS7CG17-023', benchmarkCode: 'SS.7.CG.1.8', category: 'chart_visual',
     prompt: 'A list shows the six purposes of the Preamble. Which one is about keeping peace and order INSIDE the country?',
     itemType: 'IMAGE_MC', cognitiveComplexity: 'LOW', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -327,7 +327,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 24 — misconception · L1 · LOW
   {
-    externalKey: 'q-SS7CG17-024', benchmarkCode: 'SS.7.CG.1.7', category: 'misconception_check',
+    externalKey: 'q-SS7CG17-024', benchmarkCode: 'SS.7.CG.1.8', category: 'misconception_check',
     prompt: 'True or False (choose the BEST answer): "The Preamble is the part of the Constitution that lists all the rights of citizens."',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'LOW', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -340,7 +340,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 25 — misconception · L1 · MOD
   {
-    externalKey: 'q-SS7CG17-025', benchmarkCode: 'SS.7.CG.1.7', category: 'misconception_check',
+    externalKey: 'q-SS7CG17-025', benchmarkCode: 'SS.7.CG.1.8', category: 'misconception_check',
     prompt: 'A student says, "Because the Preamble says \'We the People,\' every law must be approved by every single citizen." What is the BEST correction?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 1,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -353,7 +353,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 26 — misconception · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-026', benchmarkCode: 'SS.7.CG.1.7', category: 'misconception_check',
+    externalKey: 'q-SS7CG17-026', benchmarkCode: 'SS.7.CG.1.8', category: 'misconception_check',
     prompt: 'Which statement about the Preamble is CORRECT?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'preamble-purposes', remediationTag: 'remed-CG17-preamble',
@@ -366,7 +366,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 27 — eoc · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-027', benchmarkCode: 'SS.7.CG.1.7', category: 'eoc_mixed',
+    externalKey: 'q-SS7CG17-027', benchmarkCode: 'SS.7.CG.1.8', category: 'eoc_mixed',
     prompt: 'Which of the following BEST describes the main idea of the Preamble?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -379,7 +379,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 28 — eoc · L2 · MOD
   {
-    externalKey: 'q-SS7CG17-028', benchmarkCode: 'SS.7.CG.1.7', category: 'eoc_mixed',
+    externalKey: 'q-SS7CG17-028', benchmarkCode: 'SS.7.CG.1.8', category: 'eoc_mixed',
     prompt: 'A government builds highways, funds public hospitals, and supports schools. These actions are examples of government working to —',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 2,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -392,7 +392,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 29 — eoc · L1 · MOD
   {
-    externalKey: 'q-SS7CG17-029', benchmarkCode: 'SS.7.CG.1.7', category: 'eoc_mixed',
+    externalKey: 'q-SS7CG17-029', benchmarkCode: 'SS.7.CG.1.8', category: 'eoc_mixed',
     prompt: 'The Preamble begins with "We the People." This phrase is an example of which principle?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'MODERATE', readingLoadLevel: 1,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -405,7 +405,7 @@ const SS7CG17: QuestionSeedDef[] = [
   },
   // 30 — eoc · L2 · HIGH
   {
-    externalKey: 'q-SS7CG17-030', benchmarkCode: 'SS.7.CG.1.7', category: 'eoc_mixed',
+    externalKey: 'q-SS7CG17-030', benchmarkCode: 'SS.7.CG.1.8', category: 'eoc_mixed',
     prompt: 'A citizen claims a new federal program is unconstitutional. A supporter responds, "The Preamble says government should promote the general welfare, so the program must be allowed." Which is the BEST evaluation of the supporter\'s argument?',
     itemType: 'MULTIPLE_CHOICE', cognitiveComplexity: 'HIGH', readingLoadLevel: 2,
     skillTag: 'purposes-of-government', remediationTag: 'remed-CG17-purposes',
@@ -420,13 +420,17 @@ const SS7CG17: QuestionSeedDef[] = [
 
 // ── Aggregation ──────────────────────────────────────────────────────────────
 
-/** Per-benchmark question arrays, keyed by benchmark code. */
+/**
+ * Per-benchmark question arrays, keyed by benchmark code.
+ * ADR 0017: this bank (Preamble content, externalKeys q-SS7CG17-*) moved from
+ * code 1.7 to the official Preamble code 1.8; externalKeys stay frozen.
+ */
 export const UNIT2_QUESTIONS_BY_BENCHMARK: Record<string, QuestionSeedDef[]> = {
-  'SS.7.CG.1.7': SS7CG17,
+  'SS.7.CG.1.8': SS7CG17,
 }
 
 /** Benchmarks authored to the full 30 — audit-15 drivers iterate over this set. */
-export const UNIT2_COMPLETE_BENCHMARKS: string[] = ['SS.7.CG.1.7']
+export const UNIT2_COMPLETE_BENCHMARKS: string[] = ['SS.7.CG.1.8']
 
 const ALL_UNIT2_QUESTIONS: QuestionSeedDef[] = Object.values(UNIT2_QUESTIONS_BY_BENCHMARK).flat()
 

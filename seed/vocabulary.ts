@@ -58,38 +58,46 @@ const TIER_2_FUNCTION_WORDS: TermDef[] = [
 ]
 
 // ── Tier 3: Civics Content Vocabulary ─────────────────────────────────────
+// ADR 0017: benchmarkCodes reassigned topically to the realigned official
+// codes; six terms added for the interim 1.1/1.2 blocks and the 1.3 rewrite.
 
 const TIER_3_ORIGINS: TermDef[] = [
+  { term: 'direct democracy', definition: 'A government in which citizens vote on laws and decisions themselves, without representatives; practiced in ancient Athens.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
+  { term: 'civic virtue', definition: 'Putting the good of the community above your own personal interests; an ideal of the Roman Republic admired by the American founders.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
+  { term: 'Twelve Tables', definition: "Ancient Rome's first written law code (about 450 BC), posted publicly so every citizen could know the law; an ancestor of written constitutions.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
+  { term: 'limited government', definition: 'The principle that government may use only the powers the people have given it, usually written in a constitution.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
+  { term: 'republicanism', definition: 'The founding principle that the people govern through representatives they elect and hold accountable.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
+  { term: 'Common Sense', definition: "Thomas Paine's 1776 pamphlet arguing in plain language for American independence and republican government; it moved many colonists to support the break from Britain.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
   { term: 'republic', definition: 'A form of government in which citizens elect representatives to govern on their behalf.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
   { term: 'democracy', definition: 'A system of government in which power is held by the people, either directly or through elected representatives.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'natural rights', definition: 'Rights that all people are born with, not granted by government; according to Locke: life, liberty, and property.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'social contract', definition: 'The idea that people give up some freedoms to a government in exchange for protection of their remaining rights.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'rule of law', definition: 'The principle that all people and institutions, including the government, must follow the law.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'popular sovereignty', definition: 'The idea that political authority belongs to the people, who grant it to the government.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'consent of the governed', definition: 'The principle that a government derives its legitimacy from the agreement and approval of the people it governs.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'Enlightenment', definition: 'An 18th-century intellectual movement emphasizing reason, individual rights, and limited government, which influenced the American founding.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'Magna Carta', definition: 'A 1215 English document that limited the power of the king and established certain rights; an early influence on American democracy.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'English Bill of Rights', definition: 'A 1689 English law that limited royal power and guaranteed certain rights to Parliament and citizens; influenced American founders.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
-  { term: 'Mayflower Compact', definition: "A 1620 agreement among Pilgrims to create a self-governing community; an early example of self-governance in America.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
-  { term: 'town meeting', definition: 'A New England gathering where community members debated and voted directly on local issues; an early form of direct democracy.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
-  { term: 'common law', definition: "Law developed over time from judges' decisions and customs rather than written statutes; an English tradition carried into colonial America.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
-  { term: 'salutary neglect', definition: "Britain's hands-off policy of loosely enforcing laws in the colonies, which allowed colonial self-government to develop.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
-  { term: 'boycott', definition: 'An organized refusal to buy certain goods as a form of protest; colonists boycotted British goods to oppose taxation without representation.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
-  { term: 'petition', definition: 'A formal written request to those in power; colonists petitioned the king and Parliament before turning to stronger resistance.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
-  { term: 'repeal', definition: 'To officially cancel a law; colonial boycotts pressured Parliament to repeal the Stamp Act in 1766.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
-  { term: 'taxation without representation', definition: 'Being taxed by a government in which one has no elected voice; the core colonial objection to British taxes after 1763.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
-  { term: 'Declaration of Independence', definition: "The 1776 document declaring the colonies' independence from Britain and stating founding principles of natural rights and consent of the governed.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.4' },
-  { term: 'unalienable rights', definition: 'Rights that cannot be taken away or given up; the Declaration names life, liberty, and the pursuit of happiness.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.4' },
-  { term: 'Articles of Confederation', definition: "The first plan of government for the United States (1781–1789); had significant weaknesses including no power to tax or enforce laws.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.5' },
-  { term: 'confederation', definition: 'A loose alliance of independent states that keep most of their own power, with a weak central government.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.5' },
-  { term: "Shays' Rebellion", definition: "A 1786–87 uprising of Massachusetts farmers that exposed the national government's inability to keep order under the Articles of Confederation.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.5' },
-  { term: 'Constitution', definition: "The supreme law of the United States, establishing the structure of government and protecting individual rights.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
-  { term: 'Preamble', definition: "The introductory statement of the U.S. Constitution beginning with 'We the People' that states the purposes of the document.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
-  { term: 'ratification', definition: "The process of formally approving a document or agreement, such as a treaty or constitutional amendment.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
-  { term: 'Federalists', definition: 'Supporters of ratifying the Constitution, who favored a stronger national government with checks and balances.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
-  { term: 'Anti-Federalists', definition: 'Opponents of ratifying the Constitution, who feared national power and demanded a bill of rights.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
-  { term: 'grievance', definition: "A formal complaint; the Declaration of Independence lists specific grievances against the British king.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.4' },
-  { term: 'principle', definition: "A fundamental truth or rule that guides thinking or action.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.4' },
+  { term: 'natural rights', definition: 'Rights that all people are born with, not granted by government; according to Locke: life, liberty, and property.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.4' },
+  { term: 'social contract', definition: 'The idea that people give up some freedoms to a government in exchange for protection of their remaining rights.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.4' },
+  { term: 'rule of law', definition: 'The principle that all people and institutions, including the government, must follow the law.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.11' },
+  { term: 'popular sovereignty', definition: 'The idea that political authority belongs to the people, who grant it to the government.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
+  { term: 'consent of the governed', definition: 'The principle that a government derives its legitimacy from the agreement and approval of the people it governs.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.2' },
+  { term: 'Enlightenment', definition: 'An 18th-century intellectual movement emphasizing reason, individual rights, and limited government, which influenced the American founding.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.4' },
+  { term: 'Magna Carta', definition: 'A 1215 English document that limited the power of the king and established certain rights; an early influence on American democracy.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
+  { term: 'English Bill of Rights', definition: 'A 1689 English law that limited royal power and guaranteed certain rights to Parliament and citizens; influenced American founders.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
+  { term: 'Mayflower Compact', definition: "A 1620 agreement among Pilgrims to create a self-governing community; an early example of self-governance in America.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
+  { term: 'town meeting', definition: 'A New England gathering where community members debated and voted directly on local issues; an early form of direct democracy.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
+  { term: 'common law', definition: "Law developed over time from judges' decisions and customs rather than written statutes; an English tradition carried into colonial America.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
+  { term: 'salutary neglect', definition: "Britain's hands-off policy of loosely enforcing laws in the colonies, which allowed colonial self-government to develop.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.3' },
+  { term: 'boycott', definition: 'An organized refusal to buy certain goods as a form of protest; colonists boycotted British goods to oppose taxation without representation.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.5' },
+  { term: 'petition', definition: 'A formal written request to those in power; colonists petitioned the king and Parliament before turning to stronger resistance.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.5' },
+  { term: 'repeal', definition: 'To officially cancel a law; colonial boycotts pressured Parliament to repeal the Stamp Act in 1766.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.5' },
+  { term: 'taxation without representation', definition: 'Being taxed by a government in which one has no elected voice; the core colonial objection to British taxes after 1763.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.5' },
+  { term: 'Declaration of Independence', definition: "The 1776 document declaring the colonies' independence from Britain and stating founding principles of natural rights and consent of the governed.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
+  { term: 'unalienable rights', definition: 'Rights that cannot be taken away or given up; the Declaration names life, liberty, and the pursuit of happiness.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
+  { term: 'Articles of Confederation', definition: "The first plan of government for the United States (1781–1789); had significant weaknesses including no power to tax or enforce laws.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.7' },
+  { term: 'confederation', definition: 'A loose alliance of independent states that keep most of their own power, with a weak central government.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.7' },
+  { term: "Shays' Rebellion", definition: "A 1786–87 uprising of Massachusetts farmers that exposed the national government's inability to keep order under the Articles of Confederation.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.7' },
+  { term: 'Constitution', definition: "The supreme law of the United States, establishing the structure of government and protecting individual rights.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.7' },
+  { term: 'Preamble', definition: "The introductory statement of the U.S. Constitution beginning with 'We the People' that states the purposes of the document.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.8' },
+  { term: 'ratification', definition: "The process of formally approving a document or agreement, such as a treaty or constitutional amendment.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.10' },
+  { term: 'Federalists', definition: 'Supporters of ratifying the Constitution, who favored a stronger national government with checks and balances.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.10' },
+  { term: 'Anti-Federalists', definition: 'Opponents of ratifying the Constitution, who feared national power and demanded a bill of rights.', tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.10' },
+  { term: 'grievance', definition: "A formal complaint; the Declaration of Independence lists specific grievances against the British king.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
+  { term: 'principle', definition: "A fundamental truth or rule that guides thinking or action.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.6' },
   { term: 'monarchy', definition: "A form of government in which a single ruler (king or queen) holds supreme power, often hereditary.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
   { term: 'oligarchy', definition: "A form of government in which a small group of people hold all power.", tier: 'TIER_3', benchmarkCode: 'SS.7.CG.1.1' },
 ]
@@ -150,13 +158,25 @@ export async function seedVocabulary(prisma: PrismaClient): Promise<void> {
   const benchmarks = await prisma.benchmark.findMany({ select: { id: true, code: true } })
   const bmMap = new Map(benchmarks.map((b) => [b.code, b.id]))
 
+  // Guard the (term, tier) upsert key: a duplicate def would silently
+  // clobber another term's benchmark assignment.
+  const seen = new Set<string>()
+  for (const t of ALL_TERMS) {
+    const key = `${t.tier}::${t.term}`
+    if (seen.has(key)) throw new Error(`Duplicate vocabulary def (term, tier): "${t.term}" / ${t.tier}`)
+    seen.add(key)
+  }
+
   for (const t of ALL_TERMS) {
     const benchmarkId = t.benchmarkCode ? bmMap.get(t.benchmarkCode) ?? null : null
 
-    // Upsert key: unique combination of tier + term + benchmarkId
-    // Since there's no composite unique, we check existence first
+    // Upsert key: (term, tier). Matching WITHOUT benchmarkId lets a def that
+    // moves to a different benchmark (ADR 0017 realignment) update its existing
+    // row in place instead of duplicating it — translations and popover wiring
+    // follow the row. Safe because (term, tier) is unique across ALL_TERMS
+    // (guarded below).
     const existing = await prisma.term.findFirst({
-      where: { term: t.term, tier: t.tier, benchmarkId: benchmarkId ?? undefined },
+      where: { term: t.term, tier: t.tier },
     })
 
     if (!existing) {
@@ -175,6 +195,7 @@ export async function seedVocabulary(prisma: PrismaClient): Promise<void> {
         where: { id: existing.id },
         data: {
           definition: t.definition,
+          benchmarkId: benchmarkId ?? null,
           relatedVocab: t.relatedVocab ?? null,
         },
       })

@@ -26,6 +26,7 @@ const SettingsSchema = z.object({
   rcReviewWindow: z.enum(['immediate', 'after_submit', 'after_class_window']),
   rcStaminaOverride: z.number().int().min(1).max(100).nullable(),
   featureEocReviewEnabled: z.boolean(),
+  strategyUsesRequired: z.number().int().min(0).max(20),
 })
 
 export async function GET(
@@ -56,6 +57,7 @@ export async function GET(
       rcReviewWindow: true,
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
+      strategyUsesRequired: true,
     },
   })
 
@@ -111,6 +113,7 @@ export async function POST(
       rcReviewWindow: true,
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
+      strategyUsesRequired: true,
     },
   })
 

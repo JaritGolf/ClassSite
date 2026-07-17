@@ -13,6 +13,7 @@ import { OverrideHistoryTable } from '@/components/teacher/student/OverrideHisto
 import { AccommodationEditor } from '@/components/teacher/student/AccommodationEditor'
 import { VoidAttemptButton } from '@/components/teacher/student/VoidAttemptButton'
 import { OverrideControl } from '@/components/teacher/student/OverrideControl'
+import { StrategyOverridePanel } from '@/components/teacher/student/StrategyOverridePanel'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
@@ -183,6 +184,12 @@ export default async function StudentProfilePage({ params }: PageProps) {
 
       {/* Apply a new override */}
       <OverrideControl studentId={params.studentId} benchmarks={overrideBenchmarks} />
+
+      {/* Strategist track requirements */}
+      <StrategyOverridePanel
+        studentId={params.studentId}
+        missions={profile.strategyTrack.missions}
+      />
 
       {/* Remediation + Override history */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

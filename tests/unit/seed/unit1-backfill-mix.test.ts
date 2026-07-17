@@ -33,8 +33,25 @@ function countBy<T extends string | number>(defs: QuestionSeedDef[], key: (q: Qu
 }
 
 describe('Unit 1 backfill — complementary distribution', () => {
-  it('covers all 6 Unit 1 benchmarks', () => {
-    expect(UNIT1_COMPLETE_BENCHMARKS).toHaveLength(6)
+  // ADR 0017: after the realignment, four benchmarks carry a whole renamed
+  // 15-question backfill set (1.3, 1.4, 1.5, 1.6). The old-1.5 set moved to
+  // 1.7 and the old-1.6 set split item-level across 1.7/1.10 — asserted below.
+  it('lists the 4 carried complete benchmarks', () => {
+    expect(UNIT1_COMPLETE_BENCHMARKS).toEqual([
+      'SS.7.CG.1.3',
+      'SS.7.CG.1.4',
+      'SS.7.CG.1.5',
+      'SS.7.CG.1.6',
+    ])
+  })
+
+  it('the realigned split lands the expected backfill counts on 1.7 and 1.10', () => {
+    // 1.7 = old-1.5's 15 + 10 convention items from the old-1.6 split
+    expect(UNIT1_BACKFILL_BY_BENCHMARK['SS.7.CG.1.7']).toHaveLength(25)
+    // 1.10 = 5 ratification items from the old-1.6 split
+    expect(UNIT1_BACKFILL_BY_BENCHMARK['SS.7.CG.1.10']).toHaveLength(5)
+    // nothing is lost: 6 original sets × 15
+    expect(Object.values(UNIT1_BACKFILL_BY_BENCHMARK).flat()).toHaveLength(90)
   })
 
   for (const code of UNIT1_COMPLETE_BENCHMARKS) {

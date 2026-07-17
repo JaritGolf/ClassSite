@@ -147,6 +147,9 @@ enum LessonStepType {
   WORKED_EXAMPLE
   VOCABULARY
   SOURCE_ANALYSIS
+  IMAGE
+  DIAGRAM
+  INFOGRAPHIC
 }
 
 enum ResourceType {
@@ -246,6 +249,7 @@ model Student {
   confidenceSnapshots   ConfidenceCalibrationSnapshot[]
   sourceDecoderProgress SourceDecoderProgress[]
   strategyTrackProgress StrategyTrackProgress[]
+  strategyOverrides     StudentStrategyOverride[]
   studentBadges         StudentBadge[]
   eocReadiness          EocReadinessSnapshot[]
   eocActualScores       EocActualScore[]
@@ -317,10 +321,16 @@ model Class {
   rcStaminaOverride       Int?    @map("rc_stamina_override")
   featureEocReviewEnabled Boolean @default(true) @map("feature_eoc_review_enabled")
 
-  teacher            Teacher                  @relation(fields: [teacherId], references: [id])
+  // Strategy Track — global required number of correct apply-it "uses" per
+  // strategy mission (0 = no requirement). Per-student overrides live on
+  // StudentStrategyOverride.
+  strategyUsesRequired Int @default(0) @map("strategy_uses_required")
+
+  teacher            Teacher                     @relation(fields: [teacherId], references: [id])
   enrollments        ClassEnrollment[]
   assignments        Assignment[]
   readinessSnapshots ClassReadinessSnapshot[]
+  stepVisibility     ClassLessonStepVisibility[]
 
   @@map("classes")
 }
@@ -501,11 +511,34 @@ model LessonStep {
   content       String
   sequenceOrder Int            @map("sequence_order")
   required      Boolean        @default(true)
+  // Global teacher kill-switch for media steps (per-class overrides live on
+  // ClassLessonStepVisibility). Core instructional steps stay enabled.
+  enabled       Boolean        @default(true)
 
-  lesson          Lesson           @relation(fields: [lessonId], references: [id])
-  currentProgress StudentProgress[] @relation("CurrentLessonStep")
+  lesson          Lesson                      @relation(fields: [lessonId], references: [id])
+  currentProgress StudentProgress[]           @relation("CurrentLessonStep")
+  classVisibility ClassLessonStepVisibility[]
 
   @@map("lesson_steps")
+}
+
+// Per-class tri-state override for a lesson step's visibility: row absent =
+// inherit the step's global `enabled` flag; visible=true forces show,
+// visible=false forces hide. Cascade: an override is meaningless once its
+// step is deleted (the lesson seeder deletes dropped steps on re-seed).
+model ClassLessonStepVisibility {
+  id           String   @id @default(cuid())
+  classId      String   @map("class_id")
+  lessonStepId String   @map("lesson_step_id")
+  visible      Boolean
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  class      Class      @relation(fields: [classId], references: [id])
+  lessonStep LessonStep @relation(fields: [lessonStepId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, lessonStepId])
+  @@map("class_lesson_step_visibility")
 }
 
 // ============================================================
@@ -897,12 +930,32 @@ model StrategyTrackProgress {
   id          String    @id @default(cuid())
   studentId   String    @map("student_id")
   missionCode String    @map("mission_code")
+  // Count of correct apply-it rounds ("uses") the student has completed.
+  useCount    Int       @default(0) @map("use_count")
+  // First correct round — badge signal ("has genuinely used this strategy").
   completedAt DateTime? @map("completed_at")
 
   student Student @relation(fields: [studentId], references: [id])
 
   @@unique([studentId, missionCode])
   @@map("strategy_track_progress")
+}
+
+// Per-student override of the class-wide strategyUsesRequired for one strategy.
+// requiredUses null => fall back to the class global; waived => not required.
+model StudentStrategyOverride {
+  id           String   @id @default(cuid())
+  studentId    String   @map("student_id")
+  missionCode  String   @map("mission_code")
+  requiredUses Int?     @map("required_uses")
+  waived       Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@unique([studentId, missionCode])
+  @@map("student_strategy_override")
 }
 
 // ============================================================

@@ -101,6 +101,9 @@ const PATHS: Record<TrackIconName, ReactNode> = {
   ),
 }
 
+/** All icon names — for callers resolving a free-form name with a fallback. */
+export const TRACK_ICON_NAMES = Object.keys(PATHS) as TrackIconName[]
+
 interface TrackIconProps {
   name: TrackIconName
   className?: string

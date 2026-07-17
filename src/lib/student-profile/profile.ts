@@ -8,6 +8,7 @@
 import { prisma } from '@/lib/db'
 import { assertStudentInTeacherClass } from '@/lib/teacher-roster'
 import { getDecayingBenchmarks } from '@/lib/spaced-retrieval/decay'
+import { getStrategyProgress } from '@/lib/strategy-track'
 import type {
   StudentProgressStatus,
   TeacherOverrideAction,
@@ -101,6 +102,19 @@ export interface StudentProfileVM {
     byStimulusType: Array<{ key: string; correctRate: number }>
     byReadingLoad: Array<{ level: 1 | 2 | 3; correctRate: number }>
   }
+  strategyTrack: {
+    totalOwed: number
+    missionsMet: number
+    missionsRequired: number
+    missions: Array<{
+      code: string
+      title: string
+      useCount: number
+      required: number
+      waived: boolean
+      completedAt: Date | null
+    }>
+  }
 }
 
 // ── Main function ─────────────────────────────────────────────────────────────
@@ -125,6 +139,7 @@ export async function getStudentProfileForTeacher(
     accommodations,
     responses,
     decayingBenchmarks,
+    strategyProgress,
   ] = await Promise.all([
     prisma.student.findUniqueOrThrow({
       where: { id: studentId },
@@ -235,6 +250,7 @@ export async function getStudentProfileForTeacher(
       },
     }),
     getDecayingBenchmarks(studentId),
+    getStrategyProgress(studentId),
   ])
 
   // ── Build mastery sections ──────────────────────────────────────────────────
@@ -463,5 +479,18 @@ export async function getStudentProfileForTeacher(
       active: a.active,
     })),
     strengthsByDimension,
+    strategyTrack: {
+      totalOwed: strategyProgress.totalOwed,
+      missionsMet: strategyProgress.missionsMet,
+      missionsRequired: strategyProgress.missionsRequired,
+      missions: strategyProgress.progress.map((p) => ({
+        code: p.code,
+        title: p.title,
+        useCount: p.useCount,
+        required: p.required,
+        waived: p.waived,
+        completedAt: p.completedAt,
+      })),
+    },
   }
 }

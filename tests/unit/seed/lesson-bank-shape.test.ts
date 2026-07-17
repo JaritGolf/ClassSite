@@ -8,14 +8,28 @@
  * Registry-driven: new unit lesson banks are validated with zero test edits.
  */
 
+import { existsSync, readFileSync } from 'fs'
+import { join } from 'path'
 import { ALL_LESSON_BANKS } from '../../../seed/lessons'
 import { parseStepContent } from '@/lib/lesson-content'
+import { illustrationKeys } from '@/components/ui/illustrations/keys'
 
 const EXPECTED_KIND: Record<string, string> = {
   WORKED_EXAMPLE: 'worked-example',
   INTERACTIVE_CHECK: 'interactive-check',
   SOURCE_ANALYSIS: 'source-analysis',
+  VIDEO: 'video',
+  IMAGE: 'image',
+  DIAGRAM: 'diagram',
+  INFOGRAPHIC: 'infographic',
 }
+
+const MEDIA_TYPES = ['VIDEO', 'IMAGE', 'DIAGRAM', 'INFOGRAPHIC'] as const
+
+const PUBLIC_ROOT = join(__dirname, '../../../public')
+const ATTRIBUTIONS: { file: string; license: string }[] = JSON.parse(
+  readFileSync(join(PUBLIC_ROOT, 'media/attributions.json'), 'utf8')
+)
 
 describe('Lesson banks — guided-training template shape', () => {
   it('registry declares at least one bank', () => {
@@ -37,8 +51,53 @@ describe('Lesson banks — guided-training template shape', () => {
             expect(lesson.studentFriendlyTarget.trim()).toMatch(/^I can /)
           })
 
-          it('has at least 10 steps', () => {
-            expect(lesson.steps.length).toBeGreaterThanOrEqual(10)
+          it('has at least 14 steps', () => {
+            expect(lesson.steps.length).toBeGreaterThanOrEqual(14)
+          })
+
+          // ADR 0017: `interim` lessons (the realigned official 1.1/1.2 blocks)
+          // are exempt from the media requirement ONLY — their media pass lands
+          // with the owner-flagged full content build (CLAUDE.md backlog).
+          // Every other template guarantee still applies to them.
+          const mediaIt = lesson.interim ? it.skip : it
+          mediaIt('includes every media step type (ADR 0015 — diverse delivery)', () => {
+            const types = new Set(lesson.steps.map((s) => s.stepType))
+            for (const mediaType of MEDIA_TYPES) {
+              expect(`${lesson.benchmarkCode}:${mediaType}:${types.has(mediaType)}`).toBe(
+                `${lesson.benchmarkCode}:${mediaType}:true`
+              )
+            }
+          })
+
+          it('VIDEO steps store only an 11-char id — never a URL (rule #9 / ADR 0015)', () => {
+            for (const step of lesson.steps) {
+              if (step.stepType !== 'VIDEO') continue
+              const parsed = parseStepContent(step.stepType, step.content)
+              expect(parsed.kind).toBe('video')
+              if (parsed.kind === 'video') {
+                expect(parsed.youtubeId).toMatch(/^[A-Za-z0-9_-]{11}$/)
+              }
+              expect(step.content.toLowerCase()).not.toMatch(/youtube\.com|youtu\.be|ytimg/)
+              expect(step.content).not.toMatch(/https?:\/\//)
+            }
+          })
+
+          it('IMAGE assets resolve: svg keys exist in the registry, photos exist on disk with attribution', () => {
+            for (const step of lesson.steps) {
+              if (step.stepType !== 'IMAGE') continue
+              const parsed = parseStepContent(step.stepType, step.content)
+              expect(parsed.kind).toBe('image')
+              if (parsed.kind !== 'image') continue
+              if (parsed.asset.startsWith('svg:')) {
+                const key = parsed.asset.slice(4)
+                const known = (illustrationKeys as readonly string[]).includes(key)
+                expect(`${step.title}:${known}`).toBe(`${step.title}:true`)
+              } else {
+                expect(existsSync(join(PUBLIC_ROOT, parsed.asset))).toBe(true)
+                const entry = ATTRIBUTIONS.find((a) => a.file === parsed.asset)
+                expect(entry?.license.toLowerCase()).toContain('public domain')
+              }
+            }
           })
 
           it('includes every instructional step type of the template', () => {

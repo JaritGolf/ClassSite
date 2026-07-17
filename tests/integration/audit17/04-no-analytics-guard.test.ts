@@ -28,7 +28,16 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
   /posthog/i,
   /datadog-rum|@datadog\/browser-rum/i,
   /js\.sentry-cdn\.com/i,
+  // ADR 0015: plain YouTube embeds/thumbnails phone Google on page load.
+  // Only the click-to-load youtube-nocookie facade is sanctioned (below) —
+  // note "youtube-nocookie.com" does NOT substring-match /youtube\.com/.
+  /youtube\.com/i,
+  /ytimg\.com/i,
+  /img\.youtube/i,
 ]
+
+// The single sanctioned location for the privacy-enhanced embed host.
+const NOCOOKIE_ALLOWED_FILE = 'components/student/mission/media/VideoStepView.tsx'
 
 function walk(dir: string): string[] {
   const out: string[] = []
@@ -58,5 +67,14 @@ describe('Audit 17 — Item 7: no third-party analytics', () => {
     }
 
     expect(offenders).toEqual([])
+  })
+
+  it('youtube-nocookie.com appears only in the sanctioned click-to-load facade (ADR 0015)', () => {
+    const files = walk(SRC_ROOT)
+    const containing = files
+      .filter((file) => /youtube-nocookie\.com/i.test(readFileSync(file, 'utf8')))
+      .map((file) => file.slice(SRC_ROOT.length + 1))
+
+    expect(containing).toEqual([NOCOOKIE_ALLOWED_FILE])
   })
 })

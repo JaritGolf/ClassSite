@@ -17,6 +17,7 @@ import { seedBenchmarks } from '../../seed/benchmarks'
 import { seedMisconceptions } from '../../seed/misconception_inventory'
 import { seedSampleQuestions } from '../../seed/sample_questions_unit_1'
 import { seedUnit1Backfill, UNIT1_COMPLETE_BENCHMARKS } from '../../seed/questions/unit1_backfill'
+import { seedUnit1Interim, UNIT1_INTERIM_BENCHMARKS } from '../../seed/questions/unit1_interim'
 import { seedMissionAssessments } from '../../seed/assessments'
 import { categoryByExternalKey } from '../../seed/questions/registry'
 
@@ -58,6 +59,7 @@ beforeAll(async () => {
   await seedMisconceptions(prisma)
   await seedSampleQuestions(prisma)
   await seedUnit1Backfill(prisma)
+  await seedUnit1Interim(prisma)
   await seedMissionAssessments(prisma)
 }, 120000)
 
@@ -66,7 +68,8 @@ afterAll(async () => {
 })
 
 describe('assessment allocation (Unit 1 benchmarks)', () => {
-  for (const code of UNIT1_COMPLETE_BENCHMARKS) {
+  // ADR 0017: interim 1.1/1.2 banks get the same full-suite guarantee.
+  for (const code of [...UNIT1_INTERIM_BENCHMARKS, ...UNIT1_COMPLETE_BENCHMARKS]) {
     describe(code, () => {
       let suite: AssessmentWithQuestions[]
       let benchmarkId: string

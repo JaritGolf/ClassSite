@@ -541,9 +541,10 @@ describe('startAttempt — readiness gate on Mastery Challenges', () => {
   })
 
   it('exempts mastery challenges on benchmarks with no Readiness Check configured', async () => {
-    // Unit 2 benchmarks have no seeded assessments (content is NEEDS_REVIEW).
+    // SS.7.CG.1.9 has no question bank yet (ADR 0017 backlog), so no seeded
+    // assessments. (1.7 gained a full APPROVED suite in the realignment.)
     const bareBenchmark = await prisma.benchmark.findUnique({
-      where: { code: 'SS.7.CG.1.7' },
+      where: { code: 'SS.7.CG.1.9' },
       select: { id: true },
     })
     expect(bareBenchmark).not.toBeNull()

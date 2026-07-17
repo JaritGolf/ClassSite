@@ -18,6 +18,7 @@ import { seedTermTranslations } from '../../seed/term_translations'
 import { seedLessons } from '../../seed/lessons'
 import { seedSampleQuestions } from '../../seed/sample_questions_unit_1'
 import { seedUnit1Backfill, UNIT1_COMPLETE_BENCHMARKS } from '../../seed/questions/unit1_backfill'
+import { seedUnit1Interim, UNIT1_INTERIM_BENCHMARKS } from '../../seed/questions/unit1_interim'
 import { seedRemediationItems } from '../../seed/remediation_items'
 import { seedMissionAssessments } from '../../seed/assessments'
 import { UNIT1_REMEDIATION } from '../../seed/remediation/unit1'
@@ -34,9 +35,14 @@ beforeAll(async () => {
   await seedLessons(prisma)
   await seedSampleQuestions(prisma)
   await seedUnit1Backfill(prisma)
+  await seedUnit1Interim(prisma)
   await seedRemediationItems(prisma)
   await seedMissionAssessments(prisma)
 }, 120000)
+
+// ADR 0017: Unit 1 = official 1.1–1.6. The interim 1.1/1.2 blocks must deliver
+// the same turnkey guarantee as the carried-over banks.
+const UNIT1_TURNKEY_BENCHMARKS = [...UNIT1_INTERIM_BENCHMARKS, ...UNIT1_COMPLETE_BENCHMARKS]
 
 afterAll(async () => {
   await prisma.$disconnect()
@@ -51,7 +57,7 @@ const REQUIRED_ASSESSMENT_TYPES = [
 ] as const
 
 describe('Turnkey Unit 1 — complete learning loop per benchmark', () => {
-  for (const code of UNIT1_COMPLETE_BENCHMARKS) {
+  for (const code of UNIT1_TURNKEY_BENCHMARKS) {
     describe(code, () => {
       it('has an APPROVED guided lesson implementing the §10.4 template', async () => {
         const benchmark = await prisma.benchmark.findUniqueOrThrow({
@@ -133,9 +139,15 @@ describe('Turnkey Unit 1 — complete learning loop per benchmark', () => {
 
   it('every authored Unit 1 remediation item is APPROVED and parses as real reteach content', async () => {
     for (const def of UNIT1_REMEDIATION) {
-      const id = `remitem-${def.benchmarkCode.replace(/\./g, '')}-${def.skillTag}`
-      const item = await prisma.remediationItem.findUnique({
-        where: { id },
+      // ADR 0017: look up by (benchmark, skillTag) — the reconciling seeder
+      // preserves pre-realignment row ids, so ids no longer derive from the
+      // def's (current) benchmarkCode.
+      const benchmark = await prisma.benchmark.findUniqueOrThrow({
+        where: { code: def.benchmarkCode },
+        select: { id: true },
+      })
+      const item = await prisma.remediationItem.findFirst({
+        where: { benchmarkId: benchmark.id, skillTag: def.skillTag },
         select: { approvalStatus: true, content: true, title: true },
       })
       expect(item).not.toBeNull()

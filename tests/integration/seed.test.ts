@@ -201,17 +201,26 @@ describe('seedVocabulary', () => {
 // ── Sample Questions ──────────────────────────────────────────────────────────
 
 describe('seedSampleQuestions', () => {
-  it('seeds exactly 90 original (Tier B) Unit 1 questions', async () => {
-    // Unit 1 backfill (Tier C) adds 90 more; scope to the original Tier-B set.
+  it('seeds exactly 60 original (Tier B) questions in unit-1 (ADR 0017)', async () => {
+    // The realignment moved the old-1.5 set (15) to 1.7 (unit-2) and split the
+    // old-1.6 set (15) across 1.7/1.10 (unit-2); official 1.1/1.2 carry interim
+    // Tier-D banks instead. Unit-1 Tier B = 4 benchmarks × 15.
     const count = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } })
-    expect(count).toBe(90)
+    expect(count).toBe(60)
   })
 
-  it('seeds exactly 360 original (Tier B) Unit 1 question options (4 per question)', async () => {
+  it('seeds exactly 240 original (Tier B) unit-1 question options (4 per question)', async () => {
     const count = await prisma.questionOption.count({
       where: { question: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } },
     })
-    expect(count).toBe(360)
+    expect(count).toBe(240)
+  })
+
+  it('the full original Tier-B set (90) survives the realignment across units 1–2', async () => {
+    const count = await prisma.question.count({
+      where: { sourceTier: 'B', benchmark: { code: { startsWith: 'SS.7.CG.1.' } } },
+    })
+    expect(count).toBe(90)
   })
 
   it('each question has exactly 1 correct option', async () => {
@@ -240,32 +249,32 @@ describe('seedSampleQuestions', () => {
       where: { benchmark: { unitId: 'unit-1' } },
       select: { externalKey: true },
     })
-    const pattern = /^q-SS7CG1[1-6]-\d{3}$/
+    // ADR 0017: externalKeys are FROZEN to their pre-realignment codes; the
+    // interim banks use the `R` infix (q-SS7CG11R-*/q-SS7CG12R-*).
+    const pattern = /^q-SS7CG1[1-6]R?-\d{3}$/
     for (const q of questions) {
       expect(q.externalKey).toMatch(pattern)
     }
   })
 
-  it('each benchmark has exactly 15 original (Tier B) questions', async () => {
-    // Unit 1 backfill (Tier C) brings each benchmark to 30; scope to the
-    // original Tier-B set this describe block is about.
-    const benchmarkCodes = [
-      'SS.7.CG.1.1', 'SS.7.CG.1.2', 'SS.7.CG.1.3',
-      'SS.7.CG.1.4', 'SS.7.CG.1.5', 'SS.7.CG.1.6',
-    ]
-    for (const code of benchmarkCodes) {
+  // ADR 0017: the four unit-1 benchmarks that carry a whole renamed Tier-B set.
+  // Official 1.1/1.2 carry interim Tier-D banks (validated by the registry
+  // shape test + audit-15 harness); the old-1.5/1.6 Tier-B sets now live on
+  // 1.7/1.10 in unit-2.
+  const TIER_B_BENCHMARK_CODES = [
+    'SS.7.CG.1.3', 'SS.7.CG.1.4', 'SS.7.CG.1.5', 'SS.7.CG.1.6',
+  ]
+
+  it('each carried benchmark has exactly 15 original (Tier B) questions', async () => {
+    for (const code of TIER_B_BENCHMARK_CODES) {
       const bm = await prisma.benchmark.findUnique({ where: { code } })
       const count = await prisma.question.count({ where: { benchmarkId: bm!.id, sourceTier: 'B' } })
       expect(count).toBe(15)
     }
   })
 
-  it('cognitive complexity distribution: each benchmark has 3 LOW, 9 MODERATE, 3 HIGH', async () => {
-    const benchmarkCodes = [
-      'SS.7.CG.1.1', 'SS.7.CG.1.2', 'SS.7.CG.1.3',
-      'SS.7.CG.1.4', 'SS.7.CG.1.5', 'SS.7.CG.1.6',
-    ]
-    for (const code of benchmarkCodes) {
+  it('cognitive complexity distribution: each carried benchmark has 3 LOW, 9 MODERATE, 3 HIGH', async () => {
+    for (const code of TIER_B_BENCHMARK_CODES) {
       const bm = await prisma.benchmark.findUnique({ where: { code } })
       const w = { benchmarkId: bm!.id, sourceTier: 'B' as const }
       const low = await prisma.question.count({ where: { ...w, cognitiveComplexity: 'LOW' } })
@@ -277,12 +286,8 @@ describe('seedSampleQuestions', () => {
     }
   })
 
-  it('reading load distribution: each benchmark has 5 L1, 7 L2, 3 L3', async () => {
-    const benchmarkCodes = [
-      'SS.7.CG.1.1', 'SS.7.CG.1.2', 'SS.7.CG.1.3',
-      'SS.7.CG.1.4', 'SS.7.CG.1.5', 'SS.7.CG.1.6',
-    ]
-    for (const code of benchmarkCodes) {
+  it('reading load distribution: each carried benchmark has 5 L1, 7 L2, 3 L3', async () => {
+    for (const code of TIER_B_BENCHMARK_CODES) {
       const bm = await prisma.benchmark.findUnique({ where: { code } })
       const w = { benchmarkId: bm!.id, sourceTier: 'B' as const }
       const l1 = await prisma.question.count({ where: { ...w, readingLoadLevel: 1 } })
@@ -308,7 +313,7 @@ describe('seedSampleQuestions', () => {
     await seedSampleQuestions(prisma)
     const qCount = await prisma.question.count({ where: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } })
     const oCount = await prisma.questionOption.count({ where: { question: { benchmark: { unitId: 'unit-1' }, sourceTier: 'B' } } })
-    expect(qCount).toBe(90)
-    expect(oCount).toBe(360)
+    expect(qCount).toBe(60) // ADR 0017: see the Tier-B distribution note above
+    expect(oCount).toBe(240)
   })
 })

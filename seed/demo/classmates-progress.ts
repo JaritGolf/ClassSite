@@ -81,6 +81,12 @@ async function remediateBenchmark(
   // content must be approved before assignRemediation() can match it.
   await bulkApproveByTag(teacherUserId, { entityType: 'REMEDIATION_ITEM', benchmarkId })
 
+  // The server-side readiness→mastery gate (Phase 3, 2026-07-14) refuses ANY
+  // mastery attempt — including the deliberate failures below — until the
+  // student has a passed Readiness Check, exactly like a real student.
+  const readiness = await findAssessment(benchmarkId, 'READINESS_CHECK')
+  if (readiness) await driveAttempt(readiness.id, studentId, 999)
+
   const mastery = await findAssessment(benchmarkId, 'MASTERY_CHALLENGE')
   if (!mastery) return
   for (let i = 0; i < attempts; i++) {

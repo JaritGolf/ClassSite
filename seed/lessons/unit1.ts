@@ -1,10 +1,23 @@
 /**
- * Seed: Unit 1 Lessons — SS.7.CG.1.1–1.6 (ADR 0013).
+ * Seed: Unit 1 Lessons (ADR 0013 + ADR 0015 + ADR 0017).
  *
- * Six guided lessons, one per benchmark, each ~8 steps (~10–15 min):
- *   NOTE (big picture) → VOCABULARY (terms in context) → NOTE (core concept) →
- *   WORKED_EXAMPLE (EOC-style think-aloud, §18) → INTERACTIVE_CHECK →
- *   NOTE (core concept 2) → INTERACTIVE_CHECK → SOURCE_ANALYSIS (§10.4 Source Quest).
+ * ADR 0017 (standards realignment): these six lessons were authored under the
+ * pre-realignment codes 1.1–1.6; their benchmarkCodes now carry the official
+ * SS.7.CG codes the content matches (1.3, 1.4, 1.5, 1.6, 1.7, and 1.10 — the
+ * old-1.6 convention lesson moved to 1.10 with a pinned idKey so its
+ * lesson/step row ids survive). The official 1.1/1.2 lessons live in
+ * seed/lessons/unit1_interim.ts.
+ *
+ * Six guided lessons, one per benchmark, each ~16–18 steps (~15–20 min):
+ *   NOTE (big picture) → VIDEO (click-to-load, ADR 0015) → VOCABULARY →
+ *   NOTE / IMAGE / DIAGRAM / INFOGRAPHIC woven around each concept →
+ *   WORKED_EXAMPLE (EOC-style think-aloud, §18) → INTERACTIVE_CHECKs →
+ *   SOURCE_ANALYSIS (§10.4 Source Quest) → NOTE (Mission Debrief).
+ *
+ * Media steps (VIDEO/IMAGE/DIAGRAM/INFOGRAPHIC) are teacher-toggleable per
+ * ADR 0015; every one carries a required text equivalent. Video content stores
+ * only the 11-char YouTube id (never a URL); photos are the public-domain
+ * files under public/media (see public/media/attributions.json).
  *
  * Source-analysis passages reuse the level-2 texts from seed/stimuli_unit1.ts so
  * students meet the same sources in training that they'll see on assessments.
@@ -14,9 +27,13 @@
 
 import type { LessonSeedDef } from './_seeder'
 import type {
+  DiagramContent,
+  ImageContent,
+  InfographicContent,
   InteractiveCheckContent,
   SourceAnalysisContent,
   TimelineContent,
+  VideoContent,
   WorkedExampleContent,
 } from '../../src/lib/lesson-content'
 
@@ -24,13 +41,18 @@ const check = (c: InteractiveCheckContent): string => JSON.stringify(c)
 const worked = (c: WorkedExampleContent): string => JSON.stringify(c)
 const source = (c: SourceAnalysisContent): string => JSON.stringify(c)
 const timeline = (c: TimelineContent): string => JSON.stringify(c)
+const video = (c: VideoContent): string => JSON.stringify(c)
+const image = (c: ImageContent): string => JSON.stringify(c)
+const diagram = (c: DiagramContent): string => JSON.stringify(c)
+const infographic = (c: InfographicContent): string => JSON.stringify(c)
 
 export const UNIT1_LESSONS: LessonSeedDef[] = [
   // ═══════════════════════════════════════════════════════════════════════════
-  // SS.7.CG.1.1 — Enlightenment and European Influences
+  // SS.7.CG.1.4 — Enlightenment Ideas and the Founding (ADR 0017: was coded 1.1)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
+    idKey: 'SS.7.CG.1.1', // ADR 0017: authored as 1.1 — pins original lesson/step row ids
     title: 'Where American Government Got Its Ideas',
     studentFriendlyTarget:
       'I can explain how Enlightenment thinkers and key English documents shaped American ideas about government.',
@@ -80,6 +102,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'VIDEO',
+        title: 'Watch: The Thinkers Behind the Revolution',
+        content: video({
+          youtubeId: 'JeNRp28X7WI',
+          title: 'Enlightenment thinkers: John Locke and Montesquieu',
+          description:
+            'This short video introduces John Locke and Baron de Montesquieu — the two Enlightenment thinkers you will see most on the civics EOC. It explains Locke\'s natural rights and social contract, and Montesquieu\'s separation of powers.',
+          whyWatch:
+            'Watch for the ONE signature idea each thinker is famous for — you\'ll match thinkers to ideas all year.',
+        }),
+      },
+      {
         stepType: 'VOCABULARY',
         title: 'Words of the Enlightenment',
         content:
@@ -97,6 +131,73 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'BARON DE MONTESQUIEU (France) studied governments across history and concluded that when one person or group holds all the power, liberty dies. His fix: SEPARATION OF POWERS — divide government into branches that make laws, carry out laws, and judge laws, so each can stop the others from grabbing too much power. Sound familiar? That\'s the three-branch design of the U.S. Constitution.\n\n' +
           'JEAN-JACQUES ROUSSEAU (France/Geneva) pushed popular sovereignty furthest: a government is only legitimate when it follows the will of the people. His book was literally titled "The Social Contract."\n\n' +
           'Study tip: keep the thinkers straight by their signature idea. Locke = natural rights & social contract. Montesquieu = separation of powers. Rousseau = popular sovereignty.',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: John Locke',
+        content: image({
+          asset: '/media/unit1/locke-portrait.jpg',
+          alt: 'Oil portrait of John Locke, an older man with shoulder-length gray hair wearing a dark coat',
+          caption:
+            'John Locke (1632–1704). His argument that government exists to protect life, liberty, and property became the heart of the Declaration of Independence.',
+          credit: 'Sir Godfrey Kneller, 1697 — Wikimedia Commons',
+          license: 'Public domain',
+          longDescription:
+            'A formal oil portrait from 1697 shows John Locke as an older man with long gray hair, deep-set eyes, and a serious expression, wearing a plain dark coat over a white collar. Locke avoided fancy clothes and decoration — fitting for a philosopher who cared more about ideas than displays of power.',
+          width: 1400,
+          height: 1964,
+        }),
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: Baron de Montesquieu',
+        content: image({
+          asset: '/media/unit1/montesquieu-portrait.jpg',
+          alt: 'Painted portrait of Baron de Montesquieu, a man in a powdered wig shown in profile',
+          caption:
+            'Baron de Montesquieu (1689–1755). His idea of separating government into branches became the three-branch design of the U.S. Constitution.',
+          credit: 'Unknown artist, after Jacques-Antoine Dassier, c. 1728 — Wikimedia Commons',
+          license: 'Public domain',
+          longDescription:
+            'An 18th-century portrait shows Montesquieu in profile wearing the powdered wig fashionable among French thinkers of his day. Montesquieu spent years studying governments across history before concluding that liberty survives only when no single person or group holds all the power.',
+          width: 1400,
+          height: 1692,
+        }),
+      },
+      {
+        stepType: 'INFOGRAPHIC',
+        title: 'Fast Facts: Three Thinkers, Three Big Ideas',
+        content: infographic({
+          title: 'Three Thinkers, Three Big Ideas',
+          intro: 'Keep the thinkers straight by their signature idea.',
+          summary:
+            'John Locke argued for natural rights and the social contract: people are born with rights to life, liberty, and property, and government exists to protect them. Montesquieu argued for separation of powers: divide government into branches so no one grabs it all. Rousseau championed popular sovereignty: a government is only legitimate when it follows the will of the people.',
+          blocks: [
+            {
+              type: 'fact',
+              icon: 'shield',
+              text: 'Locke → natural rights & social contract',
+              detail: 'Life, liberty, property — and a deal the government must keep.',
+            },
+            {
+              type: 'fact',
+              icon: 'bolt',
+              text: 'Montesquieu → separation of powers',
+              detail: 'Split power into branches so nobody holds it all.',
+            },
+            {
+              type: 'fact',
+              icon: 'flag',
+              text: 'Rousseau → popular sovereignty',
+              detail: 'Legitimate power follows the will of the people.',
+            },
+            {
+              type: 'quote',
+              text: 'Governments are instituted among Men, deriving their just powers from the consent of the governed.',
+              attribution: 'Declaration of Independence, 1776 — Locke\'s idea in Jefferson\'s words',
+            },
+          ],
+        }),
       },
       {
         stepType: 'WORKED_EXAMPLE',
@@ -150,6 +251,34 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'DIAGRAM',
+        title: 'Picture It: The Social Contract Loop',
+        content: diagram({
+          variant: 'cycle',
+          title: 'The Social Contract Loop',
+          summary:
+            'The social contract works as a repeating loop: the people consent to be governed and hand over some power; the government uses that power to protect natural rights; as long as it protects them, the people keep consenting. But if the government breaks the deal and violates rights, the people have the right to alter or replace it — and the loop starts over with a new government.',
+          nodes: [
+            {
+              label: 'The people consent to be governed',
+              detail: 'They give up some freedom and hand the government power.',
+            },
+            {
+              label: 'Government protects natural rights',
+              detail: 'Life, liberty, and property stay safe — that\'s its whole job.',
+            },
+            {
+              label: 'The people keep consenting',
+              detail: 'A government that keeps the deal keeps its power.',
+            },
+            {
+              label: 'Government breaks the deal?',
+              detail: 'Then the people may alter or REPLACE it — and the loop restarts.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'NOTE',
         title: 'England\'s Paper Trail: Three Documents That Limited Power',
         content:
@@ -158,6 +287,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'ENGLISH BILL OF RIGHTS (1689). After Parliament removed one king and invited in new monarchs, it made them accept written limits: no taxes without Parliament\'s consent, no cruel and unusual punishment, the right to petition the government. Notice how similar that list sounds to the U.S. Bill of Rights — exactly 100 years later.\n\n' +
           'MAYFLOWER COMPACT (1620). Before landing at Plymouth, the Pilgrim colonists signed an agreement to form a government and obey "just and equal laws" they made THEMSELVES. It was self-government by consent — a social contract written by ordinary people 70 years before Locke published his.\n\n' +
           'Watch out for a common mix-up: Magna Carta limited the KING in 1215; the English Bill of Rights limited the MONARCHY and empowered PARLIAMENT in 1689. Keep the dates 1215 → 1620 → 1689 in order and you\'ll never confuse them.',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: The Real Magna Carta',
+        content: image({
+          asset: '/media/unit1/magna-carta-1215.jpg',
+          alt: 'The Magna Carta: a large parchment sheet densely covered in small medieval Latin handwriting',
+          caption:
+            'An original 1215 Magna Carta. Somewhere in that dense Latin is the idea that changed everything: even the king must obey the law.',
+          credit: 'British Library, Cotton MS Augustus II.106 — Wikimedia Commons',
+          license: 'Public domain',
+          longDescription:
+            'A photograph of an original Magna Carta from 1215 — a single large sheet of animal-skin parchment covered edge to edge in tiny, tightly packed medieval Latin script written with a quill. There are no paragraph breaks; medieval scribes saved expensive parchment by cramming in every word. This 800-year-old document forced King John of England to accept written limits on royal power for the first time.',
+          width: 1400,
+          height: 933,
+        }),
       },
       {
         stepType: 'INTERACTIVE_CHECK',
@@ -315,10 +460,11 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SS.7.CG.1.2 — Colonial and British Governmental Traditions
+  // SS.7.CG.1.3 — Documents That Shaped Colonial Views (ADR 0017: was coded 1.2)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
+    idKey: 'SS.7.CG.1.2', // ADR 0017: authored as 1.2 — pins original lesson/step row ids
     title: 'Colonists Learn to Govern Themselves',
     studentFriendlyTarget:
       'I can describe how colonial assemblies, town meetings, and British traditions built American habits of self-government.',
@@ -368,6 +514,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'VIDEO',
+        title: 'Watch: The Document Behind "Rights of Englishmen"',
+        content: video({
+          youtubeId: '7xo4tUMdAMw',
+          title: 'What is Magna Carta?',
+          description:
+            'An animated short from the British Library about Magna Carta — the 800-year-old agreement that first put the law above the king. The colonists you\'ll meet in this mission believed these "rights of Englishmen" belonged to them too, even an ocean away from England.',
+          whyWatch:
+            'Watch for WHY people still care about an old piece of parchment — the colonists cared for exactly the same reason.',
+        }),
+      },
+      {
         stepType: 'VOCABULARY',
         title: 'Words of Colonial Government',
         content:
@@ -386,6 +544,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'MAYFLOWER COMPACT (1620). Before the Pilgrims even stepped off their ship, 41 men signed an agreement to form a government and obey "just and equal laws" made for the good of the colony. It was government by CONSENT — the people themselves creating their own authority with a signature, not a king\'s command.\n\n' +
           'NEW ENGLAND TOWN MEETINGS. In towns across Massachusetts and Connecticut, colonists gathered to debate and vote directly on local matters — schools, roads, taxes. This was direct democracy: not electing someone to decide, but deciding yourself.\n\n' +
           'Memory anchor: 1619 = first ELECTED assembly (representative democracy). 1620 = first written agreement to SELF-GOVERN (consent). Town meetings = DIRECT democracy. Three different flavors of the same idea: people governing themselves.',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: Signing the Mayflower Compact',
+        content: image({
+          asset: '/media/unit1/mayflower-compact-1620.jpg',
+          alt: 'Painting of Pilgrims gathered in the crowded cabin of the Mayflower, signing a document on a barrel-top desk',
+          caption:
+            'Ferris\'s painting of the Mayflower Compact signing, 1620 — colonists agreeing to govern THEMSELVES before ever stepping ashore.',
+          credit: 'Jean Leon Gerome Ferris, c. 1899 — Library of Congress',
+          license: 'Public domain',
+          longDescription:
+            'This painting imagines the scene below deck on the Mayflower in November 1620. Men in dark Pilgrim clothing crowd around a small writing desk where one signs a document with a quill; women and children look on from the shadows of the ship\'s low wooden cabin. The document is the Mayflower Compact — the signers promised to form a government and obey "just and equal laws" they would make together, one of the first written agreements for self-government in the colonies.',
+          width: 1400,
+          height: 986,
+        }),
       },
       {
         stepType: 'WORKED_EXAMPLE',
@@ -439,6 +613,43 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'DIAGRAM',
+        title: 'Picture It: Two Firsts in Two Years',
+        content: diagram({
+          variant: 'venn',
+          title: 'House of Burgesses vs. Mayflower Compact',
+          summary:
+            'The House of Burgesses (Virginia, 1619) was the first ELECTED law-making assembly in the colonies — representative self-government. The Mayflower Compact (Plymouth, 1620) was a WRITTEN AGREEMENT in which the signers consented to make and obey their own laws. They look different, but both put law-making power in colonists\' own hands — self-government, one hundred fifty years before independence.',
+          left: {
+            label: 'House of Burgesses',
+            items: ['Virginia, 1619', 'Elected representatives', 'First colonial legislature'],
+          },
+          right: {
+            label: 'Mayflower Compact',
+            items: ['Plymouth, 1620', 'Written agreement (consent)', 'Signed before landing'],
+          },
+          shared: {
+            label: 'Both',
+            items: ['Colonists governing themselves', 'Law-making power close to home', 'A habit Britain couldn\'t easily undo'],
+          },
+        }),
+      },
+      {
+        stepType: 'INFOGRAPHIC',
+        title: 'Fast Facts: Self-Government by the Numbers',
+        content: infographic({
+          title: 'Self-Government by the Numbers',
+          summary:
+            'The House of Burgesses first met in 1619, the Mayflower Compact was signed in 1620, and by the 1750s all thirteen colonies had their own elected assemblies. That adds up to more than one hundred fifty years of colonists practicing self-government before independence — which is why they would not give it up without a fight.',
+          blocks: [
+            { type: 'big-number', value: '1619', label: 'House of Burgesses first meets', detail: 'First elected assembly in the colonies.' },
+            { type: 'big-number', value: '1620', label: 'Mayflower Compact signed', detail: 'Self-government by written consent.' },
+            { type: 'big-number', value: '13', label: 'colonies with assemblies', detail: 'Every colony ran its own legislature.' },
+            { type: 'big-number', value: '150+', label: 'years of practice', detail: 'Self-government was a habit, not a theory.' },
+          ],
+        }),
+      },
+      {
         stepType: 'NOTE',
         title: 'British Habits the Colonists Kept (and One British Habit That Helped by Accident)',
         content:
@@ -447,6 +658,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'RIGHTS OF ENGLISHMEN. From Magna Carta and the English Bill of Rights, colonists inherited the belief that they had guaranteed rights — including no taxation without their consent through representatives. Remember this: it becomes the colonists\' battle cry in the 1760s.\n\n' +
           'SALUTARY NEGLECT. For decades, Britain barely enforced its trade laws and let colonial assemblies run local affairs. Why? Distance made enforcement expensive, and the colonies were profitable anyway. This "healthy neglect" wasn\'t a written policy — it was a habit. But it had a massive unintended consequence: colonists got USED to governing themselves. When Britain suddenly ended the neglect after 1763 (new taxes, real enforcement), colonists experienced it as losing rights they already owned.\n\n' +
           'That collision — self-governing habits meeting renewed British control — is exactly where the next mission begins.',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: The English Bill of Rights',
+        content: image({
+          asset: '/media/unit1/english-bill-of-rights-1689.jpg',
+          alt: 'The English Bill of Rights of 1689: a long parchment scroll covered in formal handwritten script',
+          caption:
+            'The English Bill of Rights, 1689 — the list of rights colonists believed they carried with them across the Atlantic.',
+          credit: 'Parliament of England, 1689 — Wikimedia Commons',
+          license: 'Public domain',
+          longDescription:
+            'A photograph of the English Bill of Rights, a tall parchment scroll from 1689 filled with formal handwritten script. It limited the monarch\'s power and guaranteed rights like petitioning the government and free speech in Parliament. When colonists later shouted about their "rights of Englishmen," this document — along with Magna Carta — was exactly what they meant.',
+          width: 1400,
+          height: 2827,
+        }),
       },
       {
         stepType: 'INTERACTIVE_CHECK',
@@ -605,10 +832,11 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SS.7.CG.1.3 — British Policies and Colonial Reactions
+  // SS.7.CG.1.5 — British Policies and the Road to the Declaration (ADR 0017: was coded 1.3)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
+    idKey: 'SS.7.CG.1.3', // ADR 0017: authored as 1.3 — pins original lesson/step row ids
     title: 'Taxes Without a Voice: The Road to Revolution',
     studentFriendlyTarget:
       'I can explain how British policies after the French and Indian War angered the colonists and how the colonists organized their resistance.',
@@ -659,6 +887,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'VIDEO',
+        title: 'Watch: Taxes and Smuggling on the Road to Revolution',
+        content: video({
+          youtubeId: 'Eytc9ZaNWyc',
+          title: 'Taxes & Smuggling — Prelude to Revolution (Crash Course US History #6)',
+          description:
+            'John Green races through the taxes Britain dropped on the colonies after the French and Indian War — the Sugar Act, Stamp Act, Townshend Acts — and how colonists answered with protests, boycotts, and smuggling. Fast-paced; catch the pattern of tax → protest → crackdown.',
+          whyWatch:
+            'Watch for the colonists\' actual complaint. It wasn\'t the price of the tax — it was who got to DECIDE the tax.',
+        }),
+      },
+      {
         stepType: 'VOCABULARY',
         title: 'Words of Protest',
         content:
@@ -677,6 +917,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'STAMP ACT (1765). The game-changer: a DIRECT tax on the colonists\' everyday paper — newspapers, contracts, wills, even playing cards. Every stamped page was a daily reminder of a tax passed without colonial consent. Protest exploded, and after colonial boycotts hurt British merchants, Parliament repealed it in 1766.\n\n' +
           'TOWNSHEND ACTS (1767). Parliament tried again — taxes on imported goods like glass, paint, paper, and TEA. Colonists answered with more boycotts; Britain sent troops to Boston to keep order, raising the temperature further.\n\n' +
           'Why did a few pennies of tax cause an uproar? PRINCIPLE. English rights — going back to Magna Carta and the English Bill of Rights — said taxes require the consent of the taxed, given through their representatives. The colonists elected no one in Parliament. So ANY tax from Parliament, cheap or expensive, was illegitimate. That\'s the meaning of "no taxation without representation" — and notice it\'s really the Enlightenment idea of consent of the governed, applied to money.',
+      },
+      {
+        stepType: 'INFOGRAPHIC',
+        title: 'Fast Facts: The Taxes That Sparked It',
+        content: infographic({
+          title: 'The Taxes That Sparked It',
+          intro: 'Each act raised the temperature a little more.',
+          summary:
+            'In 1765 the Stamp Act taxed nearly everything printed on paper. In 1767 the Townshend Acts taxed imports like glass, paint, and tea. In 1773 the Tea Act propped up Britain\'s tea company and triggered the Boston Tea Party. In 1774 the Intolerable Acts punished Boston — closing its port and shutting down self-government in Massachusetts — and pushed the colonies to unite.',
+          blocks: [
+            { type: 'big-number', value: '1765', label: 'Stamp Act', detail: 'A tax on almost everything printed on paper.' },
+            { type: 'big-number', value: '1767', label: 'Townshend Acts', detail: 'Taxes on imports: glass, paint, paper, tea.' },
+            { type: 'big-number', value: '1773', label: 'Tea Act', detail: 'Sparked the Boston Tea Party that December.' },
+            { type: 'big-number', value: '1774', label: 'Intolerable Acts', detail: 'Punished Boston — and united the colonies.' },
+          ],
+        }),
       },
       {
         stepType: 'WORKED_EXAMPLE',
@@ -730,6 +986,23 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'DIAGRAM',
+        title: 'Picture It: Anatomy of a Colonial Protest',
+        content: diagram({
+          variant: 'flow',
+          title: 'Anatomy of a Colonial Protest',
+          summary:
+            'Colonial protest followed a repeatable playbook: Parliament passes a tax; news spreads through the colonies via committees of correspondence; colonists respond with petitions, boycotts of British goods, and sometimes crowd action; British merchants lose money and pressure Parliament; and Parliament backs down — or cracks down, starting the cycle again at a higher temperature.',
+          nodes: [
+            { label: 'Parliament passes a tax', detail: 'Decided in London — with zero colonial votes.' },
+            { label: 'Word spreads', detail: 'Committees of correspondence link the colonies.' },
+            { label: 'Colonists resist', detail: 'Petitions, boycotts of British goods, crowd action.' },
+            { label: 'British merchants feel the squeeze', detail: 'Boycotts hit wallets in London.' },
+            { label: 'Parliament backs down — or cracks down', detail: 'Repeal cools things off; punishment heats them up.' },
+          ],
+        }),
+      },
+      {
         stepType: 'NOTE',
         title: 'How the Colonists Fought Back (Before Any Fighting)',
         content:
@@ -739,6 +1012,38 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'SONS OF LIBERTY. Protest groups that organized demonstrations and pressured tax collectors to resign — sometimes with intimidation and destruction of property. Their most famous act: dumping 342 chests of British tea into Boston Harbor in 1773 (the Boston Tea Party).\n\n' +
           'COMMITTEES OF CORRESPONDENCE. Letter-writing networks that spread news of British actions from colony to colony, turning thirteen separate colonies into one connected resistance movement.\n\n' +
           'See the deeper pattern: every one of these tools is the colonists acting on CONSENT OF THE GOVERNED — withdrawing their cooperation from laws they never agreed to. Enlightenment theory had become street-level practice.',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: America\'s First Political Cartoon',
+        content: image({
+          asset: '/media/unit1/join-or-die-1754.jpg',
+          alt: 'Woodcut cartoon of a snake cut into eight labeled segments above the words JOIN, or DIE',
+          caption:
+            'Benjamin Franklin\'s "Join, or Die" (1754) — the segmented snake became the colonies\' symbol of unity during the tax protests.',
+          credit: 'Benjamin Franklin, Pennsylvania Gazette, 1754 — Library of Congress',
+          license: 'Public domain',
+          longDescription:
+            'A woodcut print shows a snake chopped into eight pieces, each labeled with the initials of a colony or region — South Carolina at the tail, New England at the head. Below runs the caption "JOIN, or DIE." Franklin drew on a folk legend that a cut-up snake could come back to life if its pieces rejoined before sunset. The message: separately the colonies were dead pieces; together they were a living, dangerous whole. Made in 1754, it was revived as the protest symbol of the 1760s and 70s.',
+          width: 1400,
+          height: 1009,
+        }),
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: The Boston Tea Party',
+        content: image({
+          asset: '/media/unit1/boston-tea-party-1846.jpg',
+          alt: 'Colored lithograph of colonists on ships dumping chests of tea into Boston Harbor while a crowd cheers from the dock',
+          caption:
+            'Currier\'s lithograph of the "Destruction of Tea at Boston Harbor," December 16, 1773 — protest as a very public performance.',
+          credit: 'Nathaniel Currier, 1846 — Wikimedia Commons',
+          license: 'Public domain',
+          longDescription:
+            'This colored lithograph shows the night of December 16, 1773. Colonists — some disguised as Mohawk warriors — stand aboard three ships in Boston Harbor, hoisting wooden chests of British tea and dumping them into the water while a crowd on the dock cheers. About 342 chests went overboard. Britain answered with the Intolerable Acts, which closed the port of Boston — the crackdown that finally pushed the colonies to unite.',
+          width: 1400,
+          height: 853,
+        }),
       },
       {
         stepType: 'INTERACTIVE_CHECK',
@@ -896,10 +1201,11 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SS.7.CG.1.4 — Principles and Ideals of the Declaration of Independence
+  // SS.7.CG.1.6 — Ideas and Grievances of the Declaration (ADR 0017: was coded 1.4)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
+    idKey: 'SS.7.CG.1.4', // ADR 0017: authored as 1.4 — pins original lesson/step row ids
     title: 'Declaring Independence: Ideas Worth a Revolution',
     studentFriendlyTarget:
       'I can explain the main principles of the Declaration of Independence and tell universal principles apart from specific grievances.',
@@ -951,6 +1257,34 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'VIDEO',
+        title: 'Watch: The Story Behind the Declaration',
+        content: video({
+          youtubeId: 'LKJMWHCUoiw',
+          title: 'What you might not know about the Declaration of Independence',
+          description:
+            'A TED-Ed animation by historian Kenneth C. Davis about how the Declaration was actually written — the hot Philadelphia room, the edits Congress forced on Jefferson\'s draft, and one very controversial passage that got cut.',
+          whyWatch:
+            'Watch for what Congress DELETED from Jefferson\'s draft — it\'s a preview of a conflict America wouldn\'t face until much later.',
+        }),
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: Presenting the Declaration',
+        content: image({
+          asset: '/media/unit1/trumbull-declaration-1819.jpg',
+          alt: 'Painting of the drafting committee presenting the Declaration of Independence to the Continental Congress in a crowded hall',
+          caption:
+            'Trumbull\'s "Declaration of Independence" (1819) — the drafting committee, Jefferson front and center, presents its work to Congress.',
+          credit: 'John Trumbull, 1819 — U.S. Capitol rotunda',
+          license: 'Public domain',
+          longDescription:
+            'John Trumbull\'s famous painting shows the five-man drafting committee — John Adams, Roger Sherman, Robert Livingston, Thomas Jefferson (tallest, in a red vest, laying the document on the desk), and Benjamin Franklin — presenting the Declaration to John Hancock, president of the Continental Congress, on June 28, 1776. Dozens of delegates fill the hall around them. This scene hangs in the U.S. Capitol and appears on the back of the two-dollar bill.',
+          width: 1400,
+          height: 919,
+        }),
+      },
+      {
         stepType: 'VOCABULARY',
         title: 'Words of the Declaration',
         content:
@@ -969,6 +1303,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'PART 2 — THE GRIEVANCES (the longest part). Now the argument turns specific: a list of 27 accusations against King George III. He dissolved colonial legislatures. He kept standing armies in the colonies without consent. He imposed taxes without consent. He cut off colonial trade. Each grievance is EVIDENCE that this particular king broke the social contract described in Part 1.\n\n' +
           'PART 3 — THE DECLARATION ITSELF. The conclusion: therefore, these colonies ARE free and independent states, with full power to make war, peace, and alliances.\n\n' +
           'See the logic? Principles (how government SHOULD work) + Grievances (proof this government DIDN\'T) = Justified independence. It\'s a persuasive essay with the highest stakes imaginable.',
+      },
+      {
+        stepType: 'DIAGRAM',
+        title: 'Picture It: Anatomy of the Declaration',
+        content: diagram({
+          variant: 'flow',
+          title: 'Anatomy of the Declaration',
+          summary:
+            'The Declaration is a four-part argument. The Preamble announces why the document exists. The statement of principles lays out the big ideas — natural rights, consent of the governed, the right to alter or abolish an unjust government. The grievances are the evidence: a long list of specific complaints against King George III. And the resolution is the conclusion: therefore, these colonies are free and independent states.',
+          nodes: [
+            { label: '1. Preamble', detail: '"When in the Course of human events…" — why we\'re writing this.' },
+            { label: '2. Principles', detail: 'Natural rights, consent of the governed, right to alter or abolish.' },
+            { label: '3. Grievances', detail: 'The evidence: 27 specific complaints against the king.' },
+            { label: '4. Resolution', detail: 'Therefore: these colonies ARE free and independent states.' },
+          ],
+        }),
       },
       {
         stepType: 'WORKED_EXAMPLE',
@@ -1031,6 +1381,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'Locke: if government breaks the contract, the people may replace it. → Jefferson: "it is the Right of the People to alter or to abolish it."\n\n' +
           'Why does this document still matter beyond 1776?\n\n' +
           'It set the STANDARD America would forever be measured against. "All men are created equal" was written in a nation that allowed slavery — a contradiction Americans have wrestled with ever since. Abolitionists quoted the Declaration against slavery. The women\'s rights movement at Seneca Falls (1848) rewrote it: "all men and women are created equal." Abraham Lincoln at Gettysburg and Dr. Martin Luther King Jr. at the Lincoln Memorial both held America to Jefferson\'s words. The Declaration works like a promise the country keeps trying to fully live up to — which is exactly why you\'re still studying it.',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: The Declaration Itself',
+        content: image({
+          asset: '/media/unit1/declaration-stone-facsimile.jpg',
+          alt: 'The Declaration of Independence: handwritten parchment headed "In Congress, July 4, 1776" with dozens of signatures at the bottom',
+          caption:
+            'The Declaration of Independence (Stone facsimile, 1823). Fifty-six signatures at the bottom — each one an act of treason against Britain.',
+          credit: 'William J. Stone engraving, 1823 — National Archives',
+          license: 'Public domain',
+          longDescription:
+            'The engrossed Declaration of Independence, headed "In CONGRESS, July 4, 1776" in large script. The dense handwritten text walks through the preamble, the principles, and the long list of grievances, and ends with fifty-six signatures — John Hancock\'s famously largest, front and center. Signing meant treason: if the revolution failed, every man on this page could hang. This 1823 engraving preserves the original before it faded.',
+          width: 1400,
+          height: 1661,
+        }),
       },
       {
         stepType: 'INTERACTIVE_CHECK',
@@ -1113,6 +1479,26 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'INFOGRAPHIC',
+        title: 'Fast Facts: Declaration by the Numbers',
+        content: infographic({
+          title: 'Declaration by the Numbers',
+          summary:
+            'Fifty-six delegates signed the Declaration. Jefferson\'s draft listed twenty-seven grievances against King George III. Congress adopted the document on July 4, 1776 — after cutting about a quarter of Jefferson\'s draft. And the core principles trace back to one thinker: John Locke.',
+          blocks: [
+            { type: 'big-number', value: '56', label: 'signers', detail: 'Each signature was an act of treason against Britain.' },
+            { type: 'big-number', value: '27', label: 'grievances', detail: 'The evidence file against King George III.' },
+            { type: 'big-number', value: 'July 4', label: '1776 — adopted', detail: 'The date on the parchment (most signed August 2).' },
+            {
+              type: 'fact',
+              icon: 'book',
+              text: 'One big borrowed idea',
+              detail: 'Life, liberty, the pursuit of happiness — Locke\'s natural rights, rewritten by Jefferson.',
+            },
+          ],
+        }),
+      },
+      {
         stepType: 'SOURCE_ANALYSIS',
         title: 'Source Quest: We Hold These Truths',
         content: source({
@@ -1186,10 +1572,11 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SS.7.CG.1.5 — Strengths and Weaknesses of the Articles of Confederation
+  // SS.7.CG.1.7 — Articles of Confederation to the Constitution (ADR 0017: was coded 1.5)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
+    idKey: 'SS.7.CG.1.5', // ADR 0017: authored as 1.5 — pins original lesson/step row ids
     title: 'A Government Too Weak to Govern',
     studentFriendlyTarget:
       'I can identify the weaknesses of the Articles of Confederation and explain how Shays\' Rebellion exposed them.',
@@ -1240,6 +1627,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'VIDEO',
+        title: 'Watch: The Articles, the Constitution, and Why One Replaced the Other',
+        content: video({
+          youtubeId: 'bO7FQsCcbD8',
+          title: 'The Constitution, the Articles, and Federalism (Crash Course US History #8)',
+          description:
+            'John Green explains how America\'s first government under the Articles of Confederation kept running out of money and power, how Shays\' Rebellion scared the country\'s leaders, and why the fix — the Constitution — divided power instead of just weakening it.',
+          whyWatch:
+            'Watch for the LIST of things the Confederation Congress could not do — that list is exactly what this mission is about.',
+        }),
+      },
+      {
         stepType: 'VOCABULARY',
         title: 'Words of the Confederation Era',
         content:
@@ -1248,6 +1647,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'ratify — To formally approve. "All thirteen states had to ratify the Articles before they took effect."\n\n' +
           'unanimous — Agreed to by everyone, with no exceptions. "Amending the Articles required a unanimous vote — one stubborn state could block any change."\n\n' +
           'rebellion — An armed uprising against authority. "Shays\' Rebellion terrified national leaders because no federal army existed to stop it."',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: The Articles of Confederation',
+        content: image({
+          asset: '/media/unit1/articles-of-confederation-p1.jpg',
+          alt: 'First page of the Articles of Confederation: a tall handwritten parchment document',
+          caption:
+            'Page one of the Articles of Confederation — America\'s first constitution, and a government designed to be weak.',
+          credit: 'Second Continental Congress, 1777 — National Archives',
+          license: 'Public domain',
+          longDescription:
+            'The first page of the Articles of Confederation, handwritten on tall parchment in 1777. Its second article gives the game away: each state keeps its "sovereignty, freedom, and independence." Having just fought a distant, powerful government, Americans built a "league of friendship" between thirteen nearly independent states — and made the national government too weak to tax, to regulate trade, or to enforce its own laws.',
+          width: 1400,
+          height: 2258,
+        }),
       },
       {
         stepType: 'NOTE',
@@ -1262,6 +1677,26 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'AMENDMENTS REQUIRED UNANIMITY. Fixing ANY of the above required all thirteen states to agree. Rhode Island alone could — and did — block reform.\n\n' +
           'NO POWER OVER TRADE. States taxed each other\'s goods and printed their own money; the economy was chaos.\n\n' +
           'Notice the pattern: every weakness traces back to the same root — the states kept sovereignty, so the national government governed only by permission. The design that prevented tyranny also prevented solving any national problem.',
+      },
+      {
+        stepType: 'DIAGRAM',
+        title: 'Picture It: Congress Could / Congress Could NOT',
+        content: diagram({
+          variant: 'comparison',
+          title: 'Under the Articles: Could vs. Could Not',
+          summary:
+            'Under the Articles, Congress could declare war, make treaties, and manage western lands. But it could NOT tax (it could only ask states for money), could not regulate trade between states, could not enforce its own laws, and there was no president and no national court system. Compare the columns: almost everything a government needs money or muscle for sits on the "could not" side.',
+          columns: [
+            {
+              heading: 'Congress COULD',
+              items: ['Declare war and make peace', 'Make treaties with other nations', 'Manage western lands', 'Borrow and print money'],
+            },
+            {
+              heading: 'Congress could NOT',
+              items: ['Tax — only ASK states for money', 'Regulate trade between states', 'Enforce its own laws', 'Rely on a president or national courts — none existed'],
+            },
+          ],
+        }),
       },
       {
         stepType: 'WORKED_EXAMPLE',
@@ -1315,6 +1750,21 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'INFOGRAPHIC',
+        title: 'Fast Facts: A Government of Can\'ts',
+        content: infographic({
+          title: 'A Government of Can\'ts',
+          summary:
+            'The numbers tell the story of a government built too weak: passing any important law took the votes of nine of the thirteen states, and changing the Articles themselves required all thirteen to agree — so it never happened. Congress had zero power to tax, and the whole national government was one branch: no president, no courts.',
+          blocks: [
+            { type: 'big-number', value: '9 / 13', label: 'states to pass a law', detail: 'A high bar that stalled almost everything.' },
+            { type: 'big-number', value: '13 / 13', label: 'states to amend', detail: 'Unanimity — so the Articles could never be fixed.' },
+            { type: 'big-number', value: '$0', label: 'taxing power', detail: 'Congress could only request money from states.' },
+            { type: 'big-number', value: '1', label: 'branch of government', detail: 'No executive to enforce, no courts to judge.' },
+          ],
+        }),
+      },
+      {
         stepType: 'NOTE',
         title: 'Shays\' Rebellion: The Wake-Up Call',
         content:
@@ -1324,6 +1774,20 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'THE TERRIFYING PART. The national government could do... nothing. No money to raise an army (no tax power, remember?), no executive to lead a response, no mechanism at all. Massachusetts had to put down the rebellion with a PRIVATELY funded state militia.\n\n' +
           'THE EFFECT. Leaders across the states were shaken. George Washington wrote anxious letters: what good is a government that cannot keep order? Within months, delegates agreed to meet in Philadelphia in May 1787 — officially to "revise" the Articles. Once in the room, they decided the patient couldn\'t be saved and wrote an entirely new Constitution instead.\n\n' +
           'Cause-and-effect chain for the test: farmers\' debt crisis → Shays\' Rebellion → national government powerless to respond → Constitutional Convention called. That chain IS this benchmark.',
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: A Chain with a Broken Link',
+        content: image({
+          asset: 'svg:weak-links-chain',
+          alt: 'Illustration of a chain of links with the center link snapped in two, thirteen stars above it',
+          caption:
+            'Thirteen states, one broken chain: when Massachusetts couldn\'t put down Shays\' Rebellion alone and Congress couldn\'t help, the weakness stopped being a theory.',
+          credit: 'Civics Quest illustration',
+          license: 'Public domain',
+          longDescription:
+            'An illustration of a heavy chain whose center link has snapped apart, with sparks flying from the break and a row of thirteen stars above — one for each state. A confederation is only as strong as its weakest link: when armed farmers closed courthouses in Massachusetts and the national government had no army and no money to respond, every state could see the chain had already broken.',
+        }),
       },
       {
         stepType: 'INTERACTIVE_CHECK',
@@ -1480,13 +1944,17 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // SS.7.CG.1.6 — Creating the Constitution
+  // SS.7.CG.1.10 — The Ratification Debate (ADR 0017: authored as old-1.6
+  // "Creating the Constitution"; idKey pins the original lesson/step ids so
+  // student resume pointers survive the move. Convention-heavy front half is
+  // flagged for trimming in the 1.10 content pass — see CLAUDE.md backlog.)
   // ═══════════════════════════════════════════════════════════════════════════
   {
-    benchmarkCode: 'SS.7.CG.1.6',
-    title: 'Building a Stronger Plan: The Constitution',
+    benchmarkCode: 'SS.7.CG.1.10',
+    idKey: 'SS.7.CG.1.6',
+    title: 'The Fight to Ratify: Federalists vs. Anti-Federalists',
     studentFriendlyTarget:
-      'I can explain how the Constitution fixed the Articles\' weaknesses and describe the key compromises of the Constitutional Convention.',
+      'I can compare Federalist and Anti-Federalist viewpoints on ratifying the Constitution, including the debate over a bill of rights.',
     body:
       'In May 1787, fifty-five delegates gathered in Philadelphia — officially just to "revise" the Articles of Confederation. Behind locked doors and sealed windows (secrecy let them speak freely), they made a bolder choice: throw out the Articles and design a new government from scratch.\n\n' +
       'For four sweltering months they argued, bargained, and compromised. Big states versus small states. North versus South. Fans of a strong national government versus defenders of state power. The document they produced — the U.S. Constitution — directly repaired every major weakness of the Articles. In this final Unit 1 mission, you\'ll see how each fix answers a failure, and why the fight to RATIFY the Constitution gave us the Bill of Rights.',
@@ -1534,6 +2002,18 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
         }),
       },
       {
+        stepType: 'VIDEO',
+        title: 'Watch: Why the Constitution Almost Didn\'t Happen',
+        content: video({
+          youtubeId: 'aMCDikASE4o',
+          title: 'Why wasn\'t the Bill of Rights originally in the US Constitution?',
+          description:
+            'A TED-Ed animation about the fight AFTER the Convention: Federalists wanted the new Constitution ratified as written, Anti-Federalists refused to sign on without a written list of rights — and the Bill of Rights was the deal that saved the whole plan.',
+          whyWatch:
+            'Watch for the trade: what did the Anti-Federalists demand before they would let the Constitution pass?',
+        }),
+      },
+      {
         stepType: 'VOCABULARY',
         title: 'Words of the Convention',
         content:
@@ -1545,6 +2025,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'Anti-Federalists — Opponents who feared the new national government would threaten liberty. "The Anti-Federalists demanded a bill of rights as the price of ratification."',
       },
       {
+        stepType: 'IMAGE',
+        title: 'Look Closer: Signing the Constitution',
+        content: image({
+          asset: '/media/unit1/christy-signing-1940.jpg',
+          alt: 'Large painting of delegates in 18th-century dress signing the Constitution in Independence Hall, George Washington presiding from a raised desk',
+          caption:
+            'Christy\'s "Scene at the Signing of the Constitution" (1940) — Washington presides as delegates line up to sign, September 17, 1787.',
+          credit: 'Howard Chandler Christy, 1940 — U.S. Capitol',
+          license: 'Public domain',
+          longDescription:
+            'This monumental painting, which hangs in the U.S. Capitol, shows Independence Hall on September 17, 1787. George Washington stands at a raised desk on the right, presiding, while delegates in 18th-century coats and breeches crowd forward to sign the finished Constitution. Benjamin Franklin sits at the center. Of the fifty-five delegates who attended the Convention, thirty-nine signed — several refused, partly because the document had no bill of rights yet.',
+          width: 1400,
+          height: 902,
+        }),
+      },
+      {
         stepType: 'NOTE',
         title: 'The Convention\'s Great Debates and Compromises',
         content:
@@ -1553,6 +2049,28 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'The GREAT COMPROMISE (also called the Connecticut Compromise) split the difference with a bicameral Congress: a HOUSE OF REPRESENTATIVES where seats depend on population (big states happy), and a SENATE where every state gets exactly two seats (small states happy). Both chambers must agree to pass any law. This is why Congress looks the way it does today.\n\n' +
           'THE THREE-FIFTHS COMPROMISE — A BARGAIN OVER SLAVERY. Southern states wanted enslaved people counted in population totals (more House seats for the South); northern states objected, since enslaved people were denied every right of citizenship. The deal: count three-fifths of the enslaved population for representation and taxation. Understand this plainly — it treated human beings as fractions for political math, gave slaveholding states extra power in Congress, and left slavery itself untouched. The contradiction between "all men are created equal" and this compromise haunted the nation until the Civil War, and the Thirteenth and Fourteenth Amendments erased it from the Constitution.\n\n' +
           'Test tip: if the question is about BIG vs. SMALL states → Great Compromise. If it\'s about counting the ENSLAVED population → Three-Fifths Compromise. Students mix these up constantly; don\'t be one of them.',
+      },
+      {
+        stepType: 'DIAGRAM',
+        title: 'Picture It: Virginia Plan vs. New Jersey Plan',
+        content: diagram({
+          variant: 'venn',
+          title: 'Virginia Plan vs. New Jersey Plan',
+          summary:
+            'The Virginia Plan, backed by big states, wanted representation in Congress based on population. The New Jersey Plan, backed by small states, wanted every state to have an equal vote. Both sides agreed the national government needed to be stronger than under the Articles. The Great Compromise took both: a House of Representatives based on population AND a Senate with two votes per state.',
+          left: {
+            label: 'Virginia Plan',
+            items: ['Representation by population', 'Favored BIG states', 'Two-house legislature'],
+          },
+          right: {
+            label: 'New Jersey Plan',
+            items: ['Equal vote for every state', 'Favored SMALL states', 'One-house legislature'],
+          },
+          shared: {
+            label: 'The Great Compromise took both',
+            items: ['House: seats by population', 'Senate: two per state, equal', 'A stronger national government'],
+          },
+        }),
       },
       {
         stepType: 'WORKED_EXAMPLE',
@@ -1570,6 +2088,20 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           answer: 'B. It created a Senate in which every state has equal representation',
           whyItWorks:
             'Compromise questions hide the answer in WHO was worried about WHAT. Match the worried group (small states) to the feature built for them (equal Senate). And watch for options imported from the WRONG document — unanimity rules belong to the Articles, not the Constitution.',
+        }),
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: Two Plans Become One Document',
+        content: image({
+          asset: 'svg:convention-compromise',
+          alt: 'Illustration of two rival speech bubbles with arrows converging on a single signed document',
+          caption:
+            'Compromise, drawn: two rival plans argue, converge, and become one signed agreement. That\'s the whole Convention in one picture.',
+          credit: 'Civics Quest illustration',
+          license: 'Public domain',
+          longDescription:
+            'An illustration shows two speech bubbles facing off — one indigo, one rose — representing the Virginia and New Jersey plans shouting past each other. Arrows curve down from both bubbles and meet at a single parchment document with a green check mark and a red wax seal: the Constitution. Compromise doesn\'t mean one side wins; it means both sides put something real into the final agreement.',
         }),
       },
       {
@@ -1620,6 +2152,28 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           'FEDERALISTS (Madison, Hamilton, Jay) argued the Articles had already proven that a weak center fails; the new system\'s checks and balances would protect liberty. They made their case in 85 newspaper essays — the Federalist Papers.\n\n' +
           'ANTI-FEDERALISTS (Patrick Henry, George Mason) saw the ghost of the king in the new national power. Their sharpest argument: WHERE IS THE LIST OF RIGHTS? The Constitution protected structure, not speech, press, or jury trials.\n\n' +
           'The argument ended in a deal that completes Unit 1\'s story: several key states ratified only on the promise that a BILL OF RIGHTS would be added immediately. In 1791, the first ten amendments were ratified — the Anti-Federalists\' lasting gift to every American. Compromise didn\'t stop when the Convention ended; it\'s baked into the whole system.',
+      },
+      {
+        stepType: 'INFOGRAPHIC',
+        title: 'Fast Facts: Road to Ratification',
+        content: infographic({
+          title: 'Road to Ratification',
+          summary:
+            'Fifty-five delegates attended the Convention and thirty-nine signed the finished Constitution. Ratification required nine of the thirteen states. To win the argument, Hamilton, Madison, and Jay wrote eighty-five essays — the Federalist Papers — and the Anti-Federalists\' price for support became the first ten amendments: the Bill of Rights.',
+          blocks: [
+            { type: 'big-number', value: '55', label: 'delegates attended', detail: 'Meeting in secret, windows shut, all summer.' },
+            { type: 'big-number', value: '39', label: 'signed the Constitution', detail: 'Several refused — no bill of rights yet.' },
+            { type: 'big-number', value: '9 / 13', label: 'states to ratify', detail: 'A deliberate escape from the Articles\' 13/13 trap.' },
+            { type: 'big-number', value: '85', label: 'Federalist Papers', detail: 'Hamilton, Madison, and Jay argue the case in print.' },
+            { type: 'big-number', value: '10', label: 'amendments promised', detail: 'The Bill of Rights — the price of ratification.' },
+            {
+              type: 'fact',
+              icon: 'check',
+              text: 'June 21, 1788: New Hampshire ratifies',
+              detail: 'The ninth state — the Constitution takes effect.',
+            },
+          ],
+        }),
       },
       {
         stepType: 'INTERACTIVE_CHECK',
@@ -1702,6 +2256,22 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
                 'Britain had nothing to do with it — this was an all-American argument about protecting liberty from the new government.',
             },
           ],
+        }),
+      },
+      {
+        stepType: 'IMAGE',
+        title: 'Look Closer: We the People',
+        content: image({
+          asset: '/media/unit1/constitution-page1.jpg',
+          alt: 'First page of the U.S. Constitution with the large ornate words "We the People" at the top',
+          caption:
+            'Page one of the Constitution, 1787. The first three words are the biggest on the page — and they\'re the whole argument.',
+          credit: 'Constitutional Convention, 1787 (engrossed by Jacob Shallus) — National Archives',
+          license: 'Public domain',
+          longDescription:
+            'The first page of the U.S. Constitution, handwritten on parchment in 1787. "We the People" is written enormous and ornate at the top left — a deliberate design choice. The Articles of Confederation had been an agreement between STATES; the Constitution announces in its first three words that this government\'s power comes directly from the PEOPLE — popular sovereignty, straight from the Enlightenment thinkers of your first mission, now written into law.',
+          width: 1400,
+          height: 1689,
         }),
       },
       {

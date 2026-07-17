@@ -20,6 +20,11 @@ import {
   seedUnit2Questions,
 } from './unit2'
 import { UNIT1_BACKFILL_BY_BENCHMARK } from './unit1_backfill'
+import {
+  UNIT1_INTERIM_BY_BENCHMARK,
+  UNIT1_INTERIM_BENCHMARKS,
+  seedUnit1Interim,
+} from './unit1_interim'
 
 export interface QuestionBank {
   unitId: string
@@ -30,6 +35,15 @@ export interface QuestionBank {
 }
 
 export const ALL_QUESTION_BANKS: QuestionBank[] = [
+  {
+    // ADR 0017: interim banks for the repurposed official 1.1/1.2 rows —
+    // authored in the QuestionSeedDef format, so they validate through the
+    // registry like any unit bank. Full content build tracked in the backlog.
+    unitId: 'unit-1',
+    questionsByBenchmark: UNIT1_INTERIM_BY_BENCHMARK,
+    completeBenchmarks: UNIT1_INTERIM_BENCHMARKS,
+    seed: seedUnit1Interim,
+  },
   {
     unitId: 'unit-2',
     questionsByBenchmark: UNIT2_QUESTIONS_BY_BENCHMARK,

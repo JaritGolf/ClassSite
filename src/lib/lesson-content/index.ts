@@ -4,6 +4,10 @@ export {
   WorkedExampleSchema,
   SourceAnalysisSchema,
   TimelineSchema,
+  VideoSchema,
+  ImageSchema,
+  DiagramSchema,
+  InfographicSchema,
   RemediationContentSchema,
   parseStepContent,
   parseRemediationContent,
@@ -12,6 +16,10 @@ export {
   type WorkedExampleContent,
   type SourceAnalysisContent,
   type TimelineContent,
+  type VideoContent,
+  type ImageContent,
+  type DiagramContent,
+  type InfographicContent,
   type RemediationContent,
   type ParsedStepContent,
 } from './contracts'
@@ -25,3 +33,5 @@ export {
   canAdvance,
   type LessonStepLike,
 } from './gating'
+
+export { TOGGLEABLE_STEP_TYPES, isToggleableStepType, resolveVisibleSteps } from './visibility'

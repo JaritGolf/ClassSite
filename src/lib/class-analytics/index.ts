@@ -39,3 +39,6 @@ export type { EocTrendPoint } from './eoc-trend'
 
 export { getOffRampStudents } from './off-ramp'
 export type { OffRampRow } from './off-ramp'
+
+export { getStrategyCompletionStatus } from './strategy-completion'
+export type { StrategyCompletionRow } from './strategy-completion'

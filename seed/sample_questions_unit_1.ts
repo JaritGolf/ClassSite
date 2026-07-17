@@ -15,6 +15,13 @@
  * All seed questions: sourceTier = B, approvalStatus = APPROVED.
  * Scenario questions use itemType SCENARIO_MC; others MULTIPLE_CHOICE.
  * Idempotent: upsert by externalKey.
+ *
+ * STANDARDS REALIGNMENT (ADR 0017, 2026-07-16): benchmarkCodes were remapped to
+ * the official SS.7.CG meanings (old 1.1→1.4, 1.2→1.3, 1.3→1.5, 1.4→1.6,
+ * 1.5→1.7; the old 1.6 Constitutional Convention set split item-level between
+ * 1.7 and 1.10). externalKeys are FROZEN — `q-SS7CG16-*` keys now live on
+ * 1.7/1.10; renaming keys would orphan DB rows and attempt history, so the
+ * cosmetic mismatch is intentional.
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -42,14 +49,14 @@ interface QuestionDef {
   options: OptionDef[]  // exactly 4; exactly 1 isCorrect
 }
 
-// ── SS.7.CG.1.1 — Enlightenment and European Influences ──────────────────────
+// ── SS.7.CG.1.4 — Enlightenment Ideas and the Founding (ADR 0017: was coded 1.1) ──
 // Skill tag: enlightenment-influence  |  Remediation: remed-CG11-enlightenment
 
 const SS7CG11: QuestionDef[] = [
   // ── LOW / Level 1 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG11-001',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'According to philosopher John Locke, which three natural rights are all people born with?',
     itemType: 'MULTIPLE_CHOICE',
@@ -89,7 +96,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-002',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'Which document, signed in 1215, first limited the power of the English king and established that even rulers must follow the law?',
     itemType: 'MULTIPLE_CHOICE',
@@ -128,7 +135,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-003',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'Which Enlightenment philosopher argued that government power should be divided into separate branches to prevent any one group from having too much authority?',
     itemType: 'MULTIPLE_CHOICE',
@@ -169,7 +176,7 @@ const SS7CG11: QuestionDef[] = [
   // ── MODERATE / Level 1 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG11-004',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'Which statement best describes the social contract theory proposed by Enlightenment thinkers?',
     itemType: 'MULTIPLE_CHOICE',
@@ -209,7 +216,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-005',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'A colonial town holds a vote to decide whether to build a new road. Every adult member of the town participates in the decision. Which Enlightenment concept does this best illustrate?',
     itemType: 'SCENARIO_MC',
@@ -247,7 +254,7 @@ const SS7CG11: QuestionDef[] = [
   // ── MODERATE / Level 2 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG11-006',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'How did the Magna Carta influence the development of American government?',
     itemType: 'MULTIPLE_CHOICE',
@@ -286,7 +293,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-007',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'Which of the following best explains the principle of "consent of the governed"?',
     itemType: 'MULTIPLE_CHOICE',
@@ -325,7 +332,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-008',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'What was the historical significance of the English Bill of Rights (1689) for the American founding?',
     itemType: 'MULTIPLE_CHOICE',
@@ -364,7 +371,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-009',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'The Mayflower Compact (1620) is considered an early example of self-governance in America. Which statement best describes its significance?',
     itemType: 'MULTIPLE_CHOICE',
@@ -401,7 +408,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-010',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'What does the rule of law mean in the context of American democratic principles?',
     itemType: 'MULTIPLE_CHOICE',
@@ -438,7 +445,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-011',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'A king claims he can seize any citizen\'s land without reason or compensation because he is the ruler. According to Enlightenment social contract theory, why would thinkers like Locke oppose this action?',
     itemType: 'SCENARIO_MC',
@@ -477,7 +484,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-012',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'Which pairing correctly matches the Enlightenment philosopher with their most important contribution to American democratic ideas?',
     itemType: 'MULTIPLE_CHOICE',
@@ -517,7 +524,7 @@ const SS7CG11: QuestionDef[] = [
   // ── HIGH / Level 2 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG11-013',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'Analyze the following claim: "Without Enlightenment philosophy, the American Revolution would not have had an intellectual justification." Which evidence best supports this claim?',
     itemType: 'SCENARIO_MC',
@@ -557,7 +564,7 @@ const SS7CG11: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG11-014',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'A historian argues that the English Bill of Rights (1689) was more directly influential on the American Constitution than the Magna Carta. Which reasoning best supports this argument?',
     itemType: 'MULTIPLE_CHOICE',
@@ -596,7 +603,7 @@ const SS7CG11: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG11-015',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     prompt:
       'In 1776, American colonists justified revolution by arguing the king had violated the social contract. Which statement most accurately evaluates the strength of this argument?',
     itemType: 'SCENARIO_MC',
@@ -636,14 +643,14 @@ const SS7CG11: QuestionDef[] = [
   },
 ]
 
-// ── SS.7.CG.1.2 — Colonial and British Governmental Traditions ───────────────
+// ── SS.7.CG.1.3 — Documents That Shaped Colonial Views (ADR 0017: was coded 1.2) ──
 // Skill tag: colonial-self-governance  |  Remediation: remed-CG12-colonial-gov
 
 const SS7CG12: QuestionDef[] = [
   // ── LOW / Level 1 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG12-001',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'The Virginia House of Burgesses (1619) was the first elected legislative assembly in the American colonies. What was its primary significance?',
     itemType: 'MULTIPLE_CHOICE',
@@ -680,7 +687,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-002',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'New England town meetings allowed colonists to vote directly on local issues. What form of government do these meetings represent?',
     itemType: 'MULTIPLE_CHOICE',
@@ -717,7 +724,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-003',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       '"Salutary neglect" describes a period when Britain largely allowed the colonies to govern themselves without strict interference. What was the primary result of this policy?',
     itemType: 'MULTIPLE_CHOICE',
@@ -755,7 +762,7 @@ const SS7CG12: QuestionDef[] = [
   // ── MODERATE / Level 1 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG12-004',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'By the 1760s, most colonies had elected assemblies that controlled local taxation and spending. Why was this experience important when colonists later argued against "taxation without representation"?',
     itemType: 'MULTIPLE_CHOICE',
@@ -792,7 +799,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-005',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'A colonial governor, appointed by the king, tries to impose a new tax on the colony without approval from the colonial assembly. The assembly refuses to authorize the tax. Which tradition is the assembly exercising?',
     itemType: 'SCENARIO_MC',
@@ -830,7 +837,7 @@ const SS7CG12: QuestionDef[] = [
   // ── MODERATE / Level 2 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG12-006',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'How did the Mayflower Compact (1620) contribute to the tradition of colonial self-governance?',
     itemType: 'MULTIPLE_CHOICE',
@@ -867,7 +874,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-007',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'How did the tradition of English common law — laws based on court decisions and long-standing custom rather than written codes — influence American legal and governmental traditions?',
     itemType: 'MULTIPLE_CHOICE',
@@ -904,7 +911,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-008',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'Why did the end of salutary neglect after the French and Indian War (1763) create conflict between Britain and the colonies?',
     itemType: 'MULTIPLE_CHOICE',
@@ -941,7 +948,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-009',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'What was the most significant long-term consequence of the Virginia House of Burgesses for American democracy?',
     itemType: 'MULTIPLE_CHOICE',
@@ -978,7 +985,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-010',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'A student is comparing the Virginia House of Burgesses and New England town meetings. Which statement correctly identifies a key similarity between these two institutions?',
     itemType: 'SCENARIO_MC',
@@ -1015,7 +1022,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-011',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'Historians argue that the colonial period prepared Americans well for self-governance. Which evidence best supports this argument?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1052,7 +1059,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-012',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'Colonial leaders argued they had "the rights of Englishmen" under common law. How did this argument support their resistance to new British policies after 1763?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1090,7 +1097,7 @@ const SS7CG12: QuestionDef[] = [
   // ── HIGH / Level 2 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG12-013',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'After years of salutary neglect, Britain tried to reassert stricter control over the colonies in the 1760s, but colonists resisted. A historian writes: "The British made the mistake of letting a habit become a right." What does this statement mean?',
     itemType: 'SCENARIO_MC',
@@ -1128,7 +1135,7 @@ const SS7CG12: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG12-014',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'By the 1770s, the American colonial understanding of representative government had diverged significantly from the British Parliament\'s understanding of its own authority. Which of the following best explains this divergence?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1165,7 +1172,7 @@ const SS7CG12: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG12-015',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     prompt:
       'A political scientist argues: "Salutary neglect created a situation from which Britain could not recover without either war or granting colonial independence." Evaluate this argument.',
     itemType: 'SCENARIO_MC',
@@ -1202,14 +1209,14 @@ const SS7CG12: QuestionDef[] = [
   },
 ]
 
-// ── SS.7.CG.1.3 — British Policies and Colonial Reactions ────────────────────
+// ── SS.7.CG.1.5 — British Policies and the Road to the Declaration (ADR 0017: was coded 1.3) ──
 // Skill tag: british-policies  |  Remediation: remed-CG13-british-policies
 
 const SS7CG13: QuestionDef[] = [
   // ── LOW / Level 1 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG13-001',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt: 'What did the Stamp Act (1765) require colonists to do?',
     itemType: 'MULTIPLE_CHOICE',
     cognitiveComplexity: 'LOW',
@@ -1245,7 +1252,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-002',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'What did colonists mean when they protested "no taxation without representation"?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1282,7 +1289,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-003',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'The Sons of Liberty was a colonial organization that opposed British taxation. What methods did they primarily use?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1320,7 +1327,7 @@ const SS7CG13: QuestionDef[] = [
   // ── MODERATE / Level 1 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG13-004',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'After the Townshend Acts (1767) imposed taxes on imported goods, many colonists stopped buying British products. Which Enlightenment principle best justifies this boycott?',
     itemType: 'SCENARIO_MC',
@@ -1357,7 +1364,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-005',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'The Navigation Acts required that colonial trade go through Britain and be carried on British ships. What was their primary purpose?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1395,7 +1402,7 @@ const SS7CG13: QuestionDef[] = [
   // ── MODERATE / Level 2 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG13-006',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'The Townshend Acts (1767) taxed imported goods including glass, paint, paper, and tea. How did colonists primarily respond?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1434,7 +1441,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-007',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'How did the French and Indian War (1754–1763) directly lead to increased tensions between Britain and the colonies?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1471,7 +1478,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-008',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'Which correctly sequences colonial responses to British policies, from least to most direct form of resistance?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1508,7 +1515,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-009',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'How did the principle of "no taxation without representation" reflect Enlightenment ideas about government?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1547,7 +1554,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-010',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'In 1773, colonists dressed as Mohawks dumped 342 chests of British tea into Boston Harbor. How does this event best fit into the broader pattern of colonial resistance?',
     itemType: 'SCENARIO_MC',
@@ -1584,7 +1591,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-011',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'Which factor best explains why peaceful colonial resistance eventually gave way to armed conflict by 1775?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1621,7 +1628,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-012',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'From Britain\'s perspective, why did Parliament believe it had the right to tax the American colonies?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1661,7 +1668,7 @@ const SS7CG13: QuestionDef[] = [
   // ── HIGH / Level 2 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG13-013',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'A Loyalist argued in 1770: "The colonists enjoy more freedom than any other people in the world. Their resistance to lawful taxation is selfish and dangerous." How would a Patriot best respond using Enlightenment principles?',
     itemType: 'SCENARIO_MC',
@@ -1699,7 +1706,7 @@ const SS7CG13: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG13-014',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'Why did the period from 1763 to 1775 see rapid escalation from colonial petitions to armed revolt? Which explanation is most historically complete?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1736,7 +1743,7 @@ const SS7CG13: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG13-015',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     prompt:
       'The Intolerable Acts (1774) closed Boston\'s port, restricted the Massachusetts colonial assembly, and required colonists to house British soldiers. Which analysis is most historically accurate?',
     itemType: 'SCENARIO_MC',
@@ -1775,14 +1782,14 @@ const SS7CG13: QuestionDef[] = [
   },
 ]
 
-// ── SS.7.CG.1.4 — Principles and Ideals of the Declaration of Independence ───
+// ── SS.7.CG.1.6 — Ideas and Grievances of the Declaration (ADR 0017: was coded 1.4) ──
 // Skill tag: declaration-principles  |  Remediation: remed-CG14-declaration
 
 const SS7CG14: QuestionDef[] = [
   // ── LOW / Level 1 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG14-001',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt: 'Who was primarily responsible for drafting the Declaration of Independence?',
     itemType: 'MULTIPLE_CHOICE',
     cognitiveComplexity: 'LOW',
@@ -1820,7 +1827,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-002',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'The Declaration of Independence states that all people have "unalienable Rights." Which rights does it specifically list?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1859,7 +1866,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-003',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'The Declaration of Independence served two main purposes. What were they?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1897,7 +1904,7 @@ const SS7CG14: QuestionDef[] = [
   // ── MODERATE / Level 1 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG14-004',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'The Declaration contains both universal principles and specific grievances. Which of the following is a universal principle?',
     itemType: 'MULTIPLE_CHOICE',
@@ -1938,7 +1945,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-005',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'The Declaration states: "Whenever any Form of Government becomes destructive of these ends, it is the Right of the People to alter or to abolish it." Which Enlightenment idea does this most directly reflect?',
     itemType: 'SCENARIO_MC',
@@ -1977,7 +1984,7 @@ const SS7CG14: QuestionDef[] = [
   // ── MODERATE / Level 2 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG14-006',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'How did Enlightenment philosophy provide the intellectual foundation for the Declaration of Independence?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2016,7 +2023,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-007',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'Why is the Declaration of Independence considered historically significant beyond the American Revolution?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2055,7 +2062,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-008',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'Which passage from the Declaration most clearly reflects the social contract theory?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2094,7 +2101,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-009',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'Why does the Declaration of Independence list 27 specific grievances against King George III after stating its philosophical principles?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2133,7 +2140,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-010',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'A student is asked to classify two statements from the Declaration: (1) "All men are created equal, endowed with unalienable rights." (2) "He has quartered large bodies of armed troops among us." How should the student classify these?',
     itemType: 'SCENARIO_MC',
@@ -2173,7 +2180,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-011',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'The Declaration says that when government becomes "destructive" of people\'s rights, it is the "duty" of the people to alter or abolish it. How did colonists apply this principle to justify independence?',
     itemType: 'SCENARIO_MC',
@@ -2210,7 +2217,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-012',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'How does the Declaration of Independence reflect the influence of John Locke\'s political philosophy?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2250,7 +2257,7 @@ const SS7CG14: QuestionDef[] = [
   // ── HIGH / Level 2 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG14-013',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'A scholar argues that the Declaration\'s structure — principles first, then grievances — was a deliberate rhetorical and logical strategy. What is the strongest version of this argument?',
     itemType: 'SCENARIO_MC',
@@ -2290,7 +2297,7 @@ const SS7CG14: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG14-014',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'Jefferson changed Locke\'s phrase "life, liberty, and property" to "life, liberty, and the pursuit of happiness." Which explanation best accounts for this change?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2330,7 +2337,7 @@ const SS7CG14: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG14-015',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     prompt:
       'Abolitionist Frederick Douglass asked in 1852: "What to the Slave is the Fourth of July?" — arguing the Declaration\'s ideals had not been fulfilled for enslaved Americans. Which analysis of the Declaration\'s legacy is most historically nuanced?',
     itemType: 'SCENARIO_MC',
@@ -2369,14 +2376,14 @@ const SS7CG14: QuestionDef[] = [
   },
 ]
 
-// ── SS.7.CG.1.5 — Strengths and Weaknesses of the Articles of Confederation ──
+// ── SS.7.CG.1.7 — Articles of Confederation to the Constitution (ADR 0017: was coded 1.5) ──
 // Skill tag: articles-weaknesses  |  Remediation: remed-CG15-articles
 
 const SS7CG15: QuestionDef[] = [
   // ── LOW / Level 1 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG15-001',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'What was the most significant financial weakness of the Articles of Confederation?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2415,7 +2422,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-002',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Under the Articles of Confederation, how were votes distributed among the states in Congress?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2452,7 +2459,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-003',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Shays\' Rebellion (1786–1787) was an armed uprising in Massachusetts. Why did it alarm national leaders and contribute to calls for a new constitution?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2490,7 +2497,7 @@ const SS7CG15: QuestionDef[] = [
   // ── MODERATE / Level 1 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG15-004',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Under the Articles of Confederation, Congress could pass laws but had no power to enforce them. What practical problem did this create?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2527,7 +2534,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-005',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'In 1786, the national government needed funds to pay its war debts. Congress requested money from the states, but several refused to contribute. Which weakness of the Articles does this best illustrate?',
     itemType: 'SCENARIO_MC',
@@ -2567,7 +2574,7 @@ const SS7CG15: QuestionDef[] = [
   // ── MODERATE / Level 2 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG15-006',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'The Articles of Confederation created no executive branch. What was the most serious consequence of this structural gap?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2604,7 +2611,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-007',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Why did Shays\' Rebellion particularly alarm leaders like Washington, Hamilton, and Madison — leading them to support a constitutional convention?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2641,7 +2648,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-008',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Under the Articles of Confederation, changing the rules required unanimous agreement from all 13 states. Why was this a critical weakness?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2678,7 +2685,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-009',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'One fundamental problem with the Articles of Confederation was that it treated states as essentially independent sovereign powers. What negative consequence did this create?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2715,7 +2722,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-010',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Under the Articles of Confederation, there were no national courts. What practical problem did this absence create?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2752,7 +2759,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-011',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Under the Articles, a merchant in New York had to pay different taxes every time his goods crossed into New Jersey, Pennsylvania, or Connecticut. How does this illustrate a weakness of the Articles of Confederation?',
     itemType: 'SCENARIO_MC',
@@ -2789,7 +2796,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-012',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Which statement best summarizes the fundamental structural weakness of the Articles of Confederation?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2827,7 +2834,7 @@ const SS7CG15: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG15-013',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'After Shays\' Rebellion, most leaders agreed the Articles had serious problems. Why did the Constitutional Convention ultimately decide to write a new constitution rather than amend the Articles?',
     itemType: 'SCENARIO_MC',
@@ -2867,7 +2874,7 @@ const SS7CG15: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG15-014',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Historian Gordon Wood argues that the weakness of the Articles was intentional — founders deliberately created a weak national government because they feared tyranny more than weakness. How does this insight help explain the Constitutional Convention?',
     itemType: 'MULTIPLE_CHOICE',
@@ -2904,7 +2911,7 @@ const SS7CG15: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG15-015',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'A political scientist writes: "Shays\' Rebellion was the best thing that ever happened to James Madison." Evaluate this claim.',
     itemType: 'SCENARIO_MC',
@@ -2941,14 +2948,14 @@ const SS7CG15: QuestionDef[] = [
   },
 ]
 
-// ── SS.7.CG.1.6 — Creating the Constitution: Addressing the Articles' Weaknesses
+// ── Old 1.6 bank (Constitutional Convention/ratification) — split item-level to 1.7 and 1.10 (ADR 0017) ──
 // Skill tag: constitutional-convention  |  Remediation: remed-CG16-constitution
 
 const SS7CG16: QuestionDef[] = [
   // ── LOW / Level 1 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG16-001',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt: 'What did the Great Compromise create at the Constitutional Convention?',
     itemType: 'MULTIPLE_CHOICE',
     cognitiveComplexity: 'LOW',
@@ -2984,7 +2991,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-002',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt: 'What did the Three-Fifths Compromise determine at the Constitutional Convention?',
     itemType: 'MULTIPLE_CHOICE',
     cognitiveComplexity: 'LOW',
@@ -3020,7 +3027,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-003',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.10',
     prompt: 'Anti-Federalists opposed ratification of the Constitution. What was their main concern?',
     itemType: 'MULTIPLE_CHOICE',
     cognitiveComplexity: 'LOW',
@@ -3059,7 +3066,7 @@ const SS7CG16: QuestionDef[] = [
   // ── MODERATE / Level 1 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG16-004',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.10',
     prompt:
       'Federalists supported ratification of the Constitution. Which argument did they most commonly make in its favor?',
     itemType: 'MULTIPLE_CHOICE',
@@ -3098,7 +3105,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-005',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'At the Constitutional Convention, Virginia proposed population-based representation (Virginia Plan) while New Jersey proposed equal state representation (New Jersey Plan). A small state like Delaware would most likely prefer which plan, and why?',
     itemType: 'SCENARIO_MC',
@@ -3136,7 +3143,7 @@ const SS7CG16: QuestionDef[] = [
   // ── MODERATE / Level 2 ───────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG16-006',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'The Constitution was designed to address specific weaknesses of the Articles. Which correctly identifies a weakness and how the Constitution fixed it?',
     itemType: 'MULTIPLE_CHOICE',
@@ -3175,7 +3182,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-007',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Under the Great Compromise, the Senate and House of Representatives were designed differently. What was the specific difference, and what problem did it solve?',
     itemType: 'MULTIPLE_CHOICE',
@@ -3212,7 +3219,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-008',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.10',
     prompt:
       'Why was a Bill of Rights added to the Constitution after ratification?',
     itemType: 'MULTIPLE_CHOICE',
@@ -3251,7 +3258,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-009',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.10',
     prompt:
       'Which of the following correctly pairs a concern with the group that held it during the ratification debate?',
     itemType: 'MULTIPLE_CHOICE',
@@ -3291,7 +3298,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-010',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.10',
     prompt: 'How was the Constitution officially ratified (approved)?',
     itemType: 'MULTIPLE_CHOICE',
     cognitiveComplexity: 'MODERATE',
@@ -3327,7 +3334,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-011',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.10',
     prompt:
       'During ratification, Anti-Federalists in Virginia argued they could not support the Constitution without assurance that individual rights would be protected. Federalists promised to add amendments after ratification. What does this exchange reveal about the founding era?',
     itemType: 'SCENARIO_MC',
@@ -3366,7 +3373,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-012',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'The Constitution created an executive branch led by the President. How did this directly address a weakness of the Articles of Confederation?',
     itemType: 'MULTIPLE_CHOICE',
@@ -3404,7 +3411,7 @@ const SS7CG16: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG16-013',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'A historian writes that the Constitution is "a bundle of compromises." Which specific compromises at the Convention best support this description?',
     itemType: 'SCENARIO_MC',
@@ -3444,7 +3451,7 @@ const SS7CG16: QuestionDef[] = [
   // ── HIGH / Level 3 ────────────────────────────────────────────────────────
   {
     externalKey: 'q-SS7CG16-014',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     prompt:
       'Political scientists argue that the Great Compromise was the single most important decision at the Constitutional Convention. What is the strongest reasoning behind this claim?',
     itemType: 'MULTIPLE_CHOICE',
@@ -3481,7 +3488,7 @@ const SS7CG16: QuestionDef[] = [
   },
   {
     externalKey: 'q-SS7CG16-015',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.10',
     prompt:
       'A modern analyst argues: "We can still see the Federalist-Anti-Federalist debate playing out in American politics today." Which example best supports this claim?',
     itemType: 'SCENARIO_MC',
@@ -3578,6 +3585,11 @@ export async function seedSampleQuestions(prisma: PrismaClient): Promise<void> {
         active: true,
       },
       update: {
+        // benchmarkId included so def-level code reassignments (ADR 0017 —
+        // e.g. the old-1.6 bank's item-level split to 1.7/1.10) move existing
+        // rows on re-seed instead of silently leaving them behind.
+        benchmarkId,
+        reportingCategoryId: originsCategory.id,
         prompt: q.prompt,
         itemType: q.itemType,
         cognitiveComplexity: q.cognitiveComplexity,

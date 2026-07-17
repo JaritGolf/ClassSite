@@ -14,6 +14,7 @@ import {
   getRecommendedSmallGroups,
   getEocReadinessTrend,
   getOffRampStudents,
+  getStrategyCompletionStatus,
 } from '@/lib/class-analytics'
 import { getClassDecayRates } from '@/lib/spaced-retrieval/decay'
 import { getTeacherRoster } from '@/lib/teacher-roster'
@@ -26,6 +27,7 @@ import { DecayAlerts } from '@/components/teacher/dashboard/DecayAlerts'
 import { OffRampList } from '@/components/teacher/dashboard/OffRampList'
 import { RecommendedSmallGroups } from '@/components/teacher/dashboard/RecommendedSmallGroups'
 import { EocReadinessTrendChart } from '@/components/teacher/dashboard/EocReadinessTrendChart'
+import { StrategyCompletionTable } from '@/components/teacher/dashboard/StrategyCompletionTable'
 
 export default async function TeacherDashboard() {
   const session = await requireAuth(['TEACHER'])
@@ -44,6 +46,7 @@ export default async function TeacherDashboard() {
     eocTrend,
     offRampStudents,
     decayRates,
+    strategyCompletion,
   ] = await Promise.all([
     getClassStatusDistribution(userId),
     getClassMasteryByUnit(userId),
@@ -55,6 +58,7 @@ export default async function TeacherDashboard() {
     getEocReadinessTrend(userId),
     getOffRampStudents(userId),
     getClassDecayRates(roster.teacherId),
+    getStrategyCompletionStatus(userId),
   ])
 
   const totalStudents = roster.allStudentIds.length
@@ -126,6 +130,9 @@ export default async function TeacherDashboard() {
 
       {/* Small groups */}
       <RecommendedSmallGroups groups={smallGroups} />
+
+      {/* Strategist track completion */}
+      <StrategyCompletionTable rows={strategyCompletion} />
     </div>
   )
 }

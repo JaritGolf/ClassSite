@@ -17,6 +17,13 @@ import { CONTENT_APPROVAL } from './approval_mode'
 // ── Spanish (es) — all 53 tier-3 terms ───────────────────────────────────────
 const ES: Record<string, string> = {
   // Origins
+  // ADR 0017: terms added for the realigned official 1.1/1.2/1.3 blocks.
+  'direct democracy': 'Gobierno en el que los ciudadanos votan ellos mismos las leyes y decisiones, sin representantes; se practicaba en la antigua Atenas.',
+  'civic virtue': 'Poner el bien de la comunidad por encima de los intereses personales; un ideal de la República romana que admiraban los fundadores estadounidenses.',
+  'Twelve Tables': 'El primer código de leyes escritas de la antigua Roma (hacia 450 a.C.), exhibido públicamente para que todo ciudadano conociera la ley; un antecesor de las constituciones escritas.',
+  'limited government': 'El principio de que el gobierno solo puede usar los poderes que el pueblo le ha otorgado, generalmente escritos en una constitución.',
+  republicanism: 'El principio fundacional de que el pueblo gobierna a través de representantes que elige y a quienes puede pedir cuentas.',
+  'Common Sense': 'El panfleto de Thomas Paine de 1776 que defendía en lenguaje sencillo la independencia estadounidense y el gobierno republicano; convenció a muchos colonos de apoyar la separación de Gran Bretaña.',
   republic: 'Forma de gobierno en la que los ciudadanos eligen representantes para gobernar en su nombre.',
   democracy: 'Sistema de gobierno en el que el poder pertenece al pueblo, ya sea directamente o a través de representantes electos.',
   'natural rights': 'Derechos con los que nacen todas las personas y que el gobierno no otorga; según Locke: vida, libertad y propiedad.',

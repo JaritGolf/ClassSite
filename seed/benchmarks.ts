@@ -1,21 +1,37 @@
 /**
- * Seed: Units and Benchmarks — full SS.7.CG course (Phase 15 expansion)
+ * Seed: Units and Benchmarks — full SS.7.CG course, realigned to the OFFICIAL
+ * 2021 Florida SS.7.CG standards (verbatim statements in seed/official_standards.ts,
+ * retrieved from the CASE knowledge graph 2026-07-16).
  *
- * Unit 1 (SS.7.CG.1.1–1.6) was seeded in Phase 1. Phase 15 loads ALL units and
- * benchmarks (the full 36-benchmark course) with reporting-category mapping:
- *   - SS.7.CG.1.x          → Origins and Purposes        (Units 1–2)
- *   - SS.7.CG.2.1–2.5       → Roles, Rights, Responsibilities (Unit 3)
- *   - SS.7.CG.2.6–2.10      → Government Policies / Processes  (Unit 4)
- *   - SS.7.CG.3.x          → Organization and Function   (Units 5–7)
- * (Mapping per seed/reporting_categories.ts descriptions and spec §7.3/§11; the
- * exact official blueprint must be re-verified before production.)
+ * HISTORY (ADR 0017): the original seed carried pre-2021 SS.7.C course content
+ * relabeled with SS.7.CG codes — e.g. "Enlightenment" sat under 1.1 when the
+ * official 1.1 is ancient Greece/Rome/Judeo-Christian influences. Because all
+ * shipped content and student data hang off the strand-1 rows, the fix is a
+ * row-identity-preserving RENAME PASS (applyBenchmarkCodeRealignment below):
+ * each row keeps its id — and therefore its questions, lessons, assessments,
+ * attempts, SM-2 state, and student progress — and its `code` moves to the
+ * official code whose meaning matches its existing content. Strand-2/3 rows
+ * were content-free, so their defs are simply rewritten in place.
  *
- * Question banks fill in per unit (Unit 1 + Unit 2 today; Units 3–7 later).
- * Idempotent: units upserted by id, benchmarks by code.
+ * Reporting-category mapping (per the official strands):
+ *   - SS.7.CG.1.x       → Origins and Purposes              (Units 1–2)
+ *   - SS.7.CG.2.1–2.5   → Roles, Rights, Responsibilities   (Unit 3)
+ *   - SS.7.CG.2.6–2.10  → Government Policies / Processes   (Unit 4)
+ *   - SS.7.CG.3.x       → Organization and Function         (Units 5–7)
+ *
+ * Guardrail: tests/unit/seed/benchmark-standards-alignment.test.ts pins every
+ * def to seed/official_standards.ts (code set, statement identity, topical
+ * anchors, numeric sequence). Edit defs freely; drift from the official
+ * standards fails the suite.
+ *
+ * Idempotent: rename pass is gated on (code, old title) so it fires exactly
+ * once; units upserted by id, benchmarks by code; clarifications rewritten
+ * (delete + recreate — nothing FKs them); connections rebuilt from defs.
  */
 
 import { PrismaClient } from '@prisma/client'
 import { REPORTING_CATEGORY_NAMES } from './reporting_categories'
+import { OFFICIAL_SS7CG_STANDARDS } from './official_standards'
 
 type CategoryKey = 'ORIGINS' | 'CITIZENS' | 'POLICIES' | 'ORGANIZATION'
 
@@ -24,10 +40,12 @@ interface ClarificationDef {
   sequenceOrder: number
 }
 
-interface BenchmarkDef {
+export interface BenchmarkDef {
   code: string
   title: string
   sequenceOrder: number
+  /** Verbatim official standard statement (sourced from seed/official_standards.ts). */
+  officialStatement: string
   lessonSummary: string
   clarifications: ClarificationDef[]
   connectsTo: string[] // other benchmark codes this one connects to
@@ -45,77 +63,152 @@ interface UnitDef {
   benchmarks: BenchmarkDef[]
 }
 
-// ── Unit 1 — Foundations of American Government (SS.7.CG.1.1–1.6) ────────────
+/** Pull the verbatim official statement — throws on a typo'd code at module load. */
+function official(code: string): string {
+  const s = OFFICIAL_SS7CG_STANDARDS[code]
+  if (!s) throw new Error(`No official SS.7.CG statement for code "${code}" — check seed/official_standards.ts`)
+  return s.statement
+}
+
+// ── Code realignment (ADR 0017) ──────────────────────────────────────────────
+// Each rename moves an EXISTING row (with all its content and student data) to
+// the official code whose meaning matches that row's content. Gated on the old
+// title so the pass is a no-op on fresh or already-realigned databases. The
+// renames form a permutation within strand 1, so they run in two phases through
+// LEGACY:: temp codes to survive the unique constraint on `code`.
+
+interface CodeRename {
+  from: string
+  to: string
+  /** Title the row carried under the OLD (drifted) content — gates the rename. */
+  fromTitle: string
+}
+
+const CODE_RENAMES: CodeRename[] = [
+  { from: 'SS.7.CG.1.1', to: 'SS.7.CG.1.4', fromTitle: 'Enlightenment and European Influences on American Democracy' },
+  { from: 'SS.7.CG.1.2', to: 'SS.7.CG.1.3', fromTitle: 'Colonial and British Governmental Traditions' },
+  { from: 'SS.7.CG.1.3', to: 'SS.7.CG.1.5', fromTitle: 'British Policies and Colonial Reactions' },
+  { from: 'SS.7.CG.1.4', to: 'SS.7.CG.1.6', fromTitle: 'Principles and Ideals of the Declaration of Independence' },
+  { from: 'SS.7.CG.1.5', to: 'SS.7.CG.1.7', fromTitle: 'Strengths and Weaknesses of the Articles of Confederation' },
+  { from: 'SS.7.CG.1.6', to: 'SS.7.CG.1.1', fromTitle: "Creating the Constitution: Addressing the Articles' Weaknesses" },
+  { from: 'SS.7.CG.1.7', to: 'SS.7.CG.1.8', fromTitle: 'Purposes of Government and the Preamble' },
+  { from: 'SS.7.CG.1.8', to: 'SS.7.CG.1.11', fromTitle: 'Limited Government and the Rule of Law' },
+  { from: 'SS.7.CG.1.11', to: 'SS.7.CG.1.2', fromTitle: 'The Bill of Rights: Securing Liberty' },
+  // SS.7.CG.1.9 and SS.7.CG.1.10 keep their codes (content already matched).
+]
+
+async function applyBenchmarkCodeRealignment(prisma: PrismaClient): Promise<void> {
+  const fired: CodeRename[] = []
+  for (const r of CODE_RENAMES) {
+    const row = await prisma.benchmark.findUnique({ where: { code: r.from }, select: { title: true } })
+    if (row && row.title === r.fromTitle) fired.push(r)
+  }
+  if (fired.length === 0) return
+
+  await prisma.$transaction(async (tx) => {
+    // Phase 1: park fired rows (and their calibration-snapshot scopes) on temp codes.
+    for (const r of fired) {
+      await tx.benchmark.update({ where: { code: r.from }, data: { code: `LEGACY::${r.from}` } })
+      await tx.confidenceCalibrationSnapshot.updateMany({
+        where: { scope: `benchmark:${r.from}` },
+        data: { scope: `benchmark:LEGACY::${r.from}` },
+      })
+    }
+    // Phase 2: land on the official codes.
+    for (const r of fired) {
+      await tx.benchmark.update({ where: { code: `LEGACY::${r.from}` }, data: { code: r.to } })
+      await tx.confidenceCalibrationSnapshot.updateMany({
+        where: { scope: `benchmark:LEGACY::${r.from}` },
+        data: { scope: `benchmark:${r.to}` },
+      })
+    }
+  })
+  console.log(`  ✓ Benchmark codes realigned to official SS.7.CG meanings (${fired.length} renames, row ids preserved)`)
+}
+
+// ── Unit 1 — Roots of the Republic (SS.7.CG.1.1–1.6) ─────────────────────────
 
 const UNIT_1_BENCHMARKS: BenchmarkDef[] = [
   {
     code: 'SS.7.CG.1.1',
-    title: 'Enlightenment and European Influences on American Democracy',
+    title: 'Ancient Roots: Greece, Rome, and the Judeo-Christian Tradition',
     sequenceOrder: 1,
+    officialStatement: official('SS.7.CG.1.1'),
+    // INTERIM CONTENT BLOCK (ADR 0017): this row previously carried Constitutional
+    // Convention content; it was repurposed to the official 1.1 meaning and its
+    // question bank/lesson/terms were authored fresh as an interim block. A full
+    // content build for this benchmark is tracked in the CLAUDE.md backlog.
     lessonSummary:
-      'Students will trace how Enlightenment ideas — especially natural rights, social contract, ' +
-      'popular sovereignty, and consent of the governed — influenced the American founding. ' +
-      'Key thinkers: John Locke, Montesquieu, Rousseau. Key documents: Magna Carta, English Bill of Rights, ' +
-      'Mayflower Compact.',
+      'Students will analyze how ancient Greece, ancient Rome, and the Judeo-Christian tradition shaped ' +
+      "America's constitutional republic. Key influences: Athenian direct democracy and citizen participation; " +
+      'the Roman republic with elected representatives, civic virtue, and written law (the Twelve Tables); and ' +
+      'the Judeo-Christian tradition of a moral law above rulers and the worth of every individual.',
     clarifications: [
       {
-        text: 'Explain how Enlightenment philosophers (Locke, Montesquieu) contributed ideas used in founding documents.',
+        text: 'Describe how ancient Greece (Athens) contributed the ideas of democracy and participation by citizens in government.',
         sequenceOrder: 1,
       },
       {
-        text: 'Identify key European foundational documents (Magna Carta, English Bill of Rights) and explain their influence on American self-governance.',
+        text: 'Describe how ancient Rome contributed the ideas of a republic, elected representatives, civic virtue, and written law such as the Twelve Tables.',
         sequenceOrder: 2,
       },
       {
-        text: 'Describe the concepts of natural rights, social contract, popular sovereignty, consent of the governed, and rule of law.',
+        text: 'Explain how the Judeo-Christian tradition contributed the ideas of a higher moral law that binds rulers and the equal worth of individuals.',
         sequenceOrder: 3,
       },
     ],
-    connectsTo: ['SS.7.CG.1.4'],
+    connectsTo: ['SS.7.CG.1.2'],
   },
   {
     code: 'SS.7.CG.1.2',
-    title: 'Colonial and British Governmental Traditions',
+    title: 'Founding Principles of American Law and Government',
     sequenceOrder: 2,
+    officialStatement: official('SS.7.CG.1.2'),
+    // INTERIM CONTENT BLOCK (ADR 0017): this row previously carried a content-free
+    // Bill of Rights overview; it was repurposed to the official 1.2 meaning and
+    // its question bank/lesson/terms were authored fresh as an interim block. A
+    // full content build for this benchmark is tracked in the CLAUDE.md backlog.
     lessonSummary:
-      'Students will examine how British governmental traditions and colonial experiences created a ' +
-      'foundation for American self-governance. Key concepts: colonial assemblies, Virginia House of Burgesses, ' +
-      'New England town meetings, common law, salutary neglect, Mayflower Compact.',
+      "Students will trace the principles underlying America's founding ideas on law and government from their " +
+      'sources into the founding documents: natural rights, the social contract, popular sovereignty, consent of ' +
+      'the governed, limited government, republicanism, and the rule of law.',
     clarifications: [
       {
-        text: 'Describe how colonial governments developed traditions of self-governance through institutions such as the Virginia House of Burgesses and New England town meetings.',
+        text: 'Identify the founding principles — natural rights, social contract, popular sovereignty, consent of the governed, limited government, republicanism, and rule of law.',
         sequenceOrder: 1,
       },
       {
-        text: 'Explain the role of salutary neglect in enabling colonial self-governance to develop prior to the Revolution.',
+        text: 'Trace each principle to its sources, including ancient influences, English legal tradition, and Enlightenment thought.',
         sequenceOrder: 2,
       },
       {
-        text: 'Identify the influence of English common law on American legal and governmental traditions.',
+        text: 'Recognize where the founding principles appear in the Declaration of Independence and the U.S. Constitution.',
         sequenceOrder: 3,
       },
     ],
-    connectsTo: ['SS.7.CG.1.1', 'SS.7.CG.1.3'],
+    connectsTo: ['SS.7.CG.1.1', 'SS.7.CG.1.4'],
   },
   {
     code: 'SS.7.CG.1.3',
-    title: 'British Policies and Colonial Reactions',
+    title: 'Documents That Shaped Colonial Views of Government',
     sequenceOrder: 3,
+    officialStatement: official('SS.7.CG.1.3'),
     lessonSummary:
-      'Students will analyze how British economic and political policies following the French and Indian War ' +
-      'created colonial grievances and sparked resistance. Key topics: Navigation Acts, Stamp Act, Townshend Acts, ' +
-      'taxation without representation, colonial responses (petitions, boycotts, Sons of Liberty).',
+      'Students will trace how the Magna Carta, the Mayflower Compact, the English Bill of Rights, and Thomas ' +
+      "Paine's Common Sense shaped colonists' views of government. British traditions such as common law and " +
+      'colonial institutions (the Virginia House of Burgesses, New England town meetings) provided the lived ' +
+      'experience of self-government that these documents informed.',
     clarifications: [
       {
-        text: 'Describe British policies following the French and Indian War and how they increased tensions with the colonists.',
+        text: 'Explain the impact of the Magna Carta (limits on the monarch, due process) and the English Bill of Rights (rights of subjects, limits on royal power) on colonial views of government.',
         sequenceOrder: 1,
       },
       {
-        text: 'Explain how colonial responses — including petitions, boycotts, and committees of correspondence — represented organized resistance.',
+        text: "Explain the impact of the Mayflower Compact (self-government by consent) and Thomas Paine's Common Sense (the case for independence and republican government) on colonists' views.",
         sequenceOrder: 2,
       },
       {
-        text: 'Analyze how the principle of "no taxation without representation" reflected Enlightenment ideas about consent of the governed.',
+        text: 'Describe how colonial institutions such as the Virginia House of Burgesses and New England town meetings put self-government into practice.',
         sequenceOrder: 3,
       },
     ],
@@ -123,12 +216,64 @@ const UNIT_1_BENCHMARKS: BenchmarkDef[] = [
   },
   {
     code: 'SS.7.CG.1.4',
-    title: 'Principles and Ideals of the Declaration of Independence',
+    title: 'Enlightenment Ideas and the Founding',
     sequenceOrder: 4,
+    officialStatement: official('SS.7.CG.1.4'),
     lessonSummary:
-      'Students will explain the philosophical foundations and historical significance of the Declaration of Independence. ' +
-      'Key concepts: natural rights, self-evident truths, consent of the governed, right to alter or abolish government, ' +
-      'specific grievances vs. universal principles, Thomas Jefferson.',
+      'Students will analyze how Enlightenment ideas influenced the Founding — especially John Locke\'s theories ' +
+      'of natural law, natural rights, and the social contract, and Montesquieu\'s view of separation of powers. ' +
+      'Related ideas: popular sovereignty and consent of the governed.',
+    clarifications: [
+      {
+        text: "Explain John Locke's theories of natural law, natural rights (life, liberty, property), and the social contract, and how they influenced the Founding.",
+        sequenceOrder: 1,
+      },
+      {
+        text: "Explain Montesquieu's view of separation of powers and how it influenced the design of American government.",
+        sequenceOrder: 2,
+      },
+      {
+        text: 'Describe how Enlightenment ideas such as popular sovereignty and consent of the governed appear in the founding documents.',
+        sequenceOrder: 3,
+      },
+    ],
+    connectsTo: ['SS.7.CG.1.2', 'SS.7.CG.1.6'],
+  },
+  {
+    code: 'SS.7.CG.1.5',
+    title: 'British Policies and the Road to the Declaration of Independence',
+    sequenceOrder: 5,
+    officialStatement: official('SS.7.CG.1.5'),
+    lessonSummary:
+      'Students will describe how British economic and political policies following the French and Indian War — ' +
+      'and Britain\'s responses to colonial concerns — led to the writing of the Declaration of Independence. ' +
+      'Key topics: Navigation Acts, Stamp Act, Townshend Acts, taxation without representation, colonial ' +
+      'responses (petitions, boycotts, committees of correspondence, Sons of Liberty).',
+    clarifications: [
+      {
+        text: 'Describe British policies following the French and Indian War and how they increased tensions with the colonists.',
+        sequenceOrder: 1,
+      },
+      {
+        text: 'Explain how colonial responses — including petitions, boycotts, and committees of correspondence — and British reactions to them escalated toward independence.',
+        sequenceOrder: 2,
+      },
+      {
+        text: 'Explain how the failure of Britain to address colonial concerns led directly to the writing of the Declaration of Independence.',
+        sequenceOrder: 3,
+      },
+    ],
+    connectsTo: ['SS.7.CG.1.6'],
+  },
+  {
+    code: 'SS.7.CG.1.6',
+    title: 'Ideas and Grievances of the Declaration of Independence',
+    sequenceOrder: 6,
+    officialStatement: official('SS.7.CG.1.6'),
+    lessonSummary:
+      'Students will analyze the ideas and grievances set forth in the Declaration of Independence. ' +
+      'Key concepts: natural rights, self-evident truths, consent of the governed, the right to alter or abolish ' +
+      'government, and the specific grievances against King George III versus the universal principles.',
     clarifications: [
       {
         text: 'Identify the philosophical foundations of the Declaration — natural rights, social contract, and popular sovereignty — and trace them to Enlightenment thinkers.',
@@ -143,82 +288,34 @@ const UNIT_1_BENCHMARKS: BenchmarkDef[] = [
         sequenceOrder: 3,
       },
     ],
-    connectsTo: ['SS.7.CG.1.1', 'SS.7.CG.1.3', 'SS.7.CG.1.5'],
-  },
-  {
-    code: 'SS.7.CG.1.5',
-    title: 'Strengths and Weaknesses of the Articles of Confederation',
-    sequenceOrder: 5,
-    lessonSummary:
-      "Students will analyze the first U.S. plan of government. Key weaknesses: Congress couldn't tax, " +
-      "couldn't enforce laws, no executive branch, no national courts, each state had one vote, amendments required " +
-      'unanimity. Key event: Shays\' Rebellion revealed the government\'s inability to maintain order.',
-    clarifications: [
-      {
-        text: 'Identify the key weaknesses of the Articles of Confederation, including the inability to tax, lack of executive branch, no national courts, and inability to enforce laws.',
-        sequenceOrder: 1,
-      },
-      {
-        text: "Explain how events such as Shays' Rebellion demonstrated that the Articles of Confederation were inadequate to govern the new nation.",
-        sequenceOrder: 2,
-      },
-      {
-        text: 'Describe why leaders called for a Constitutional Convention rather than simply amending the Articles.',
-        sequenceOrder: 3,
-      },
-    ],
-    connectsTo: ['SS.7.CG.1.4', 'SS.7.CG.1.6'],
-  },
-  {
-    code: 'SS.7.CG.1.6',
-    title: 'Creating the Constitution: Addressing the Articles\' Weaknesses',
-    sequenceOrder: 6,
-    lessonSummary:
-      'Students will examine how the Constitutional Convention addressed the failures of the Articles of Confederation. ' +
-      'Key topics: Great Compromise (bicameral legislature), Three-Fifths Compromise, Connecticut Plan, Virginia Plan, ' +
-      'New Jersey Plan, Federalists vs. Anti-Federalists, ratification debate, Bill of Rights.',
-    clarifications: [
-      {
-        text: 'Explain how the Constitution addressed specific weaknesses of the Articles, including granting Congress power to tax, creating an executive branch, and establishing federal courts.',
-        sequenceOrder: 1,
-      },
-      {
-        text: 'Describe the key debates and compromises at the Constitutional Convention, including the Great Compromise (equal Senate seats + proportional House) and the Three-Fifths Compromise.',
-        sequenceOrder: 2,
-      },
-      {
-        text: 'Explain the Federalist/Anti-Federalist debate over ratification and how the promise of a Bill of Rights helped secure ratification.',
-        sequenceOrder: 3,
-      },
-    ],
-    connectsTo: ['SS.7.CG.1.5'],
+    connectsTo: ['SS.7.CG.1.4', 'SS.7.CG.1.5'],
   },
 ]
 
 // ── Unit 2 — Creating and Limiting Government (SS.7.CG.1.7–1.11) ─────────────
-// Category: Origins and Purposes. Full question bank seeded in Phase 15.
 
 const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
   {
     code: 'SS.7.CG.1.7',
-    title: 'Purposes of Government and the Preamble',
+    title: 'From the Articles of Confederation to the Constitution',
     sequenceOrder: 7,
+    officialStatement: official('SS.7.CG.1.7'),
     lessonSummary:
-      'Students will explain the purposes of government as expressed in the Preamble to the U.S. Constitution: ' +
-      'form a more perfect union, establish justice, insure domestic tranquility, provide for the common defense, ' +
-      'promote the general welfare, and secure the blessings of liberty. They connect these purposes to the ' +
-      'Enlightenment idea that government exists to protect rights and serve the people.',
+      'Students will explain how the weaknesses of the Articles of Confederation led to the writing of the U.S. ' +
+      "Constitution. Key weaknesses: Congress couldn't tax or enforce laws, no executive branch, no national " +
+      "courts, one vote per state, unanimity for amendments. Shays' Rebellion exposed the weaknesses; the " +
+      'Constitutional Convention addressed them through the new Constitution and its compromises.',
     clarifications: [
       {
-        text: 'Identify the six purposes of government stated in the Preamble and explain each in everyday terms.',
+        text: 'Identify the key weaknesses of the Articles of Confederation, including the inability to tax, lack of an executive branch, no national courts, and inability to enforce laws.',
         sequenceOrder: 1,
       },
       {
-        text: 'Connect the Preamble\'s goals to the Enlightenment view that government derives its power from the consent of the governed.',
+        text: "Explain how events such as Shays' Rebellion demonstrated that the Articles were inadequate and led leaders to call the Constitutional Convention.",
         sequenceOrder: 2,
       },
       {
-        text: 'Apply the purposes of government to real-world examples of what governments do (courts, defense, public services).',
+        text: 'Explain how the U.S. Constitution addressed the weaknesses of the Articles, including through the convention\'s key compromises (the Great Compromise and the Three-Fifths Compromise).',
         sequenceOrder: 3,
       },
     ],
@@ -226,23 +323,25 @@ const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
   },
   {
     code: 'SS.7.CG.1.8',
-    title: 'Limited Government and the Rule of Law',
+    title: 'The Preamble: Purposes of Government',
     sequenceOrder: 8,
+    officialStatement: official('SS.7.CG.1.8'),
     lessonSummary:
-      'Students will explain how the Constitution limits government power through the rule of law, ' +
-      'constitutionalism, and the idea that no person is above the law. Key concepts: limited government, ' +
-      'rule of law, constitution as supreme law, due process, government bound by its own rules.',
+      'Students will explain the purpose of the Preamble to the U.S. Constitution: form a more perfect union, ' +
+      'establish justice, insure domestic tranquility, provide for the common defense, promote the general ' +
+      'welfare, and secure the blessings of liberty. They connect these purposes to the idea that government ' +
+      'exists to protect rights and serve the people.',
     clarifications: [
       {
-        text: 'Define limited government and the rule of law and explain how a written constitution enforces them.',
+        text: 'Identify the six purposes of government stated in the Preamble and explain each in everyday terms.',
         sequenceOrder: 1,
       },
       {
-        text: 'Explain how the rule of law means that leaders and citizens alike must follow the same laws.',
+        text: 'Connect the Preamble\'s goals to the founding view that government derives its power from the consent of the governed.',
         sequenceOrder: 2,
       },
       {
-        text: 'Distinguish limited government from unlimited (authoritarian) government using examples.',
+        text: 'Apply the purposes of government to real-world examples of what governments do (courts, defense, public services).',
         sequenceOrder: 3,
       },
     ],
@@ -250,12 +349,13 @@ const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
   },
   {
     code: 'SS.7.CG.1.9',
-    title: 'Constitutional Principles: Separation of Powers, Checks and Balances, and Federalism',
+    title: 'How the Constitution Limits Government Power',
     sequenceOrder: 9,
+    officialStatement: official('SS.7.CG.1.9'),
     lessonSummary:
-      'Students will explain the design principles that limit and distribute government power: separation of powers ' +
-      '(three branches), checks and balances (each branch limits the others), and federalism (power shared between ' +
-      'national and state governments). The focus is on WHY the founders chose these designs to prevent tyranny.',
+      'Students will describe how the U.S. Constitution limits the powers of government through separation of ' +
+      'powers, checks and balances, individual rights, the rule of law, and due process of law — and WHY the ' +
+      'founders chose these designs to prevent tyranny.',
     clarifications: [
       {
         text: 'Explain separation of powers and identify the legislative, executive, and judicial branches and their basic roles.',
@@ -266,7 +366,7 @@ const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
         sequenceOrder: 2,
       },
       {
-        text: 'Explain federalism as the division of power between national and state governments and why it limits central power.',
+        text: 'Explain how protections for individual rights, the rule of law, and due process of law limit what government may do.',
         sequenceOrder: 3,
       },
     ],
@@ -276,10 +376,12 @@ const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
     code: 'SS.7.CG.1.10',
     title: 'The Ratification Debate: Federalists and Anti-Federalists',
     sequenceOrder: 10,
+    officialStatement: official('SS.7.CG.1.10'),
     lessonSummary:
-      'Students will analyze the debate over ratifying the Constitution. Federalists (Hamilton, Madison, Jay; ' +
-      'The Federalist Papers) argued for a stronger national government; Anti-Federalists (e.g., Patrick Henry, ' +
-      'Brutus) feared too much central power and demanded protections for individual rights and the states.',
+      'Students will compare the viewpoints of the Federalists and the Anti-Federalists regarding ratification of ' +
+      'the U.S. Constitution and the inclusion of a bill of rights. Federalists (Hamilton, Madison, Jay; The ' +
+      'Federalist Papers) argued for the stronger national government; Anti-Federalists (Patrick Henry, Brutus) ' +
+      'feared central power and demanded protections for individual rights and the states.',
     clarifications: [
       {
         text: 'Compare the main arguments of Federalists and Anti-Federalists over ratification of the Constitution.',
@@ -290,7 +392,7 @@ const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
         sequenceOrder: 2,
       },
       {
-        text: 'Explain how Anti-Federalist concerns led to the promise and addition of a Bill of Rights.',
+        text: 'Explain how Anti-Federalist concerns led to the promise and addition of a bill of rights.',
         sequenceOrder: 3,
       },
     ],
@@ -298,27 +400,29 @@ const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
   },
   {
     code: 'SS.7.CG.1.11',
-    title: 'The Bill of Rights: Securing Liberty',
+    title: 'The Rule of Law',
     sequenceOrder: 11,
+    officialStatement: official('SS.7.CG.1.11'),
     lessonSummary:
-      'Students will explain why the Bill of Rights (the first ten amendments) was added to the Constitution and ' +
-      'what core protections it secures: freedoms of the First Amendment, protections for the accused, and the ' +
-      'idea that powers not given to the federal government are reserved to the states or the people.',
+      'Students will define the rule of law — no person, including those who govern, is above the law — and ' +
+      'recognize its influence on the development of legal, political, and governmental systems in the United ' +
+      'States. Key concepts: limited government, constitutionalism, the constitution as supreme law, due process, ' +
+      'government bound by its own rules.',
     clarifications: [
       {
-        text: 'Explain why the Bill of Rights was added and how it responded to Anti-Federalist concerns.',
+        text: 'Define the rule of law and explain how a written constitution enforces it by binding leaders and citizens alike to the same laws.',
         sequenceOrder: 1,
       },
       {
-        text: 'Identify core protections of the Bill of Rights, especially First Amendment freedoms and rights of the accused.',
+        text: 'Recognize the influence of the rule of law on American legal, political, and governmental systems (courts, due process, limits on officials).',
         sequenceOrder: 2,
       },
       {
-        text: 'Explain how the Bill of Rights reflects the principle of limited government by protecting individuals from government overreach.',
+        text: 'Distinguish government under the rule of law from unlimited (authoritarian) government using examples.',
         sequenceOrder: 3,
       },
     ],
-    connectsTo: ['SS.7.CG.1.10'],
+    connectsTo: ['SS.7.CG.1.9', 'SS.7.CG.1.10'],
   },
 ]
 
@@ -328,14 +432,16 @@ const UNIT_2_BENCHMARKS: BenchmarkDef[] = [
 const UNIT_3_BENCHMARKS: BenchmarkDef[] = [
   {
     code: 'SS.7.CG.2.1',
-    title: 'Becoming a Citizen: Paths to U.S. Citizenship',
+    title: 'Citizenship: What It Means and How It Is Acquired',
     sequenceOrder: 12,
+    officialStatement: official('SS.7.CG.2.1'),
     lessonSummary:
-      'Students will explain the methods of acquiring U.S. citizenship (birth and naturalization) and the basic ' +
-      'requirements and steps of the naturalization process.',
+      'Students will define the term "citizen" and explain the constitutional means of becoming a U.S. citizen: ' +
+      'citizenship by birth (including the 14th Amendment) and citizenship by naturalization, with its basic ' +
+      'requirements and steps.',
     clarifications: [
-      { text: 'Distinguish citizenship by birth from citizenship by naturalization.', sequenceOrder: 1 },
-      { text: 'Identify the basic steps and requirements of the naturalization process.', sequenceOrder: 2 },
+      { text: 'Define "citizen" and explain the 14th Amendment\'s definition of citizenship.', sequenceOrder: 1 },
+      { text: 'Distinguish citizenship by birth from citizenship by naturalization, and identify the basic steps and requirements of the naturalization process.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.2'],
   },
@@ -343,23 +449,25 @@ const UNIT_3_BENCHMARKS: BenchmarkDef[] = [
     code: 'SS.7.CG.2.2',
     title: 'Obligations and Responsibilities of Citizens',
     sequenceOrder: 13,
+    officialStatement: official('SS.7.CG.2.2'),
     lessonSummary:
-      'Students will distinguish obligations (legal duties such as obeying laws, paying taxes, jury duty, ' +
-      'registering for selective service) from responsibilities (voluntary civic actions such as voting, ' +
-      'volunteering, staying informed).',
+      'Students will differentiate between obligations (legal duties such as obeying laws, paying taxes, jury duty, ' +
+      'registering for selective service) and responsibilities (voluntary civic actions such as voting, ' +
+      'volunteering, staying informed) of U.S. citizenship, and evaluate their impact on society.',
     clarifications: [
-      { text: 'Distinguish legal obligations from voluntary civic responsibilities with examples.', sequenceOrder: 1 },
-      { text: 'Explain why civic participation strengthens a constitutional republic.', sequenceOrder: 2 },
+      { text: 'Differentiate legal obligations from voluntary civic responsibilities with examples.', sequenceOrder: 1 },
+      { text: 'Evaluate how fulfilling obligations and responsibilities strengthens society and the constitutional republic.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.1', 'SS.7.CG.2.3'],
   },
   {
     code: 'SS.7.CG.2.3',
-    title: 'The Bill of Rights and Individual Protections',
+    title: 'The Bill of Rights and Other Amendments in Action',
     sequenceOrder: 14,
+    officialStatement: official('SS.7.CG.2.3'),
     lessonSummary:
-      'Students will identify the rights protected by the Bill of Rights and later amendments and apply them to ' +
-      'real-life civic scenarios (speech, religion, press, assembly, due process).',
+      'Students will identify the rights contained in the Bill of Rights and other amendments to the U.S. ' +
+      'Constitution and apply them to real-life civic scenarios (speech, religion, press, assembly, due process).',
     clarifications: [
       { text: 'Identify protections in the Bill of Rights and key later amendments.', sequenceOrder: 1 },
       { text: 'Apply specific amendments to real-world scenarios.', sequenceOrder: 2 },
@@ -368,27 +476,31 @@ const UNIT_3_BENCHMARKS: BenchmarkDef[] = [
   },
   {
     code: 'SS.7.CG.2.4',
-    title: 'Limits on Rights and Balancing Interests',
+    title: 'How the Constitution Safeguards Individual Rights',
     sequenceOrder: 15,
+    officialStatement: official('SS.7.CG.2.4'),
     lessonSummary:
-      'Students will explain that constitutional rights are not unlimited and analyze how government may balance ' +
-      'individual rights against public safety and the rights of others.',
+      'Students will explain how the U.S. Constitution and the Bill of Rights safeguard individual rights — ' +
+      'through enumerated protections, limits on government power, due process, and the courts as guardians of ' +
+      'rights.',
     clarifications: [
-      { text: 'Explain why rights have limits, using examples (e.g., speech that endangers others).', sequenceOrder: 1 },
-      { text: 'Analyze cases where individual rights are balanced against public interests.', sequenceOrder: 2 },
+      { text: 'Explain the mechanisms by which the Constitution and the Bill of Rights safeguard individual rights (enumerated protections, limited powers, due process, judicial protection).', sequenceOrder: 1 },
+      { text: 'Recognize that rights are protected but not unlimited — government may balance individual rights against public safety and the rights of others.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.3', 'SS.7.CG.2.5'],
   },
   {
     code: 'SS.7.CG.2.5',
-    title: 'Due Process and the Trial Process',
+    title: 'The Trial Process and the Role of Juries',
     sequenceOrder: 16,
+    officialStatement: official('SS.7.CG.2.5'),
     lessonSummary:
-      'Students will explain due process protections and the basic steps of the trial process, including rights ' +
-      'of the accused (counsel, speedy and public trial, jury).',
+      'Students will describe the trial process and the role of juries in the administration of justice at the ' +
+      'state and federal levels, including due process protections and the rights of the accused (counsel, ' +
+      'speedy and public trial, trial by jury).',
     clarifications: [
-      { text: 'Explain due process and the rights of the accused.', sequenceOrder: 1 },
-      { text: 'Describe the basic steps of the trial process.', sequenceOrder: 2 },
+      { text: 'Describe the basic steps of the trial process and the due process rights of the accused.', sequenceOrder: 1 },
+      { text: 'Explain the role of juries in the administration of justice at both the state and federal levels.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.4'],
   },
@@ -400,66 +512,76 @@ const UNIT_3_BENCHMARKS: BenchmarkDef[] = [
 const UNIT_4_BENCHMARKS: BenchmarkDef[] = [
   {
     code: 'SS.7.CG.2.6',
-    title: 'Elections, Voting, and Political Participation',
+    title: 'Elections and Voting at Every Level',
     sequenceOrder: 17,
+    officialStatement: official('SS.7.CG.2.6'),
     lessonSummary:
-      'Students will explain how citizens participate in elections, the importance of voting, and the basic ' +
-      'electoral process at local, state, and national levels.',
+      'Students will examine the election and voting process at the local, state, and national levels, including ' +
+      'voter registration, primaries and general elections, and the role political parties play in nominating ' +
+      'candidates and organizing campaigns.',
     clarifications: [
-      { text: 'Explain the voting process and the importance of voter participation.', sequenceOrder: 1 },
-      { text: 'Identify ways citizens influence government beyond voting.', sequenceOrder: 2 },
+      { text: 'Examine the voting process (registration, primaries, general elections) at the local, state, and national levels.', sequenceOrder: 1 },
+      { text: 'Describe the role of political parties in elections and identify ways citizens participate beyond voting.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.7'],
   },
   {
     code: 'SS.7.CG.2.7',
-    title: 'Political Parties and Their Role',
+    title: 'Qualifications to Hold Public Office',
     sequenceOrder: 18,
+    officialStatement: official('SS.7.CG.2.7'),
     lessonSummary:
-      'Students will describe the role of political parties in the U.S. system, including nominating candidates, ' +
-      'organizing government, and informing the public.',
+      'Students will identify the constitutional qualifications required to hold state and national office: ' +
+      'President (35, natural-born citizen, 14 years residency), U.S. Senator (30, 9 years a citizen, state ' +
+      'resident), U.S. Representative (25, 7 years a citizen, state resident), and the qualifications for ' +
+      'Florida state offices such as governor and legislator.',
     clarifications: [
-      { text: 'Describe the functions of political parties.', sequenceOrder: 1 },
-      { text: 'Compare how parties influence elections and policy.', sequenceOrder: 2 },
+      { text: 'Identify the constitutional qualifications for President, U.S. Senator, and U.S. Representative.', sequenceOrder: 1 },
+      { text: 'Identify the qualifications required to hold state office in Florida (governor, state legislator).', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.6', 'SS.7.CG.2.8'],
   },
   {
     code: 'SS.7.CG.2.8',
-    title: 'Media, Public Opinion, and Civic Information',
+    title: 'Monitoring and Influencing Government: Media, Individuals, and Interest Groups',
     sequenceOrder: 19,
+    officialStatement: official('SS.7.CG.2.8'),
     lessonSummary:
-      'Students will analyze how media shapes public opinion and how citizens evaluate the reliability of ' +
-      'information sources.',
+      'Students will examine the impact of media, individuals, and interest groups on monitoring and influencing ' +
+      'government — the watchdog role of a free press, how individual citizens hold officials accountable, and ' +
+      'how interest groups organize to shape public policy.',
     clarifications: [
-      { text: 'Explain how media influences public opinion.', sequenceOrder: 1 },
-      { text: 'Evaluate sources for reliability and bias.', sequenceOrder: 2 },
+      { text: 'Examine how media monitor government (watchdog role) and influence public opinion.', sequenceOrder: 1 },
+      { text: 'Examine how individuals and interest groups monitor and influence government, and evaluate sources for reliability.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.7', 'SS.7.CG.2.9'],
   },
   {
     code: 'SS.7.CG.2.9',
-    title: 'Interest Groups, Bias, and Persuasion',
+    title: 'Bias, Symbolism, and Propaganda in Political Communication',
     sequenceOrder: 20,
+    officialStatement: official('SS.7.CG.2.9'),
     lessonSummary:
-      'Students will explain how interest groups and persuasive techniques (including bias and propaganda) attempt ' +
-      'to influence public policy and opinion.',
+      'Students will analyze media and political communications — ads, speeches, cartoons, social media — and ' +
+      'identify examples of bias, symbolism, and propaganda techniques used to persuade audiences.',
     clarifications: [
-      { text: 'Describe how interest groups influence policy.', sequenceOrder: 1 },
-      { text: 'Identify bias and propaganda techniques in messages.', sequenceOrder: 2 },
+      { text: 'Identify examples of bias and propaganda techniques in media and political communications.', sequenceOrder: 1 },
+      { text: 'Interpret symbolism in political communications (e.g., political cartoons, campaign imagery).', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.8', 'SS.7.CG.2.10'],
   },
   {
     code: 'SS.7.CG.2.10',
-    title: 'Public Policy and Civic Problem-Solving',
+    title: 'Solving Public Problems: Policy Alternatives and Civic Action',
     sequenceOrder: 21,
+    officialStatement: official('SS.7.CG.2.10'),
     lessonSummary:
-      'Students will analyze how public policy is made to address community problems and how citizens can ' +
-      'participate in the policy-making process.',
+      'Students will explain the process for citizens to address a state or local problem: researching public ' +
+      'policy alternatives, identifying the appropriate government agencies to address the issue, and ' +
+      'determining a course of action.',
     clarifications: [
-      { text: 'Explain the steps of the public policy process.', sequenceOrder: 1 },
-      { text: 'Propose civic solutions to a community problem.', sequenceOrder: 2 },
+      { text: 'Explain how citizens research public policy alternatives for a state or local problem.', sequenceOrder: 1 },
+      { text: 'Identify appropriate government agencies for an issue and determine a course of civic action.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.2.9'],
   },
@@ -471,65 +593,73 @@ const UNIT_4_BENCHMARKS: BenchmarkDef[] = [
 const UNIT_5_BENCHMARKS: BenchmarkDef[] = [
   {
     code: 'SS.7.CG.3.1',
-    title: 'The United States as a Constitutional Republic',
+    title: 'Advantages of the Constitutional Republic',
     sequenceOrder: 22,
+    officialStatement: official('SS.7.CG.3.1'),
     lessonSummary:
-      'Students will explain the core features of the U.S. as a constitutional republic in which power comes from ' +
-      'the people and is exercised through elected representatives under a constitution.',
+      "Students will analyze the advantages of the United States' constitutional republic over other forms of " +
+      'government in safeguarding liberty, freedom, and a representative government — power comes from the ' +
+      'people and is exercised through elected representatives under a constitution.',
     clarifications: [
       { text: 'Define a constitutional republic and representative government.', sequenceOrder: 1 },
-      { text: 'Contrast a republic with direct democracy and other systems.', sequenceOrder: 2 },
+      { text: 'Analyze the advantages of a constitutional republic over other forms of government (monarchy, oligarchy, direct democracy, autocracy) in safeguarding liberty and freedom.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.2'],
   },
   {
     code: 'SS.7.CG.3.2',
-    title: 'Federalism: Sharing Power Between Levels of Government',
+    title: 'Advantages of Federalism',
     sequenceOrder: 23,
+    officialStatement: official('SS.7.CG.3.2'),
     lessonSummary:
-      'Students will explain federalism and distinguish the powers of national, state, and concurrent levels of ' +
-      'government.',
+      'Students will explain the advantages of a federal system of government over other systems in balancing ' +
+      'local sovereignty with national unity and protecting against authoritarianism. Includes distinguishing ' +
+      'national, state, and concurrent powers as the mechanics of that balance.',
     clarifications: [
-      { text: 'Distinguish national, state, and concurrent powers.', sequenceOrder: 1 },
-      { text: 'Explain how federalism distributes and limits power.', sequenceOrder: 2 },
+      { text: 'Explain how a federal system balances local sovereignty with national unity, and distinguish national, state, and concurrent powers.', sequenceOrder: 1 },
+      { text: 'Explain the advantages of federalism over unitary and confederal systems, including protection against authoritarianism.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.1', 'SS.7.CG.3.3'],
   },
   {
     code: 'SS.7.CG.3.3',
-    title: 'The Three Branches and Their Functions',
+    title: 'The Three Branches: Structure and Function',
     sequenceOrder: 24,
+    officialStatement: official('SS.7.CG.3.3'),
     lessonSummary:
-      'Students will identify the legislative, executive, and judicial branches and explain their primary ' +
-      'functions and powers.',
+      'Students will describe the structure and function of the three branches of government established in the ' +
+      'U.S. Constitution — legislative, executive, and judicial — and their primary powers.',
     clarifications: [
-      { text: 'Identify the function of each branch of government.', sequenceOrder: 1 },
+      { text: 'Describe the structure and function of each of the three branches of government.', sequenceOrder: 1 },
       { text: 'Explain how the branches interact through checks and balances.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.2', 'SS.7.CG.3.4'],
   },
   {
     code: 'SS.7.CG.3.4',
-    title: 'The Relationship Between State and National Government',
+    title: 'State and National Governments: Article IV and the 10th Amendment',
     sequenceOrder: 25,
+    officialStatement: official('SS.7.CG.3.4'),
     lessonSummary:
-      'Students will analyze how state and national governments interact, including supremacy of federal law and ' +
-      'cooperation and conflict between levels.',
+      'Students will explain the relationship between state and national governments as written in Article IV of ' +
+      'the U.S. Constitution (full faith and credit, privileges and immunities, guarantee of republican ' +
+      'government) and the 10th Amendment (powers reserved to the states or the people).',
     clarifications: [
-      { text: 'Explain the supremacy clause and federal–state relationships.', sequenceOrder: 1 },
-      { text: 'Analyze examples of cooperation and conflict between levels of government.', sequenceOrder: 2 },
+      { text: 'Explain what Article IV of the U.S. Constitution says about the relationship among states and between states and the national government.', sequenceOrder: 1 },
+      { text: 'Explain the 10th Amendment and the reservation of powers to the states or the people, with examples of cooperation and conflict between levels of government.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.3', 'SS.7.CG.3.5'],
   },
   {
     code: 'SS.7.CG.3.5',
-    title: 'Amending the Constitution',
+    title: 'Amending the Constitution: Article V',
     sequenceOrder: 26,
+    officialStatement: official('SS.7.CG.3.5'),
     lessonSummary:
-      'Students will explain the constitutional amendment process and why it was designed to be difficult but ' +
-      'possible.',
+      'Students will explain the amendment process outlined in Article V of the U.S. Constitution — proposal by ' +
+      'Congress or convention, ratification by the states — and why it was designed to be difficult but possible.',
     clarifications: [
-      { text: 'Describe the steps to propose and ratify an amendment.', sequenceOrder: 1 },
+      { text: 'Describe the Article V steps to propose and ratify an amendment.', sequenceOrder: 1 },
       { text: 'Explain why the amendment process balances stability and change.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.4'],
@@ -542,13 +672,16 @@ const UNIT_5_BENCHMARKS: BenchmarkDef[] = [
 const UNIT_6_BENCHMARKS: BenchmarkDef[] = [
   {
     code: 'SS.7.CG.3.6',
-    title: 'Expansion of Voting Rights Through Amendments',
+    title: 'Amendments That Broadened Political Participation',
     sequenceOrder: 27,
+    officialStatement: official('SS.7.CG.3.6'),
     lessonSummary:
-      'Students will trace how amendments (15th, 19th, 24th, 26th) expanded voting rights over time.',
+      'Students will analyze how the 13th, 14th, 15th, 19th, 24th, and 26th Amendments broadened participation ' +
+      'in the political process — abolishing slavery, defining citizenship and equal protection, and extending ' +
+      'the vote regardless of race, sex, wealth (poll taxes), or age (18+).',
     clarifications: [
-      { text: 'Identify amendments that expanded suffrage and whom they enfranchised.', sequenceOrder: 1 },
-      { text: 'Explain how voting rights expanded across U.S. history.', sequenceOrder: 2 },
+      { text: 'Identify what the 13th, 14th, 15th, 19th, 24th, and 26th Amendments each did.', sequenceOrder: 1 },
+      { text: 'Analyze how these amendments broadened participation in the political process over time.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.7'],
   },
@@ -556,8 +689,10 @@ const UNIT_6_BENCHMARKS: BenchmarkDef[] = [
     code: 'SS.7.CG.3.7',
     title: 'The Legislative Branch and How Laws Are Made',
     sequenceOrder: 28,
+    officialStatement: official('SS.7.CG.3.7'),
     lessonSummary:
-      'Students will explain the structure of Congress and the basic steps by which a bill becomes a law.',
+      'Students will explain the structure, functions, and processes of the legislative branch — the two houses ' +
+      'of Congress, their powers, and the basic steps by which a bill becomes a law.',
     clarifications: [
       { text: 'Describe the structure and powers of Congress.', sequenceOrder: 1 },
       { text: 'Sequence the steps of how a bill becomes a law.', sequenceOrder: 2 },
@@ -568,9 +703,10 @@ const UNIT_6_BENCHMARKS: BenchmarkDef[] = [
     code: 'SS.7.CG.3.8',
     title: 'The Executive Branch and Its Powers',
     sequenceOrder: 29,
+    officialStatement: official('SS.7.CG.3.8'),
     lessonSummary:
-      'Students will explain the roles and powers of the executive branch, including the President and federal ' +
-      'departments and agencies.',
+      'Students will explain the structure, functions, and processes of the executive branch, including the ' +
+      'President, the Cabinet, and federal departments and agencies that carry out and enforce laws.',
     clarifications: [
       { text: 'Identify the roles and powers of the President.', sequenceOrder: 1 },
       { text: 'Explain how the executive branch carries out and enforces laws.', sequenceOrder: 2 },
@@ -579,53 +715,58 @@ const UNIT_6_BENCHMARKS: BenchmarkDef[] = [
   },
   {
     code: 'SS.7.CG.3.9',
-    title: 'The Judicial Branch and Judicial Review',
+    title: 'The Judicial Branch: Courts and Judicial Review',
     sequenceOrder: 30,
+    officialStatement: official('SS.7.CG.3.9'),
     lessonSummary:
-      'Students will explain the structure of the federal courts and the power of judicial review established in ' +
-      'Marbury v. Madison.',
+      'Students will explain the structure, functions, and processes of the judicial branch — trial and appellate ' +
+      'courts in the federal system, how cases move through the courts, and the power of judicial review ' +
+      'established in Marbury v. Madison.',
     clarifications: [
-      { text: 'Describe the structure and function of the federal court system.', sequenceOrder: 1 },
+      { text: 'Describe the structure and function of the federal court system, including trial and appellate courts and how a case can be appealed.', sequenceOrder: 1 },
       { text: 'Explain judicial review and its significance.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.8', 'SS.7.CG.3.10'],
   },
   {
     code: 'SS.7.CG.3.10',
-    title: 'Types of Law',
+    title: 'Sources and Types of Law',
     sequenceOrder: 31,
+    officialStatement: official('SS.7.CG.3.10'),
     lessonSummary:
-      'Students will distinguish among types of law (constitutional, statutory, criminal, civil) and their ' +
-      'purposes.',
+      'Students will identify the sources of law (constitutional, statutory, case/common law) and distinguish ' +
+      'among the types of law (criminal, civil, juvenile, military) and their purposes.',
     clarifications: [
-      { text: 'Distinguish criminal from civil law.', sequenceOrder: 1 },
-      { text: 'Identify sources of law (constitutional, statutory).', sequenceOrder: 2 },
+      { text: 'Identify sources of law (constitutional, statutory, case/common law).', sequenceOrder: 1 },
+      { text: 'Distinguish types of law (criminal, civil) and their purposes.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.9', 'SS.7.CG.3.11'],
   },
   {
     code: 'SS.7.CG.3.11',
-    title: 'Landmark Supreme Court Cases',
+    title: 'Landmark Supreme Court Decisions',
     sequenceOrder: 32,
+    officialStatement: official('SS.7.CG.3.11'),
     lessonSummary:
-      'Students will analyze the significance of landmark Supreme Court cases and their impact on rights and ' +
-      'government power.',
+      'Students will analyze the effects of landmark Supreme Court decisions on law, liberty, and the ' +
+      'interpretation of the U.S. Constitution.',
     clarifications: [
       { text: 'Identify landmark cases and their core holdings.', sequenceOrder: 1 },
-      { text: 'Explain the impact of landmark cases on civic life.', sequenceOrder: 2 },
+      { text: 'Analyze the effects of landmark decisions on law, liberty, and constitutional interpretation.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.10', 'SS.7.CG.3.12'],
   },
   {
     code: 'SS.7.CG.3.12',
-    title: 'Trial and Appellate Courts',
+    title: 'Comparing the U.S. and Florida Constitutions',
     sequenceOrder: 33,
+    officialStatement: official('SS.7.CG.3.12'),
     lessonSummary:
-      'Students will distinguish the roles of trial courts and appellate courts and explain how cases move ' +
-      'through the court system.',
+      'Students will compare the U.S. and Florida constitutions — their structures (preambles, articles, ' +
+      'amendments), declarations of rights, separation of powers, and how each is amended.',
     clarifications: [
-      { text: 'Distinguish trial courts from appellate courts.', sequenceOrder: 1 },
-      { text: 'Explain how a case can be appealed.', sequenceOrder: 2 },
+      { text: 'Compare the structure of the U.S. Constitution and the Florida Constitution (preamble, articles, rights protections).', sequenceOrder: 1 },
+      { text: 'Compare how the U.S. and Florida constitutions distribute power and how each can be amended.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.11'],
   },
@@ -637,13 +778,14 @@ const UNIT_6_BENCHMARKS: BenchmarkDef[] = [
 const UNIT_7_BENCHMARKS: BenchmarkDef[] = [
   {
     code: 'SS.7.CG.3.13',
-    title: 'Obligations of Government and Public Services',
+    title: 'Government Obligations and Public Services',
     sequenceOrder: 34,
+    officialStatement: official('SS.7.CG.3.13'),
     lessonSummary:
-      'Students will explain the services governments provide (defense, education, infrastructure, public safety) ' +
-      'and how they are funded.',
+      'Students will explain government obligations to its citizens and the services provided at the local, ' +
+      'state, and national levels (defense, education, infrastructure, public safety) and how they are funded.',
     clarifications: [
-      { text: 'Identify services provided at different levels of government.', sequenceOrder: 1 },
+      { text: 'Explain government obligations to citizens and identify services provided at the local, state, and national levels.', sequenceOrder: 1 },
       { text: 'Explain how government services are funded through taxes.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.14'],
@@ -652,25 +794,28 @@ const UNIT_7_BENCHMARKS: BenchmarkDef[] = [
     code: 'SS.7.CG.3.14',
     title: 'The Electoral College',
     sequenceOrder: 35,
+    officialStatement: official('SS.7.CG.3.14'),
     lessonSummary:
-      'Students will explain how the Electoral College works in presidential elections and why the founders ' +
-      'created it.',
+      'Students will explain the purpose and function of the Electoral College in electing the President of the ' +
+      'United States and why the founders created it.',
     clarifications: [
-      { text: 'Explain how the Electoral College selects the President.', sequenceOrder: 1 },
+      { text: 'Explain the purpose and function of the Electoral College in electing the President.', sequenceOrder: 1 },
       { text: 'Describe arguments about the Electoral College.', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.13', 'SS.7.CG.3.15'],
   },
   {
     code: 'SS.7.CG.3.15',
-    title: 'Economic Systems: Free Market and Mixed Economies',
+    title: 'Capitalism and the Free Market',
     sequenceOrder: 36,
+    officialStatement: official('SS.7.CG.3.15'),
     lessonSummary:
-      'Students will compare economic systems (free-market capitalism vs. government-controlled/command systems) ' +
-      'and the U.S. mixed economy.',
+      'Students will analyze the advantages of capitalism and the free market in the United States over ' +
+      'government-controlled economic systems (socialism, communism) in regard to economic freedom and raising ' +
+      'the standard of living for citizens.',
     clarifications: [
-      { text: 'Compare free-market and command economic systems.', sequenceOrder: 1 },
-      { text: 'Explain features of the U.S. mixed economy.', sequenceOrder: 2 },
+      { text: 'Analyze the advantages of capitalism and the free market for economic freedom and standard of living.', sequenceOrder: 1 },
+      { text: 'Compare free-market capitalism with government-controlled economic systems (socialism, communism).', sequenceOrder: 2 },
     ],
     connectsTo: ['SS.7.CG.3.14'],
   },
@@ -678,14 +823,15 @@ const UNIT_7_BENCHMARKS: BenchmarkDef[] = [
 
 // ── Unit registry ───────────────────────────────────────────────────────────
 
-const UNITS: UnitDef[] = [
+export const UNITS: UnitDef[] = [
   {
     id: 'unit-1',
     sequenceOrder: 1,
-    title: 'Unit 1: Foundations of American Government',
+    title: 'Unit 1: Roots of the Republic',
     description:
-      'Covers the origins of American democracy including Enlightenment influences, colonial self-governance, ' +
-      'British policies, the Declaration of Independence, Articles of Confederation, and the Constitution.',
+      'Covers the origins of American government: ancient Greece, Rome, and the Judeo-Christian tradition, the ' +
+      'founding principles, key documents from the Magna Carta to Common Sense, Enlightenment ideas, British ' +
+      'policies, and the Declaration of Independence.',
     gameRegionName: "Founders' Harbor",
     categoryKey: 'ORIGINS',
     active: true,
@@ -696,8 +842,9 @@ const UNITS: UnitDef[] = [
     sequenceOrder: 2,
     title: 'Unit 2: Creating and Limiting Government',
     description:
-      'Covers the purposes of government in the Preamble, limited government and the rule of law, the constitutional ' +
-      'principles of separation of powers / checks and balances / federalism, the ratification debate, and the Bill of Rights.',
+      'Covers the path from the Articles of Confederation to the U.S. Constitution, the Preamble, how the ' +
+      'Constitution limits government power, the ratification debate between Federalists and Anti-Federalists, ' +
+      'and the rule of law.',
     gameRegionName: 'Constitution Forge',
     categoryKey: 'ORIGINS',
     active: true, // Phase 15: Unit 2 question bank seeded
@@ -708,8 +855,9 @@ const UNITS: UnitDef[] = [
     sequenceOrder: 3,
     title: 'Unit 3: Citizenship, Rights, and Responsibilities',
     description:
-      'Covers paths to citizenship, civic obligations and responsibilities, the Bill of Rights and individual ' +
-      'protections, limits on rights, and due process and the trial process.',
+      'Covers what citizenship means and how it is acquired, civic obligations and responsibilities, the Bill of ' +
+      'Rights and other amendments in action, how the Constitution safeguards rights, and the trial process and ' +
+      'the role of juries.',
     gameRegionName: 'Rights District',
     categoryKey: 'CITIZENS',
     active: false, // benchmarks loaded; question bank in a later session
@@ -720,8 +868,9 @@ const UNITS: UnitDef[] = [
     sequenceOrder: 4,
     title: 'Unit 4: Participation and Public Influence',
     description:
-      'Covers elections and voting, political parties, media and public opinion, interest groups and bias, and the ' +
-      'public policy process.',
+      'Covers elections and voting, constitutional qualifications for public office, how media, individuals, and ' +
+      'interest groups monitor and influence government, bias, symbolism, and propaganda in political ' +
+      'communication, and civic problem-solving through public policy.',
     gameRegionName: 'Civic Square',
     categoryKey: 'POLICIES',
     active: false,
@@ -732,8 +881,8 @@ const UNITS: UnitDef[] = [
     sequenceOrder: 5,
     title: 'Unit 5: Constitutional Structure and Federalism',
     description:
-      'Covers the constitutional republic, federalism, the three branches, state–national relationships, and the ' +
-      'amendment process.',
+      'Covers the advantages of the constitutional republic and of federalism, the three branches, the ' +
+      'state–national relationship under Article IV and the 10th Amendment, and the Article V amendment process.',
     gameRegionName: 'Federalism Frontier',
     categoryKey: 'ORGANIZATION',
     active: false,
@@ -744,8 +893,9 @@ const UNITS: UnitDef[] = [
     sequenceOrder: 6,
     title: 'Unit 6: Rights Expansion, Branches, Courts, and Law',
     description:
-      'Covers voting-rights amendments, the legislative, executive, and judicial branches, types of law, landmark ' +
-      'Supreme Court cases, and trial vs. appellate courts.',
+      'Covers the amendments that broadened political participation (13th–26th), the legislative, executive, and ' +
+      'judicial branches, sources and types of law, landmark Supreme Court decisions, and comparing the U.S. and ' +
+      'Florida constitutions.',
     gameRegionName: 'Justice Citadel',
     categoryKey: 'ORGANIZATION',
     active: false,
@@ -756,8 +906,8 @@ const UNITS: UnitDef[] = [
     sequenceOrder: 7,
     title: 'Unit 7: Government Services, Electoral College, and Economics',
     description:
-      'Covers the obligations of government and public services, the Electoral College, and economic systems ' +
-      'including the U.S. mixed economy.',
+      'Covers government obligations and public services, the Electoral College, and the advantages of ' +
+      'capitalism and the free market.',
     gameRegionName: 'Republic Summit',
     categoryKey: 'ORGANIZATION',
     active: false,
@@ -773,6 +923,9 @@ const CATEGORY_NAME_BY_KEY: Record<CategoryKey, string> = {
 }
 
 export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
+  // ── Realign legacy code labels first (row ids preserved — ADR 0017) ───────
+  await applyBenchmarkCodeRealignment(prisma)
+
   // ── Resolve the four reporting categories ───────────────────────────────
   const categories = await prisma.reportingCategory.findMany({ select: { id: true, name: true } })
   const categoryIdByName = new Map(categories.map((c) => [c.name, c.id]))
@@ -829,19 +982,22 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
       })
       benchmarkCount++
 
-      // Clarifications — create once (no stable unique key)
-      const existing = await prisma.benchmarkClarification.count({ where: { benchmarkId: benchmark.id } })
-      if (existing === 0) {
-        for (const clar of bm.clarifications) {
-          await prisma.benchmarkClarification.create({
-            data: { benchmarkId: benchmark.id, text: clar.text, sequenceOrder: clar.sequenceOrder },
-          })
-        }
+      // Clarifications — rewrite from defs (nothing FKs clarifications, so a
+      // delete + recreate keeps them in lockstep with the defs; the old
+      // create-once guard let changed clarifications silently never propagate).
+      await prisma.benchmarkClarification.deleteMany({ where: { benchmarkId: benchmark.id } })
+      for (const clar of bm.clarifications) {
+        await prisma.benchmarkClarification.create({
+          data: { benchmarkId: benchmark.id, text: clar.text, sequenceOrder: clar.sequenceOrder },
+        })
       }
     }
   }
 
-  // ── Benchmark connections (after all benchmarks exist) ──────────────────
+  // ── Benchmark connections — rebuild from defs (after all benchmarks exist).
+  // Connections are seed-owned and nothing FKs them; a full rebuild clears the
+  // stale edges the old upsert-only pass left behind after the realignment.
+  await prisma.benchmarkConnection.deleteMany({})
   for (const unit of UNITS) {
     for (const bm of unit.benchmarks) {
       const source = await prisma.benchmark.findUnique({ where: { code: bm.code } })
@@ -849,10 +1005,8 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
       for (const targetCode of bm.connectsTo) {
         const target = await prisma.benchmark.findUnique({ where: { code: targetCode } })
         if (!target) continue
-        await prisma.benchmarkConnection.upsert({
-          where: { benchmarkId_connectedBenchmarkId: { benchmarkId: source.id, connectedBenchmarkId: target.id } },
-          create: { benchmarkId: source.id, connectedBenchmarkId: target.id, relationshipType: 'SUPPORTS' },
-          update: {},
+        await prisma.benchmarkConnection.create({
+          data: { benchmarkId: source.id, connectedBenchmarkId: target.id, relationshipType: 'SUPPORTS' },
         })
       }
     }

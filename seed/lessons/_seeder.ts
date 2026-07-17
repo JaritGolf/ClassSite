@@ -25,6 +25,19 @@ export interface LessonStepSeedDef {
 
 export interface LessonSeedDef {
   benchmarkCode: string
+  /**
+   * Key used for the deterministic lesson/step ids (defaults to benchmarkCode).
+   * Set when a lesson MOVES to a different benchmark (ADR 0017 realignment) so
+   * its existing DB rows — and student resume pointers into them — survive:
+   * the id stays derived from the ORIGINAL code while benchmarkId re-points.
+   */
+  idKey?: string
+  /**
+   * ADR 0017: interim content block awaiting its full build (incl. the media
+   * pass). tests/unit/seed/lesson-bank-shape.test.ts exempts interim lessons
+   * from the media-step requirement ONLY; all other template guarantees apply.
+   */
+  interim?: boolean
   title: string
   studentFriendlyTarget: string
   /** Mission Briefing text (Lesson.body). */
@@ -52,7 +65,8 @@ export async function seedLessonDefs(
       throw new Error(`Benchmark not found: "${def.benchmarkCode}" — run seedBenchmarks first.`)
     }
 
-    const lessonId = lessonIdFor(def.benchmarkCode)
+    const idKey = def.idKey ?? def.benchmarkCode
+    const lessonId = lessonIdFor(idKey)
     await prisma.lesson.upsert({
       where: { id: lessonId },
       create: {
@@ -73,10 +87,24 @@ export async function seedLessonDefs(
       },
     })
 
+    // Step ids are POSITIONAL (`lstep-<code>-<n>`), so inserting/removing a
+    // step mid-lesson re-maps existing ids to different content. When the step
+    // count changes, resume pointers into this lesson would silently aim at
+    // shifted steps — null them (display-only; students fall back to the
+    // default start). Per-class visibility rows carry the same positional
+    // caveat (ADR 0015) but are teacher-set, so they are left alone.
+    const existingCount = await prisma.lessonStep.count({ where: { lessonId } })
+    if (existingCount !== 0 && existingCount !== def.steps.length) {
+      await prisma.studentProgress.updateMany({
+        where: { currentStep: { lessonId } },
+        data: { currentStepId: null },
+      })
+    }
+
     const keptIds: string[] = []
     for (let i = 0; i < def.steps.length; i++) {
       const s = def.steps[i]
-      const stepId = `lstep-${codeKey(def.benchmarkCode)}-${String(i + 1).padStart(2, '0')}`
+      const stepId = `lstep-${codeKey(idKey)}-${String(i + 1).padStart(2, '0')}`
       keptIds.push(stepId)
       await prisma.lessonStep.upsert({
         where: { id: stepId },

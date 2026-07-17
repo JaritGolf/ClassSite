@@ -1,17 +1,23 @@
 /**
  * Unit 1 authored remediation content (ADR 0013, spec §14).
  *
- * One def per (benchmark, skill_tag) pair used by the Unit 1 question banks —
- * each benchmark's 30 questions share a single skill tag, so six defs give
- * Unit 1 full authored coverage. Tone per §14.1: short, focused, encouraging,
- * examples + non-examples with immediate feedback.
+ * One def per (benchmark, skill_tag) pair used by the Unit 1–2 question banks.
+ * Tone per §14.1: short, focused, encouraging, examples + non-examples with
+ * immediate feedback.
+ *
+ * ADR 0017 (standards realignment): benchmarkCodes were remapped to the
+ * official SS.7.CG meanings the content matches (old 1.1→1.4, 1.2→1.3,
+ * 1.3→1.5, 1.4→1.6, 1.5→1.7). The old-1.6 convention def now covers
+ * (1.7, constitutional-convention); a ratification-focused def covers
+ * (1.10, constitutional-convention) for the split questions; and two INTERIM
+ * defs cover the repurposed official 1.1/1.2 blocks (full build in backlog).
  */
 
 import type { RemediationContentDef } from './_content'
 
 export const UNIT1_REMEDIATION: RemediationContentDef[] = [
   {
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4',
     skillTag: 'enlightenment-influence',
     title: 'Rebuild It: Enlightenment Ideas',
     remediationType: 'MINI_LESSON_REPLAY',
@@ -72,7 +78,7 @@ export const UNIT1_REMEDIATION: RemediationContentDef[] = [
     },
   },
   {
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3',
     skillTag: 'colonial-self-governance',
     title: 'Rebuild It: Colonial Self-Government',
     remediationType: 'MINI_LESSON_REPLAY',
@@ -133,7 +139,7 @@ export const UNIT1_REMEDIATION: RemediationContentDef[] = [
     },
   },
   {
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5',
     skillTag: 'british-policies',
     title: 'Rebuild It: Taxes, Consent, and Colonial Resistance',
     remediationType: 'MISCONCEPTION_FIX',
@@ -194,7 +200,7 @@ export const UNIT1_REMEDIATION: RemediationContentDef[] = [
     },
   },
   {
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6',
     skillTag: 'declaration-principles',
     title: 'Rebuild It: Principle or Grievance?',
     remediationType: 'MINI_LESSON_REPLAY',
@@ -255,7 +261,7 @@ export const UNIT1_REMEDIATION: RemediationContentDef[] = [
     },
   },
   {
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7',
     skillTag: 'articles-weaknesses',
     title: 'Rebuild It: Why the Articles Failed',
     remediationType: 'MINI_LESSON_REPLAY',
@@ -316,7 +322,7 @@ export const UNIT1_REMEDIATION: RemediationContentDef[] = [
     },
   },
   {
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.7',
     skillTag: 'constitutional-convention',
     title: 'Rebuild It: Convention Fixes and Compromises',
     remediationType: 'MISCONCEPTION_FIX',
@@ -371,6 +377,190 @@ export const UNIT1_REMEDIATION: RemediationContentDef[] = [
             text: 'A rule letting any state veto federal laws',
             correct: false,
             feedback: 'No such rule exists — state vetoes would have rebuilt the Articles\' weakness. The real deal-closer was the promised Bill of Rights.',
+          },
+        ],
+      },
+    },
+  },
+  {
+    benchmarkCode: 'SS.7.CG.1.10',
+    skillTag: 'constitutional-convention',
+    title: 'Rebuild It: Federalists, Anti-Federalists, and Ratification',
+    remediationType: 'MINI_LESSON_REPLAY',
+    content: {
+      concept:
+        'Let\'s rebuild the ratification debate. After the Constitution was written in 1787, it still had to be APPROVED (ratified) by conventions in nine of the thirteen states — and Americans argued fiercely about it.\n\n\u2022 FEDERALISTS (Hamilton, Madison, Jay) supported ratification. Their argument: the Articles had failed; the nation needed a stronger national government to survive. Their essays are The Federalist Papers.\n\u2022 ANTI-FEDERALISTS (Patrick Henry, "Brutus") opposed ratification. Their fears: the new national government was too strong, too far from the people, and had NO bill of rights protecting individuals.\n\u2022 THE DEAL: key states ratified only after Federalists promised to add a bill of rights. The first ten amendments were ratified in 1791 — the Anti-Federalists\' most lasting victory.\n\nMemory trick: Federalists = FOR the Constitution. Anti-Federalists = ANXIOUS about central power and missing rights.',
+      examples: [
+        {
+          text: '"The Constitution creates a government strong enough to pay its debts and defend the nation — ratify it." — argument FOR ratification',
+          isExample: true,
+          explanation:
+            'A Federalist argument, correctly labeled: strength where the Articles were weak was exactly their case for ratification.',
+        },
+        {
+          text: '"Without a bill of rights, this new government may trample our liberties." — argument AGAINST ratification',
+          isExample: true,
+          explanation:
+            'A textbook Anti-Federalist objection — too much central power, no written protection for individual rights.',
+        },
+        {
+          text: '"The Anti-Federalists wanted to keep the Articles of Confederation exactly as they were, with no changes at all."',
+          isExample: false,
+          explanation:
+            'Too strong — many Anti-Federalists accepted that the Articles needed fixing. What they opposed was THIS Constitution\'s strong central government without a bill of rights.',
+        },
+        {
+          text: '"The Federalists demanded a bill of rights before they would sign the Constitution."',
+          isExample: false,
+          explanation:
+            'Sides swapped! It was the ANTI-Federalists who demanded a bill of rights. Federalists thought it unnecessary — but promised one to win ratification.',
+        },
+      ],
+      tryIt: {
+        question: 'A 1788 pamphlet warns that "a distant national government will swallow the states and ignore the people\'s rights." Which side of the ratification debate wrote it?',
+        options: [
+          {
+            text: 'The Anti-Federalists',
+            correct: true,
+            feedback: 'Exactly! Fear of a distant, powerful central government threatening rights is the Anti-Federalist signature. You\'ve got the two sides sorted.',
+          },
+          {
+            text: 'The Federalists',
+            correct: false,
+            feedback: 'Look again — Federalists ARGUED FOR the stronger national government. Fear of central power swallowing the states is the Anti-Federalist voice.',
+          },
+          {
+            text: 'The British Parliament',
+            correct: false,
+            feedback: 'Britain had no vote in ratification — this debate was between American Federalists and Anti-Federalists. The fear of central power marks it Anti-Federalist.',
+          },
+          {
+            text: 'The Constitutional Convention delegates as a group',
+            correct: false,
+            feedback: 'The Convention wrote the document; this pamphlet argues AGAINST adopting it. Warning that central power will swallow the states is the Anti-Federalist position.',
+          },
+        ],
+      },
+    },
+  },
+  // ── ADR 0017 interim blocks (official 1.1 / 1.2) — full build tracked in backlog ──
+  {
+    benchmarkCode: 'SS.7.CG.1.1',
+    skillTag: 'ancient-influences',
+    title: 'Rebuild It: Greece, Rome, and the Higher Law',
+    remediationType: 'MINI_LESSON_REPLAY',
+    content: {
+      concept:
+        'Let\'s rebuild the three-way sort. America\'s constitutional republic borrowed from three ancient sources, and each contributed something DIFFERENT:\n\n\u2022 ANCIENT GREECE (Athens) \u2192 direct democracy: citizens debated and voted on laws THEMSELVES.\n\u2022 ANCIENT ROME \u2192 the republic: citizens ELECTED representatives (senators, consuls); laws were WRITTEN and posted publicly (the Twelve Tables); leaders served with civic virtue.\n\u2022 JUDEO-CHRISTIAN TRADITION \u2192 a moral law ABOVE every ruler (no one is above the law) and the equal WORTH of every person.\n\nThe sort: participation \u2192 Greece. Representation + written law \u2192 Rome. Higher law + human worth \u2192 Judeo-Christian tradition.',
+      examples: [
+        {
+          text: '"The United States Senate reflects the influence of ancient Rome."',
+          isExample: true,
+          explanation:
+            'Correct sort — elected representatives making law on citizens\' behalf is Rome\'s republican model, and our Senate even takes Rome\'s name.',
+        },
+        {
+          text: '"The idea that even a president must obey the law echoes the Judeo-Christian tradition of a law above rulers."',
+          isExample: true,
+          explanation:
+            'Correct sort — the higher-law tradition binds every ruler, which grew into the American rule of law.',
+        },
+        {
+          text: '"Ancient Rome invented direct democracy, where citizens vote on every law."',
+          isExample: false,
+          explanation:
+            'Sorted wrong! Direct democracy was ATHENS (Greece). Rome\'s contribution was the REPUBLIC — elected representatives.',
+        },
+        {
+          text: '"The United States copied the government of Athens, so it is a direct democracy."',
+          isExample: false,
+          explanation:
+            'The founders chose ROME\'s representative model, not Athens\' direct democracy — a nation of millions cannot gather to vote on every law. The U.S. is a constitutional republic.',
+        },
+      ],
+      tryIt: {
+        question: 'Rome carved its laws onto the Twelve Tables and displayed them in public. Which American practice echoes this?',
+        options: [
+          {
+            text: 'A written Constitution and published laws everyone can read',
+            correct: true,
+            feedback: 'Exactly! Written, public law that binds even the powerful — from the Twelve Tables straight to the written Constitution. Great sort.',
+          },
+          {
+            text: 'Secret ballots in elections',
+            correct: false,
+            feedback: 'Secret ballots protect voter privacy. The Twelve Tables were about making the LAW itself written and public — like our written Constitution.',
+          },
+          {
+            text: 'Citizens voting directly on every law',
+            correct: false,
+            feedback: 'That\'s the Athens column of the sort. The Twelve Tables\' legacy is WRITTEN, PUBLIC law.',
+          },
+          {
+            text: 'A judge deciding each case however he pleases',
+            correct: false,
+            feedback: 'The opposite of the Twelve Tables! Written, public law exists precisely so decisions follow known rules — not one person\'s whims.',
+          },
+        ],
+      },
+    },
+  },
+  {
+    benchmarkCode: 'SS.7.CG.1.2',
+    skillTag: 'founding-principles',
+    title: 'Rebuild It: The Seven Founding Principles',
+    remediationType: 'MINI_LESSON_REPLAY',
+    content: {
+      concept:
+        'Let\'s rebuild the principle definitions — these questions are definition-matching in disguise:\n\n\u2022 NATURAL RIGHTS — born with them; government protects them, never grants them.\n\u2022 POPULAR SOVEREIGNTY — government power COMES FROM the people ("We the People").\n\u2022 CONSENT OF THE GOVERNED — government is legitimate only with the people\'s agreement, given through elections (NOT unanimous approval of every law).\n\u2022 SOCIAL CONTRACT — the deal: people accept laws; government protects rights. An IDEA, not a signed paper.\n\u2022 LIMITED GOVERNMENT — government may use only powers the people granted, written in a constitution.\n\u2022 REPUBLICANISM — the people govern through representatives they elect.\n\u2022 RULE OF LAW — everyone, including leaders, is bound by the same law.\n\nStrategy: restate the scenario in your own words, then match it to the ONE definition that fits.',
+      examples: [
+        {
+          text: '"A city charter lists exactly which powers the city government may use — everything else stays with the people." \u2192 limited government',
+          isExample: true,
+          explanation:
+            'Correct match — listing (limiting) the government\'s powers is the definition of limited government.',
+        },
+        {
+          text: '"The senator paid the same speeding fine as any other driver." \u2192 rule of law',
+          isExample: true,
+          explanation:
+            'Correct match — the same law binding an official and a citizen equally is the rule of law.',
+        },
+        {
+          text: '"Natural rights are the rights the Bill of Rights gives to citizens."',
+          isExample: false,
+          explanation:
+            'Backwards! The Bill of Rights PROTECTS rights — it does not create them. Natural rights belong to people from birth, before any document.',
+        },
+        {
+          text: '"Consent of the governed means a law only counts if every citizen votes yes."',
+          isExample: false,
+          explanation:
+            'Too strong — consent works through elections and representation. If unanimity were required, no law could ever pass.',
+        },
+      ],
+      tryIt: {
+        question: 'The Constitution begins "We the People... do ordain and establish this Constitution." Which principle do these words declare?',
+        options: [
+          {
+            text: 'Popular sovereignty',
+            correct: true,
+            feedback: 'Exactly! The PEOPLE ordain and establish the government — power flows from them. That\'s popular sovereignty.',
+          },
+          {
+            text: 'The social contract',
+            correct: false,
+            feedback: 'Close cousin, but the opening words name WHO creates the government — the people. That\'s popular sovereignty.',
+          },
+          {
+            text: 'Natural rights',
+            correct: false,
+            feedback: 'Natural rights headline the Declaration ("unalienable Rights"). "We the People... do ordain" declares POPULAR SOVEREIGNTY.',
+          },
+          {
+            text: 'Limited government',
+            correct: false,
+            feedback: 'Limited government restricts WHAT government may do. The opening words name WHO creates it — the people. That\'s popular sovereignty.',
           },
         ],
       },

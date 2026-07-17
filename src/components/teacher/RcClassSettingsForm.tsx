@@ -8,6 +8,7 @@ interface Settings {
   rcReviewWindow: 'immediate' | 'after_submit' | 'after_class_window'
   rcStaminaOverride: number | null
   featureEocReviewEnabled: boolean
+  strategyUsesRequired: number
 }
 
 interface Props {
@@ -124,6 +125,26 @@ export function RcClassSettingsForm({ classId, className, initial }: Props) {
           <option value="after_submit">After submit (score only)</option>
           <option value="after_class_window">After class window closes</option>
         </select>
+      </Field>
+
+      <div className="border-t border-gray-100 pt-4">
+        <h3 className="text-sm font-bold text-gray-800">Strategist Track</h3>
+      </div>
+
+      <Field
+        label="Strategy uses required (per strategy)"
+        hint="How many times each student must correctly apply EACH test-taking strategy. 0 = no requirement. Shown to students as a nudge; you can override per student on their profile."
+      >
+        <input
+          type="number"
+          min={0}
+          max={20}
+          value={settings.strategyUsesRequired}
+          onChange={(e) =>
+            update('strategyUsesRequired', parseInt(e.target.value, 10) || 0)
+          }
+          className="rounded border border-gray-300 px-3 py-1.5 w-32"
+        />
       </Field>
 
       <div className="flex items-center gap-4 pt-2">

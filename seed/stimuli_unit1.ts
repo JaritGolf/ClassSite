@@ -36,7 +36,7 @@ const STIMULI_DEFS: StimulusDef[] = [
   // ── SS.7.CG.1.1 — Enlightenment and European Influences ───────────────
   {
     title: '[SEED] John Locke — Natural Rights (SS.7.CG.1.1)',
-    benchmarkCode: 'SS.7.CG.1.1',
+    benchmarkCode: 'SS.7.CG.1.4', // ADR 0017: was 1.1 (label only — not persisted)
     source: 'John Locke, Two Treatises of Government, 1689 (public domain)',
     copyrightNotes: 'Public domain. No copyright restriction.',
     level3:
@@ -51,7 +51,7 @@ const STIMULI_DEFS: StimulusDef[] = [
   // ── SS.7.CG.1.2 — Colonial and British Governmental Traditions ────────
   {
     title: '[SEED] Virginia House of Burgesses Charter (SS.7.CG.1.2)',
-    benchmarkCode: 'SS.7.CG.1.2',
+    benchmarkCode: 'SS.7.CG.1.3', // ADR 0017: was 1.2 (label only — not persisted)
     source:
       'Virginia Company Instructions to Governor Yeardley, 1619 (public domain)',
     copyrightNotes: 'Public domain. No copyright restriction.',
@@ -67,7 +67,7 @@ const STIMULI_DEFS: StimulusDef[] = [
   // ── SS.7.CG.1.3 — Causes of the American Revolution ──────────────────
   {
     title: '[SEED] Stamp Act Preamble (SS.7.CG.1.3)',
-    benchmarkCode: 'SS.7.CG.1.3',
+    benchmarkCode: 'SS.7.CG.1.5', // ADR 0017: was 1.3 (label only — not persisted)
     source: 'Stamp Act, British Parliament, 1765 (public domain)',
     copyrightNotes: 'Public domain. No copyright restriction.',
     level3:
@@ -82,7 +82,7 @@ const STIMULI_DEFS: StimulusDef[] = [
   // ── SS.7.CG.1.4 — Declaration of Independence ────────────────────────
   {
     title: '[SEED] Declaration of Independence Preamble (SS.7.CG.1.4)',
-    benchmarkCode: 'SS.7.CG.1.4',
+    benchmarkCode: 'SS.7.CG.1.6', // ADR 0017: was 1.4 (label only — not persisted)
     source:
       'Declaration of Independence, Continental Congress, 1776 (public domain)',
     copyrightNotes: 'Public domain. No copyright restriction.',
@@ -98,7 +98,7 @@ const STIMULI_DEFS: StimulusDef[] = [
   // ── SS.7.CG.1.5 — Articles of Confederation ──────────────────────────
   {
     title: '[SEED] Articles of Confederation — State Sovereignty (SS.7.CG.1.5)',
-    benchmarkCode: 'SS.7.CG.1.5',
+    benchmarkCode: 'SS.7.CG.1.7', // ADR 0017: was 1.5 (label only — not persisted)
     source: 'Articles of Confederation, Article II, 1781 (public domain)',
     copyrightNotes: 'Public domain. No copyright restriction.',
     level3:
@@ -113,7 +113,7 @@ const STIMULI_DEFS: StimulusDef[] = [
   // ── SS.7.CG.1.6 — U.S. Constitution ─────────────────────────────────
   {
     title: '[SEED] U.S. Constitution — Preamble (SS.7.CG.1.6)',
-    benchmarkCode: 'SS.7.CG.1.6',
+    benchmarkCode: 'SS.7.CG.1.8', // ADR 0017: was 1.6 (label only; attached questions split to 1.7/1.10)
     source: 'U.S. Constitution, Preamble, 1787 (public domain)',
     copyrightNotes: 'Public domain. No copyright restriction.',
     level3:

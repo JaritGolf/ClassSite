@@ -1,24 +1,33 @@
 'use client'
 
 /**
- * Renders one lesson step by its parsed content kind (ADR 0013):
+ * Renders one lesson step by its parsed content kind (ADR 0013 + ADR 0015):
  *   text             — instructional text with read-aloud + glossary popovers
  *   timeline         — visual organizer (timeline / cause-effect chain)
  *   worked-example   — problem + progressive "show my thinking" reveal (§18)
  *   interactive-check— ungraded self-check with confidence + per-option feedback
  *   source-analysis  — passage via StimulusDisplay (read-aloud + chunking) + guiding questions
+ *   video            — click-to-load privacy facade (media/VideoStepView)
+ *   image            — SVG illustration or PD photo (media/ImageStepView)
+ *   diagram          — flow/cycle/venn/comparison organizer (media/DiagramStepView)
+ *   infographic      — stat-and-fact panel (media/InfographicStepView)
  *
  * `onAttempted(stepId)` fires once per step when the student has engaged with
  * every check the step contains — the walkthrough uses it to gate "Next".
  * All interactions are client-local; nothing is persisted (no grading).
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { parseStepContent, type CheckOption } from '@/lib/lesson-content'
 import { seededShuffle } from '@/lib/shuffle'
 import { buildGlossaryAnnotations, type GlossaryTerm } from '@/lib/reading-load'
 import { StimulusDisplay, renderAnnotatedText } from '@/components/reading-load/StimulusDisplay'
 import { Mascot } from '@/components/ui/Mascot'
+import { ReadAloudButton } from '@/components/ui/ReadAloudButton'
+import { VideoStepView } from './media/VideoStepView'
+import { ImageStepView } from './media/ImageStepView'
+import { DiagramStepView } from './media/DiagramStepView'
+import { InfographicStepView } from './media/InfographicStepView'
 
 export interface LessonStepView {
   id: string
@@ -36,7 +45,11 @@ interface LessonStepRendererProps {
   glossaryTerms?: GlossaryTerm[]
 }
 
-export function LessonStepRenderer({ step, onAttempted, glossaryTerms }: LessonStepRendererProps) {
+export function LessonStepRenderer({
+  step,
+  onAttempted,
+  glossaryTerms,
+}: LessonStepRendererProps) {
   const parsed = parseStepContent(step.stepType, step.content)
 
   if (parsed.kind === 'worked-example') {
@@ -69,61 +82,35 @@ export function LessonStepRenderer({ step, onAttempted, glossaryTerms }: LessonS
       <TimelineView intro={parsed.intro} connector={parsed.connector} events={parsed.events} />
     )
   }
+  if (parsed.kind === 'video') {
+    const { kind: _kind, ...video } = parsed
+    return <VideoStepView {...video} />
+  }
+  if (parsed.kind === 'image') {
+    const { kind: _kind, ...image } = parsed
+    return <ImageStepView {...image} />
+  }
+  if (parsed.kind === 'diagram') {
+    return <DiagramStepView diagram={parsed.diagram} />
+  }
+  if (parsed.kind === 'infographic') {
+    return <InfographicStepView infographic={parsed.infographic} />
+  }
   return <NoteView text={parsed.text} glossaryTerms={glossaryTerms} />
 }
 
 // ── Note text: read-aloud + glossary popovers (spec §31.2 supports) ──────────
 
 function NoteView({ text, glossaryTerms }: { text: string; glossaryTerms?: GlossaryTerm[] }) {
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [hasSpeech, setHasSpeech] = useState(false)
-
-  useEffect(() => {
-    setHasSpeech(typeof window !== 'undefined' && 'speechSynthesis' in window)
-    return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) window.speechSynthesis.cancel()
-    }
-  }, [])
-
-  const toggleReadAloud = useCallback(() => {
-    if (!hasSpeech) return
-    if (isSpeaking) {
-      window.speechSynthesis.cancel()
-      setIsSpeaking(false)
-      return
-    }
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'en-US'
-    utterance.rate = 0.9
-    utterance.onend = () => setIsSpeaking(false)
-    utterance.onerror = () => setIsSpeaking(false)
-    window.speechSynthesis.speak(utterance)
-    setIsSpeaking(true)
-  }, [hasSpeech, isSpeaking, text])
-
   const annotations =
     glossaryTerms && glossaryTerms.length > 0 ? buildGlossaryAnnotations(text, glossaryTerms, 2) : []
   const paragraphs = text.split(/\n\n+/)
 
   return (
     <div className="space-y-3">
-      {hasSpeech && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            aria-label={isSpeaking ? 'Stop reading' : 'Read this section aloud'}
-            onClick={toggleReadAloud}
-            className={`flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-sm font-semibold transition-colors ${
-              isSpeaking
-                ? 'border-sky-300 bg-sky-100 text-sky-800'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50'
-            }`}
-          >
-            <span aria-hidden="true">{isSpeaking ? '⏹' : '🔊'}</span>
-            {isSpeaking ? 'Stop' : 'Read aloud'}
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end">
+        <ReadAloudButton text={text} />
+      </div>
       <div className="max-w-prose space-y-4 text-base leading-7 text-gray-800">
         {paragraphs.map((para, i) => (
           <p key={i} className={`whitespace-pre-line ${i === 0 ? 'text-lg leading-8' : ''}`}>
@@ -283,12 +270,12 @@ export function CheckQuestion({
   options: CheckOption[]
   onFirstAttempt?: () => void
 }) {
-  // Authored check JSON lists the correct option first — shuffle once on mount
-  // so the right answer isn't predictably "A" (ungraded self-check, so a
-  // client-side shuffle is safe; feedback travels with each option object).
-  const [shuffledOptions] = useState<CheckOption[]>(() =>
-    seededShuffle(options, `${Math.random()}`)
-  )
+  // Authored check JSON lists the correct option first — shuffle so the right
+  // answer isn't predictably "A" (ungraded self-check, so a client-side
+  // shuffle is safe; feedback travels with each option object). Seeded by the
+  // question text, not Math.random(): the server and client must agree or
+  // SSR'd instances (e.g. the teacher lesson preview) fail hydration.
+  const [shuffledOptions] = useState<CheckOption[]>(() => seededShuffle(options, question))
   const [selected, setSelected] = useState<number | null>(null)
   const [confidence, setConfidence] = useState<ConfidenceKey | null>(null)
   const [revealed, setRevealed] = useState(false)

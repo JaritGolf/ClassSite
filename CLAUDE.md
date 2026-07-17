@@ -148,6 +148,98 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**TEACHER LESSON WALKTHROUGH — "walk it like a student" preview (2026-07-16, extends
+ADR 0015) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1313/1315 + the 2 intentional interim
+skips, 130 suites) + in-browser verification.** Owner: needed to preview lessons FAST from
+the teacher dashboard — move through the whole mission without clicking everything or
+answering any question, still seeing every element. Owner chose (AskUserQuestion): BOTH
+preview modes (flat manage page stays; new step-by-step student-eye mode) + auto-reveal
+everything. What shipped:
+(1) **Optional preview props on student components — absent = behavior byte-identical**
+(MissionFlow itself untouched): `CheckQuestion.revealAll` (static answer key: correct
+highlighted + every option's feedback, zero interaction), `WorkedExampleView.revealAll`
+(starts fully expanded), `SourceAnalysisView.revealAll` (passes through),
+`LessonStepRenderer.revealAnswers` (threads all three),
+`TrainingWalkthrough.{ungated,revealAnswers}` (Next/Training-Complete never gated),
+`ScenarioLab.{ungated,revealAnswers}`, `StepIndicator.onStepClick` (tiles become jump
+buttons via a shared `Tile` wrapper — display-only for students).
+(2) **Read-only assessment previews**: `src/lib/lesson-media/assessment-preview.ts`
+`getAssessmentPreviewsForBenchmark` — every APPROVED mission assessment (PRE_CHECK/
+VOCAB_CHECK/PRACTICE/READINESS_CHECK/MASTERY_CHALLENGE, ALL mastery forms) with questions +
+isCorrect + authored feedback. Teacher-only surface (rule #2 posture = the Question Bank);
+NEVER creates attempts. Rendered by `AssessmentPreviewCard` (per-question `<details>` +
+expand-all).
+(3) **`MissionWalkthrough`** (`src/components/teacher/lessons/`): mirrors the student
+8-phase STEP_ORDER with the SAME child components, free navigation (banner Back/Next +
+clickable step map), VocabPanel reused with `vocabCheckAssessmentId=null` (keeps the real
+Word Builder player — which would record attempts — out), assessment phases render preview
+cards, missing pieces get an amber "students skip past this" note. Page:
+`/teacher/lessons/[code]/walkthrough` (requireAuth TEACHER/ADMIN; shows ALL steps
+regardless of media toggles — it's the authoring view).
+(4) **Entry points**: teacher dashboard "Preview Lessons" chip row (`LessonPreviewLinks`,
+one chip per approved lesson → walkthrough); `/teacher/lessons` index row buttons
+(▶ Walkthrough / Manage media); flat manage page now auto-reveals answers + "▶ Walk it
+like a student" header button; walkthrough links back to manage.
+**Verification:** `tsc` 0; jest 1313 passed (130 suites; +4-test integration suite for the
+preview helper: completeness, all mastery forms, strictly read-only, APPROVED-only);
+browser walk as teacher on realigned SS.7.CG.1.3 — Show-all-answers expands keys, step-map
+jump to Training works, **Next stays enabled on a required check with the answer key
+rendered**, Scenario Lab complete-button ungated w/ 2 guiding-question keys, Mastery shows
+Forms A+B, dashboard card live (8 walkthrough links); **0 attempt rows created**; student
+regression: mission HTML contains no answer-key markup, STUDENT hitting the walkthrough URL
+is redirected. NOT committed — awaiting owner review (rides with the ADR 0015 media
+commit). Commit message when ready: `feat(phase-9): teacher lesson walkthrough — ungated
+student-eye preview with revealed answers + assessment previews (ADR 0015)`.
+
+---
+
+**STANDARDS REALIGNMENT — BENCHMARKS REMAPPED TO OFFICIAL SS.7.CG MEANINGS (2026-07-16,
+ADR 0017) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1309/1311 passed + 2 intentional
+skips, 129 suites, ×2 runs) + seed idempotency ×2 on the live DB + demo regenerated +
+in-browser verification on both roles.**
+
+Cross-checking `seed/benchmarks.ts` against the authoritative Florida standards (CASE
+knowledge graph via the new Learning Commons MCP connector) revealed the seed carried
+**pre-2021 SS.7.C content relabeled with SS.7.CG codes** — only 1.10 matched its official
+meaning in strand 1 (the file's own "must be re-verified before production" header comment,
+confirmed). Every question inherits `benchmarkCode`, so all ~250 shipped questions were
+keyed to codes whose official EOC meaning differed (rule #3 compromised at the source).
+Fixed this session — full inventory in `docs/adrs/0017-standards-realignment.md`:
+(1) **Row-identity-preserving rename pass** (strand 1): two-phase title-gated transactional
+renames (old 1.1→1.4, 1.2→1.3, 1.3→1.5, 1.4→1.6, 1.5→1.7, 1.6→1.1ᴿ, 1.7→1.8, 1.8→1.11,
+1.11→1.2ᴿ; 1.9/1.10 fixed points) — all student data/attempts/SM-2 state survive on their
+rows; `ConfidenceCalibrationSnapshot.scope` migrated in the same txn. Idempotent (no-op on
+realigned/fresh DBs). Strand-2/3 defs rewritten in place (2.7→office qualifications,
+3.12→U.S. vs FL constitutions, 2.4→safeguarding rights, + 12 reframes).
+(2) **Old-1.6 bank split item-level** (owner choice): 18 convention items → 1.7, 12
+ratification items → 1.10. externalKeys FROZEN (`q-SS7CG16-*` on 1.7/1.10 is intentional).
+(3) **Interim content blocks for official 1.1/1.2** (owner choice — ⚠ FULL BUILD REQUIRED
+LATER, see backlog): 30 fully-tagged questions each (`seed/questions/unit1_interim.ts`,
+registry-validated), text-first lessons flagged `interim: true` (`seed/lessons/unit1_interim.ts`
+— exempt from the ADR 0015 media requirement ONLY), 6 new tier-3 terms + es glosses,
+authored remediation. APPROVED/Tier D per ADR 0013. Numeric mission order works day one —
+demo hero mastered both through the real engine (readiness→mastery→unlock).
+(4) **Guardrail:** `seed/official_standards.ts` (verbatim CASE snapshot, all 36 codes +
+topical anchors) + `BenchmarkDef.officialStatement` +
+`tests/unit/seed/benchmark-standards-alignment.test.ts` (code set ≡ official 36, statement
+identity, anchors in def prose, numeric sequence, strand→category mapping) — this drift
+class is now a test failure. **Future content waves anchor on the snapshot.**
+(5) **Mechanics:** `LessonSeedDef.idKey` pins carried lessons' row/step ids (resume
+pointers survive; content follows codes); question upsert update-paths rewrite benchmarkId;
+remediation reconciles by (benchmarkId, skillTag) keeping old ids + stale cleanup;
+vocabulary upserts by (term, tier) w/ dup guard (28 terms reassigned topically, 6 added);
+clarifications now delete+recreate (old create-once guard never propagated edits);
+connections rebuilt from defs; demo `remediateBenchmark` passes readiness before failing
+mastery (the server gate applies to seeded actors).
+**Post-realignment bank status:** 1.1–1.6 + 1.8 complete (30 APPROVED each), 1.7 at 48;
+**1.10 at 12, 1.9/1.11 empty — backlog.** Unit 1 = official 1.1–1.6, Unit 2 = 1.7–1.11,
+sequenceOrder = numeric. Verified in-browser: mission map realigned (Alex's old progress
+intact on renamed rows), interim 1.1 mission plays, teacher dashboard attributes
+Enlightenment misses to 1.4, benchmark list shows official titles. NOT committed —
+awaiting owner review.
+
+---
+
 **EXPLAINER HOVERS — PHASE 1 (STUDENT UI) + PHASE 2 (TEACHER UI) (2026-07-16) — Tier 1
 `tsc` GREEN + Tier 2 jest GREEN (1193/1193, 128 suites — unchanged, styling-only) +
 in-browser verification on both roles.**
@@ -220,6 +312,53 @@ follow-up sessions, one role at a time); horizontal viewport-edge collision (onl
 flip was built — a StepIndicator step near the far right of its scrollable row can render
 its popover partially off-screen; same limitation `GlossaryPopover` already has). NOT
 committed — awaiting owner review.
+
+---
+
+**STRATEGY TRACK — REAL, TRACKABLE, TEACHER-CONFIGURABLE (2026-07-15) — Tier 1 `tsc`
+GREEN + Tier 2 jest GREEN (1143/1143, 125 suites, +12 tests/+1 suite) + full in-browser
+verification.** Owner: the Strategist Track let students click through strategies without
+doing anything, untracked. Now the 7 missions are **embedded + tracked** (ADR 0014). Owner
+chose (via AskUserQuestion): a "use" = **one correct server-graded apply-it round**; a
+**soft nudge** (no hard progression gate — reconsidered from an initial hard-gate pick);
+**one global required-count + per-student overrides**; teacher visibility on **dashboard +
+student profile**. What shipped:
+(1) **Schema** (`20260715120000_strategy_usage_tracking`): `StrategyTrackProgress.useCount`,
+`Class.strategyUsesRequired` (0=off), new `StudentStrategyOverride(studentId, missionCode,
+requiredUses?, waived)`.
+(2) **Domain** (`src/lib/strategy-track/index.ts` rewrite): each mission carries 1–2 authored
+apply-it `StrategyCheck`s (correct answer **server-only**); `getStrategyMissionForStudent`
+strips the key + shuffles options via `seededShuffle`; `submitStrategyRound` grades
+server-side (all-correct round → atomic `useCount++`, sets `completedAt` on first use);
+`resolveStrategyRequirements` (waive→0 else `requiredUses ?? classGlobal`, first-ACTIVE-class
+global); `getStrategyProgress` returns per-mission useCount/required/met + totalOwed;
+`setStrategyOverride` (roster IDOR guard + audit `STRATEGY_REQUIREMENT_OVERRIDDEN`, mirrors
+`applyTeacherOverride`). `completeStrategyMission` deleted.
+(3) **API**: `/api/strategy/[code]/complete` → `.../attempt` (Zod round, grades, non-fatally
+calls `evaluateAndAwardBadges` — fixes the latent bug where strategy badges only awarded
+retroactively); richer `/api/strategy/progress`; `strategyUsesRequired` added to class
+settings Zod+select+audit; new `POST /api/teacher/students/[id]/strategy-override`.
+(4) **Analytics/VM**: `getStrategyCompletionStatus` (class-analytics, roster-scoped
+uses/owed); `StudentProfileVM.strategyTrack`.
+(5) **Student UI**: `StrategyTrackList` rewritten to interactive rounds (question→options→
+server feedback, uses counter, "N to go" chip) + owed nudge banner; page header shows
+mastered/owed.
+(6) **Teacher UI**: `strategyUsesRequired` field on `RcClassSettingsForm`;
+`StrategyCompletionTable` on the dashboard; `StrategyOverridePanel` (per-strategy req/waive)
+on the student profile.
+**Content note:** apply-it checks are authored in-code (scaffolding, like lesson checks per
+ADR 0013 — out of the tagging pipeline) but graded server-side (rule #1); keys never leak
+(rule #2, verified live `answerKeyLeaks:false`).
+**Verification:** `tsc` 0 errors; jest **1143/1143 (125 suites)** with dev server STOPPED;
+browser walk — teacher set global=3 (200), student page showed "0 of 7 mastered — 21 to go"
++ owed nudge + interactive round; correct round via the live endpoint → 200/useCount 1/
+completedAt set/owed 21→20, wrong round → no increment, key doesn't leak; dashboard table
+showed Alex 1 use/owed 20; override IDOR probes **roster 200 / out-of-roster 403**; profile
+panel reflected waive + count-5 override + the recorded use. **All probe rows cleaned**
+(strategyTrackProgress/overrides/strategy-badges 0, requirement reset to 0). **Deferred
+(backlog):** crediting a "use" during live assessments (needs question→strategy tagging);
+per-class strategy target picker for multi-class students; a student-dashboard nudge widget.
+NOT committed (awaiting owner review).
 
 ---
 
@@ -704,7 +843,94 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
-_(Update this at the end of every session.)_
+
+**Session of 2026-07-16 (Teacher lesson walkthrough — resumed rich-media session):** Owner
+asked for fast lesson previews from the teacher dashboard: move through a whole lesson
+quickly, see every element, never answer a question. (Session resumed after the standards
+realignment landed mid-stream — reoriented first: my ADR 0015 media layer was untouched;
+the media lessons now live at official codes 1.3–1.7 + 1.10 via `LessonSeedDef.idKey`,
+interim 1.1/1.2 are media-exempt.) Owner chose via AskUserQuestion: BOTH modes (flat manage
+page + step-by-step walkthrough) + auto-reveal everything. Built: optional preview props on
+the student mission components (revealAll/ungated/onStepClick — all default-off, MissionFlow
+untouched), read-only `getAssessmentPreviewsForBenchmark` + `AssessmentPreviewCard` (answer
+keys for teachers, zero attempt rows), `MissionWalkthrough` + `/teacher/lessons/[code]/
+walkthrough`, dashboard `LessonPreviewLinks` chip row, flat-page auto-reveal + cross-links.
+See Current Build Phase for full inventory + verification (tsc 0; jest 1313/130 suites;
+browser-verified ungated nav, revealed keys, both mastery forms, student no-leak +
+redirect probes; 0 attempts created). **Env notes:** browser-pane screenshots worked again
+this session (nav → screenshot immediately); jest still needs `pkill next-server` in the
+same command. NOT committed — awaiting owner review alongside the other three uncommitted
+work streams (0014 strategy, 0015 media, 0017 realignment). Commit:
+`feat(phase-9): teacher lesson walkthrough — ungated student-eye preview (ADR 0015)`.
+
+**Session of 2026-07-16 (Claude-for-Education tools assessment → standards realignment,
+ADR 0017):** Owner asked how the new Claude for Education tools could improve the
+platform. Assessment: the Learning Commons Knowledge Graph MCP connector has the
+authoritative Florida SS.7.CG statements (its math-only tools and the IM/OpenSciEd
+curriculum library don't apply to civics); the k12 lesson-planning/differentiation skills
+fit future content waves; ASSISTments isn't a fit; Canva was OAuth-connected mid-session
+but its tools need a fresh session to surface — **Canva utilization plan (EOC-style
+stimulus visuals into `public/stimuli/`, lesson media for Units 2–7) is TABLED until the
+concurrent media agent's changes land** (plan preserved in the session plan file +
+backlog); Snorkl/TeachFX would send student data to third parties — rule #9, do not
+connect. The KG cross-check then caught the headline: **seeded strand-1 benchmarks carried
+pre-2021 SS.7.C content under SS.7.CG codes** — fixed this session as the standards
+realignment (see Current Build Phase + ADR 0017 for the full inventory). Owner decisions
+via AskUserQuestion: item-level split of the old-1.6 bank; author full interim 1.1/1.2
+content now (⚠ flagged for a later FULL content build); regenerate the demo classroom.
+**Verification:** `tsc` 0 errors; jest **1309/1311 + 2 intentional skips (129 suites)**
+twice with the dev server stopped; `npm run db:seed` on the live DB (9 renames, idempotent
+×2 — second run no-op); `npm run db:seed:demo` regenerated; browser walk both roles (see
+Current Build Phase). **Bugs found & fixed in passing:** legacy `seedSampleQuestions`
+update-path never rewrote `benchmarkId` (def-level moves silently ignored on re-seed);
+lesson seeder had no id/content separation (first seed run shuffled lesson content across
+row ids — fixed with `idKey`, rows reconverged on re-seed, one orphan row deleted); demo
+`remediateBenchmark` never passed readiness (blocked by the July-14 server gate);
+clarification create-once guard never propagated edits. **Env notes:** the media-agent
+session's uncommitted work shares this tree (`seed/lessons/unit1.ts`,
+`lesson-bank-shape.test.ts` — my edits build on their uncommitted base, so those two files
+CANNOT be committed as my-hunks-only; see commit note); sequential perl/python
+substitutions on permuted codes cascade — use single-pass maps or line-number edits;
+6 legacy 0-step NEEDS_REVIEW placeholder lessons (pre-ADR-0013 cuid rows) still ride their
+renamed rows with stale titles (pre-existing approval-queue backlog item). NOT committed —
+awaiting owner review. Commit: `fix(phase-1/15): realign benchmarks to official SS.7.CG
+standards (ADR 0017) + interim 1.1/1.2 content`.
+**Deferred backlog (ADR 0017):** FULL content build for official 1.1 + 1.2 (owner-flagged
+— replace interim blocks: richer banks, media pass per ADR 0015, stimuli); 1.10 top-up to
+30 (currently 12); 1.9 + 1.11 banks; strand-2/3 content waves (Units 3–7) authored against
+`seed/official_standards.ts`; Canva track (stimulus visuals + lesson media) once the media
+agent lands; trim the convention-heavy front half of the 1.10 lesson; legacy placeholder
+lesson cleanup.
+
+**Session of 2026-07-16 (Rich media in every lesson — ADR 0015):** Owner: content delivery
+was all flat text; add diagrams, infographics, images, and VIDEO to every lesson for
+11–13-year-olds with varied learning styles, teacher-toggleable in/out of lessons
+(auto-approve the seed, teacher keeps control). Plan mode: 2 Explore agents (media/asset
+audit — repo had ZERO images/video/upload infra, empty `public/`, dormant VIDEO enum +
+`Stimulus.mediaUrl`; timeline JSON = the proven structured-visual pattern) + 1 Plan agent;
+owner decisions via AskUserQuestion (click-to-load YouTube facade / SVG + PD photos with an
+itemized approved download list / global AND per-class toggles). Built the full stack — see
+Current Build Phase: migration (3 enum values, `LessonStep.enabled`,
+`ClassLessonStepVisibility` w/ cascade), 4 zod media contracts w/ mandatory text
+equivalents, 4 renderers + ReadAloudButton extraction + 7-scene SVG illustration registry,
+32 authored media steps across the 6 Unit-1 lessons (verified YouTube IDs; 12 attributed PD
+photos), teacher preview/toggle UI + roster-guarded API + audit logging, server-side student
+filtering, ADR 0015, guard-test extension, +31 tests. **Verification:** `tsc` 0; jest
+1193/1193 stable (dev server stopped); seed idempotent ×2; live teacher/student browser walk
+incl. zero-external-requests-until-play network proof, per-class hide/inherit round-trip,
+403/422 probes, mechanical high-contrast check; probe rows cleaned. **Bugs fixed in
+passing:** CheckQuestion `Math.random()` shuffle seed (SSR hydration mismatch, latent);
+positional-step-id resume-pointer shift on re-seed (seeder now nulls affected pointers).
+**Env notes:** a CONCURRENT session (explainer hovers) worked this same tree all day — its
+auto-restarting dev server caused wildly flapping full-suite failures (0→43 across runs;
+fast ~15s runs = contention) until killed immediately before each run, and one
+contention-killed run left an orphan `[phase9c-approve]` question that broke seed.test
+deterministically (deleted). Browser-pane screenshots went black mid-session and stayed
+black (navigate+wait didn't recover it this time) — verified via DOM/network/computed-style
+instead. Wikimedia `Special:FilePath` intermittently 429s (2198-byte HTML masquerading as
+.jpg) — retry with UA + spacing, then `file`-check every download. NOT committed — awaiting
+owner review. Commit: `feat(phase-8/9/15): rich media lessons — media step types,
+click-to-load video, PD images, teacher visibility controls (ADR 0015)`.
 
 **Session of 2026-07-16 (Explainer hovers — Phase 2, teacher UI, continued same session):**
 After committing Phase 1 (student UI, `b00b5d1`), owner said "commit this then start the
@@ -733,6 +959,30 @@ inventory and the mid-session hit-testing bug found and fixed during browser ver
 (two-span trigger → merged into one span). Committed as
 `feat(phase-8): explainer hovers for student UI` (`b00b5d1`).
 
+**Session of 2026-07-15 (Strategy Track — real, trackable, teacher-configurable):** Owner:
+in the Strategy section, students click through strategies without completing them; make them
+embedded + trackable so teachers can see and set how many students must complete. Explored
+(2 Explore agents) → found the track was a click-through checklist (empty-POST "Got it"
+button, zero teacher visibility, no requirement). Clarified scope via two AskUserQuestion
+rounds: usage-count model (one correct apply-it round = one use), soft nudge + teacher
+override (NOT a hard gate — owner reconsidered), one global count + per-student overrides,
+dashboard + profile visibility. Wrote the plan, got approval, built it all — see Current
+Build Phase for the full inventory (schema+migration, domain rewrite with server-graded
+apply-it content, attempt/override/settings APIs, interactive student UI + owed nudge,
+teacher settings field + dashboard table + profile override panel, badge-hook fix, ADR 0014,
+2 test suites). **Verification:** `tsc` 0 errors; jest 1143/1143 (125 suites, +12/+1) with
+the dev server stopped; browser walk as teacher (set global=3, dashboard table, IDOR probes
+roster-200/outsider-403, profile override panel) and as the demo student Alex (owed nudge
+21→20, live correct round increments useCount + sets completedAt, wrong round no-op, answer
+key doesn't leak). **All verification probe rows cleaned** from the demo DB (progress/
+overrides/strategy-badges 0, class requirement reset to 0). **Env notes:** Browser-pane
+`scroll` timed out repeatedly and screenshots intermittently went black on the strategy page
+— drove/verified the round via the page's own `fetch` (javascript_tool, authenticated
+session) which is a reliable end-to-end path; `coordinate` clicks are in the reported
+800×450 screenshot space (a 1600-wide coord silently no-ops); scratchpad `.mjs` can't resolve
+`@prisma/client` (run cleanup scripts from the project dir). NOT committed — awaiting owner
+review. Commit message when ready: `feat(phase-8/9): strategy track — usage tracking,
+requirements, teacher visibility`.
 
 **Session of 2026-07-15 (Teacher-workflow repair — antagonistic review + fixes):** Owner
 asked for the same antagonistic review on the teacher side. Static pass over every teacher

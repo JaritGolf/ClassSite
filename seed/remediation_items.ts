@@ -47,7 +47,16 @@ export async function seedRemediationItems(prisma: PrismaClient): Promise<void> 
   let authored = 0
   let placeholders = 0
   for (const { benchmarkId, code, skillTag } of pairs.values()) {
-    const id = `remitem-${code.replace(/\./g, '')}-${skillTag}`
+    // Reconcile by (benchmarkId, skillTag), NOT by a freshly-derived id: the
+    // ADR 0017 realignment renamed benchmark codes in place, so an id derived
+    // from the CURRENT code would mint a duplicate row and orphan the old one
+    // (with its StudentRemediation FKs). An existing pair keeps its row and
+    // id; only genuinely new pairs get a fresh deterministic id.
+    const existing = await prisma.remediationItem.findFirst({
+      where: { benchmarkId, skillTag },
+      select: { id: true },
+    })
+    const id = existing?.id ?? `remitem-${code.replace(/\./g, '')}-${skillTag}`
     const def = REMEDIATION_CONTENT.get(remediationKey(code, skillTag))
 
     if (def) {
@@ -85,7 +94,32 @@ export async function seedRemediationItems(prisma: PrismaClient): Promise<void> 
     }
   }
 
+  // Clean up items whose (benchmarkId, skillTag) no longer derives from any
+  // question (e.g. the old-1.6 convention item left on the repurposed 1.1 row
+  // after the ADR 0017 question split). Only rows with no StudentRemediation
+  // children are removed — anything a student has touched is preserved.
+  const allItems = await prisma.remediationItem.findMany({
+    select: { id: true, benchmarkId: true, skillTag: true },
+  })
+  const liveKeys = new Set([...pairs.values()].map((p) => `${p.benchmarkId}::${p.skillTag}`))
+  const staleIds = allItems
+    .filter((i) => !liveKeys.has(`${i.benchmarkId}::${i.skillTag}`))
+    .map((i) => i.id)
+  let staleRemoved = 0
+  if (staleIds.length > 0) {
+    const referenced = await prisma.studentRemediation.findMany({
+      where: { remediationItemId: { in: staleIds } },
+      select: { remediationItemId: true },
+    })
+    const keep = new Set(referenced.map((r) => r.remediationItemId))
+    const deletable = staleIds.filter((id) => !keep.has(id))
+    if (deletable.length > 0) {
+      const res = await prisma.remediationItem.deleteMany({ where: { id: { in: deletable } } })
+      staleRemoved = res.count
+    }
+  }
+
   console.log(
-    `  ✓ Remediation items seeded (${authored} authored ${CONTENT_APPROVAL.approvalStatus}, ${placeholders} placeholder NEEDS_REVIEW)`
+    `  ✓ Remediation items seeded (${authored} authored ${CONTENT_APPROVAL.approvalStatus}, ${placeholders} placeholder NEEDS_REVIEW${staleRemoved > 0 ? `, ${staleRemoved} stale removed` : ''})`
   )
 }

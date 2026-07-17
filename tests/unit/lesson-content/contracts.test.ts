@@ -12,6 +12,10 @@ import {
   type InteractiveCheckContent,
   type WorkedExampleContent,
   type SourceAnalysisContent,
+  type VideoContent,
+  type ImageContent,
+  type DiagramContent,
+  type InfographicContent,
 } from '@/lib/lesson-content'
 
 const VALID_CHECK: InteractiveCheckContent = {
@@ -55,6 +59,45 @@ const VALID_TIMELINE = {
     { marker: '1215', label: 'Magna Carta', detail: 'Even the king obeys the law.' },
     { marker: '1689', label: 'English Bill of Rights' },
     { marker: '1776', label: 'Declaration of Independence' },
+  ],
+}
+
+const VALID_VIDEO: VideoContent = {
+  youtubeId: 'dQw4w9WgXcQ',
+  title: 'The Social Contract',
+  description: 'How Enlightenment thinkers explained where government power comes from.',
+  durationLabel: '6:12',
+}
+
+const VALID_IMAGE: ImageContent = {
+  asset: '/media/unit1/locke-portrait.jpg',
+  alt: 'Painted portrait of John Locke',
+  caption: 'John Locke, whose ideas shaped the Declaration.',
+  credit: 'Wikimedia Commons',
+  license: 'Public domain',
+  longDescription:
+    'A 17th-century oil portrait of John Locke wearing a dark coat, facing the viewer.',
+  width: 800,
+  height: 1000,
+}
+
+const VALID_DIAGRAM: DiagramContent = {
+  variant: 'flow',
+  title: 'How a colony protested',
+  summary: 'First Britain taxes the colonies, then colonists protest, then Britain cracks down.',
+  nodes: [
+    { label: 'Britain taxes', detail: 'Stamp Act 1765' },
+    { label: 'Colonists protest' },
+    { label: 'Britain cracks down' },
+  ],
+}
+
+const VALID_INFOGRAPHIC: InfographicContent = {
+  title: 'Declaration by the Numbers',
+  summary: 'Fifty-six delegates signed the Declaration of Independence on July 4, 1776.',
+  blocks: [
+    { type: 'big-number', value: '56', label: 'signers' },
+    { type: 'fact', icon: 'flag', text: 'Adopted July 4, 1776' },
   ],
 }
 
@@ -135,6 +178,75 @@ describe('parseStepContent', () => {
       expect(() => parseStepContent('SOURCE_ANALYSIS', content)).not.toThrow()
       expect(parseStepContent('SOURCE_ANALYSIS', content).kind).toBe('text')
     }
+  })
+
+  // ── Rich media steps (ADR 0015) ────────────────────────────────────────────
+
+  it('parses a valid VIDEO', () => {
+    const parsed = parseStepContent('VIDEO', JSON.stringify(VALID_VIDEO))
+    expect(parsed.kind).toBe('video')
+    if (parsed.kind === 'video') {
+      expect(parsed.youtubeId).toBe('dQw4w9WgXcQ')
+      expect(parsed.description.length).toBeGreaterThanOrEqual(20)
+    }
+  })
+
+  it('rejects a VIDEO whose id is a URL (only 11-char ids are storable)', () => {
+    const bad = { ...VALID_VIDEO, youtubeId: 'https://www.example.com/watch?v=dQw4w9WgXcQ' }
+    expect(parseStepContent('VIDEO', JSON.stringify(bad)).kind).toBe('text')
+  })
+
+  it('parses a valid IMAGE with a /media/ photo asset', () => {
+    const parsed = parseStepContent('IMAGE', JSON.stringify(VALID_IMAGE))
+    expect(parsed.kind).toBe('image')
+  })
+
+  it('parses a valid IMAGE with an svg: registry asset (no dimensions needed)', () => {
+    const svg = { ...VALID_IMAGE, asset: 'svg:crown-vs-law', width: undefined, height: undefined }
+    expect(parseStepContent('IMAGE', JSON.stringify(svg)).kind).toBe('image')
+  })
+
+  it('rejects IMAGE assets that are external URLs', () => {
+    const bad = { ...VALID_IMAGE, asset: 'http://example.com/pic.jpg' }
+    expect(parseStepContent('IMAGE', JSON.stringify(bad)).kind).toBe('text')
+  })
+
+  it('rejects a /media/ photo without intrinsic dimensions', () => {
+    const bad = { ...VALID_IMAGE, width: undefined, height: undefined }
+    expect(parseStepContent('IMAGE', JSON.stringify(bad)).kind).toBe('text')
+  })
+
+  it('parses each DIAGRAM variant and discriminates on `variant`', () => {
+    expect(parseStepContent('DIAGRAM', JSON.stringify(VALID_DIAGRAM)).kind).toBe('diagram')
+    const venn: DiagramContent = {
+      variant: 'venn',
+      title: 'Two plans',
+      summary: 'The Virginia and New Jersey plans disagreed on representation but shared goals.',
+      left: { label: 'Virginia Plan', items: ['By population'] },
+      right: { label: 'New Jersey Plan', items: ['Equal votes'] },
+      shared: { label: 'Both', items: ['Stronger national government'] },
+    }
+    const parsed = parseStepContent('DIAGRAM', JSON.stringify(venn))
+    expect(parsed.kind).toBe('diagram')
+    if (parsed.kind === 'diagram') expect(parsed.diagram.variant).toBe('venn')
+  })
+
+  it('rejects a DIAGRAM missing its summary (text equivalent is mandatory)', () => {
+    const { summary: _s, ...bad } = VALID_DIAGRAM as Extract<DiagramContent, { variant: 'flow' }>
+    expect(parseStepContent('DIAGRAM', JSON.stringify(bad)).kind).toBe('text')
+  })
+
+  it('parses a valid INFOGRAPHIC and rejects one with a single block', () => {
+    expect(parseStepContent('INFOGRAPHIC', JSON.stringify(VALID_INFOGRAPHIC)).kind).toBe(
+      'infographic'
+    )
+    const bad = { ...VALID_INFOGRAPHIC, blocks: VALID_INFOGRAPHIC.blocks.slice(0, 1) }
+    expect(parseStepContent('INFOGRAPHIC', JSON.stringify(bad)).kind).toBe('text')
+  })
+
+  it('media JSON on the wrong step type stays text', () => {
+    expect(parseStepContent('NOTE', JSON.stringify(VALID_VIDEO)).kind).toBe('text')
+    expect(parseStepContent('VIDEO', JSON.stringify(VALID_IMAGE)).kind).toBe('text')
   })
 })
 

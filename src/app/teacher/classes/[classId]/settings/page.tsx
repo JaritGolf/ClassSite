@@ -30,6 +30,7 @@ export default async function ClassSettingsPage({
       rcReviewWindow: true,
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
+      strategyUsesRequired: true,
     },
   })
 
@@ -55,6 +56,7 @@ export default async function ClassSettingsPage({
             | 'after_class_window',
           rcStaminaOverride: klass.rcStaminaOverride,
           featureEocReviewEnabled: klass.featureEocReviewEnabled,
+          strategyUsesRequired: klass.strategyUsesRequired,
         }}
       />
 

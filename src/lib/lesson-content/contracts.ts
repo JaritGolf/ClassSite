@@ -87,6 +87,132 @@ export const SourceAnalysisSchema = z.object({
 })
 export type SourceAnalysisContent = z.infer<typeof SourceAnalysisSchema>
 
+// ── Rich media steps (ADR 0015) ──────────────────────────────────────────────
+// Dedicated step types (VIDEO/IMAGE/DIAGRAM/INFOGRAPHIC) carry structured JSON
+// in `content`, like WORKED_EXAMPLE. Every schema REQUIRES a text equivalent
+// (description/alt+longDescription/summary) — the read-aloud target and the
+// guaranteed accessible content when the visual can't be perceived.
+
+/**
+ * Click-to-load YouTube facade (ADR 0015 rule-#9 compromise): only the
+ * 11-char video id is stored — never a URL — and nothing is requested from
+ * Google until the student presses play.
+ */
+export const VideoSchema = z.object({
+  youtubeId: z.string().regex(/^[A-Za-z0-9_-]{11}$/, 'must be an 11-char YouTube video id'),
+  title: z.string().min(1),
+  /** Always-visible text alternative: what the video covers (read-aloud target). */
+  description: z.string().min(20),
+  durationLabel: z.string().max(12).optional(),
+  /** Motivation line shown on the facade ("Watch for how the colonists…"). */
+  whyWatch: z.string().optional(),
+  startSeconds: z.number().int().nonnegative().optional(),
+})
+export type VideoContent = z.infer<typeof VideoSchema>
+
+/**
+ * An illustration or public-domain photograph. `asset` is either
+ * `svg:<registry-key>` (authored SVG scene, src/components/ui/illustrations)
+ * or a self-hosted `/media/...` path under public/. Photos require intrinsic
+ * dimensions (layout-shift guard) and carry credit/license for attribution.
+ */
+export const ImageSchema = z
+  .object({
+    asset: z
+      .string()
+      .regex(/^(svg:[a-z0-9-]+|\/media\/[a-z0-9][a-z0-9/._-]*)$/i, 'svg:<key> or /media/<path>'),
+    alt: z.string().min(1).max(300),
+    caption: z.string().min(1),
+    credit: z.string().min(1),
+    license: z.string().min(1),
+    /** Rich description behind a "Describe this image" disclosure (read-aloud). */
+    longDescription: z.string().min(40),
+    width: z.number().int().positive().optional(),
+    height: z.number().int().positive().optional(),
+  })
+  .refine((i) => !i.asset.startsWith('/media/') || (i.width && i.height), {
+    message: 'photo assets require intrinsic width/height',
+  })
+export type ImageContent = z.infer<typeof ImageSchema>
+
+const DiagramNodeSchema = z.object({
+  label: z.string().min(1).max(60),
+  detail: z.string().optional(),
+})
+const diagramBase = {
+  title: z.string().min(1),
+  /** Full-text equivalent of the diagram — always rendered, read-aloud target. */
+  summary: z.string().min(40),
+}
+
+/** Semantic-HTML concept diagrams: process flow, repeating cycle, venn, 2-column comparison. */
+export const DiagramSchema = z.discriminatedUnion('variant', [
+  z.object({
+    variant: z.literal('flow'),
+    ...diagramBase,
+    nodes: z.array(DiagramNodeSchema).min(2).max(6),
+  }),
+  z.object({
+    variant: z.literal('cycle'),
+    ...diagramBase,
+    nodes: z.array(DiagramNodeSchema).min(3).max(6),
+  }),
+  z.object({
+    variant: z.literal('venn'),
+    ...diagramBase,
+    left: z.object({ label: z.string().min(1), items: z.array(z.string().min(1)).min(1).max(5) }),
+    right: z.object({ label: z.string().min(1), items: z.array(z.string().min(1)).min(1).max(5) }),
+    shared: z.object({ label: z.string().min(1), items: z.array(z.string().min(1)).min(1).max(5) }),
+  }),
+  z.object({
+    variant: z.literal('comparison'),
+    ...diagramBase,
+    columns: z
+      .array(
+        z.object({
+          heading: z.string().min(1),
+          items: z.array(z.string().min(1)).min(2).max(6),
+        })
+      )
+      .length(2),
+  }),
+])
+export type DiagramContent = z.infer<typeof DiagramSchema>
+
+/** Stat-and-fact panel: big numbers, icon facts, quotes. */
+export const InfographicSchema = z.object({
+  title: z.string().min(1),
+  intro: z.string().optional(),
+  /** Full-text equivalent of the infographic — always rendered, read-aloud target. */
+  summary: z.string().min(40),
+  blocks: z
+    .array(
+      z.discriminatedUnion('type', [
+        z.object({
+          type: z.literal('big-number'),
+          value: z.string().min(1).max(12),
+          label: z.string().min(1),
+          detail: z.string().optional(),
+        }),
+        z.object({
+          type: z.literal('fact'),
+          /** TrackIconName; renderer falls back to 'star' for unknown names. */
+          icon: z.string().min(1),
+          text: z.string().min(1),
+          detail: z.string().optional(),
+        }),
+        z.object({
+          type: z.literal('quote'),
+          text: z.string().min(1),
+          attribution: z.string().min(1),
+        }),
+      ])
+    )
+    .min(2)
+    .max(8),
+})
+export type InfographicContent = z.infer<typeof InfographicSchema>
+
 // ── Remediation reteach content (spec §14: examples + non-examples) ──────────
 
 export const RemediationContentSchema = z
@@ -119,6 +245,10 @@ export type ParsedStepContent =
   | ({ kind: 'interactive-check' } & InteractiveCheckContent)
   | ({ kind: 'source-analysis' } & SourceAnalysisContent)
   | ({ kind: 'timeline' } & Omit<TimelineContent, 'kind'>)
+  | ({ kind: 'video' } & VideoContent)
+  | ({ kind: 'image' } & ImageContent)
+  | { kind: 'diagram'; diagram: DiagramContent }
+  | { kind: 'infographic'; infographic: InfographicContent }
 
 function tryJson(content: string): unknown | undefined {
   try {
@@ -151,6 +281,22 @@ export function parseStepContent(stepType: string, content: string): ParsedStepC
     if (stepType === 'SOURCE_ANALYSIS') {
       const r = SourceAnalysisSchema.safeParse(json)
       if (r.success) return { kind: 'source-analysis', ...r.data }
+    }
+    if (stepType === 'VIDEO') {
+      const r = VideoSchema.safeParse(json)
+      if (r.success) return { kind: 'video', ...r.data }
+    }
+    if (stepType === 'IMAGE') {
+      const r = ImageSchema.safeParse(json)
+      if (r.success) return { kind: 'image', ...r.data }
+    }
+    if (stepType === 'DIAGRAM') {
+      const r = DiagramSchema.safeParse(json)
+      if (r.success) return { kind: 'diagram', diagram: r.data }
+    }
+    if (stepType === 'INFOGRAPHIC') {
+      const r = InfographicSchema.safeParse(json)
+      if (r.success) return { kind: 'infographic', infographic: r.data }
     }
     if (stepType === 'NOTE') {
       const r = TimelineSchema.safeParse(json)

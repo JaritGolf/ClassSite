@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { href: '/teacher/decay', label: 'Decay' },
   { href: '/teacher/calibration', label: 'Calibration' },
   { href: '/teacher/questions', label: 'Question Bank' },
+  { href: '/teacher/lessons', label: 'Lessons' },
   { href: '/teacher/content', label: 'Content' },
   { href: '/teacher/interventions', label: 'Interventions' },
   { href: '/teacher/reports', label: 'Reports' },

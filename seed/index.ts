@@ -21,6 +21,7 @@ import { seedTermTranslations } from './term_translations'
 import { seedLessons } from './lessons'
 import { seedSampleQuestions } from './sample_questions_unit_1'
 import { seedUnit1Backfill } from './questions/unit1_backfill'
+import { seedUnit1Interim } from './questions/unit1_interim'
 import { seedUnit2Questions } from './questions/unit2'
 import { seedRemediationItems } from './remediation_items'
 import { seedStimuliUnit1 } from './stimuli_unit1'
@@ -55,6 +56,9 @@ async function main() {
 
   console.log('7/12 Unit 1 backfill (→ 30/benchmark, APPROVED per ADR 0013)')
   await seedUnit1Backfill(prisma)
+
+  console.log('7b/12 Unit 1 interim banks (official 1.1/1.2 — ADR 0017)')
+  await seedUnit1Interim(prisma)
 
   console.log('8/12 Unit 2 question bank (Phase 15, Tier C / NEEDS_REVIEW)')
   await seedUnit2Questions(prisma)

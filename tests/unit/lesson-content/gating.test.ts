@@ -41,10 +41,13 @@ describe('step filters', () => {
     step({ id: 'd', stepType: 'INTERACTIVE_CHECK', sequenceOrder: 4, content: CHECK_JSON }),
     step({ id: 'e', stepType: 'SOURCE_ANALYSIS', sequenceOrder: 5 }),
     step({ id: 'f', stepType: 'VIDEO', sequenceOrder: 6 }),
+    step({ id: 'g', stepType: 'IMAGE', sequenceOrder: 7 }),
+    step({ id: 'h', stepType: 'DIAGRAM', sequenceOrder: 8 }),
+    step({ id: 'i', stepType: 'INFOGRAPHIC', sequenceOrder: 9 }),
   ]
 
-  it('trainingStepsOf keeps NOTE/WORKED_EXAMPLE/INTERACTIVE_CHECK/VIDEO in order', () => {
-    expect(trainingStepsOf(steps).map((s) => s.id)).toEqual(['a', 'c', 'd', 'f'])
+  it('trainingStepsOf keeps NOTE/WORKED_EXAMPLE/INTERACTIVE_CHECK + media types in order', () => {
+    expect(trainingStepsOf(steps).map((s) => s.id)).toEqual(['a', 'c', 'd', 'f', 'g', 'h', 'i'])
   })
 
   it('vocabStepsOf keeps only VOCABULARY', () => {
@@ -79,5 +82,13 @@ describe('stepNeedsAttempt / canAdvance', () => {
   it('notes and worked examples never gate', () => {
     expect(canAdvance(step({ stepType: 'NOTE' }), new Set())).toBe(true)
     expect(canAdvance(step({ stepType: 'WORKED_EXAMPLE' }), new Set())).toBe(true)
+  })
+
+  it('media steps never gate, even when required', () => {
+    for (const stepType of ['VIDEO', 'IMAGE', 'DIAGRAM', 'INFOGRAPHIC']) {
+      const s = step({ stepType, required: true })
+      expect(stepNeedsAttempt(s)).toBe(false)
+      expect(canAdvance(s, new Set())).toBe(true)
+    }
   })
 })

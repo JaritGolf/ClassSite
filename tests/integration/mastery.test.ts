@@ -161,7 +161,7 @@ beforeAll(async () => {
   masteryAssessmentId = mastery.id
 
   // 4. Create RemediationItem fixtures for this benchmark
-  const skillTag = 'enlightenment-influence' // matches seed data
+  const skillTag = 'ancient-influences' // matches seed data (SS.7.CG.1.1 post-ADR-0017 realignment)
   const [riMisconceptionFix, riBasicReteach, riMiniLesson] = await Promise.all([
     prisma.remediationItem.create({
       data: {

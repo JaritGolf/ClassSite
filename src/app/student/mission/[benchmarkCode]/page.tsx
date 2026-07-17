@@ -3,6 +3,8 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getStudentAccommodations } from '@/lib/reading-load'
 import { resolveL1Language, getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
+import { resolveVisibleSteps } from '@/lib/lesson-content'
+import { getClassVisibilityMap } from '@/lib/lesson-media'
 import { MissionFlow } from '@/components/student/mission/MissionFlow'
 
 interface PageProps {
@@ -100,6 +102,28 @@ export default async function MissionPage({ params }: PageProps) {
   }
 
   const lesson = benchmark.lessons[0]
+
+  // Teacher media visibility (ADR 0015): filter steps server-side — per-class
+  // override wins, else the step's global enabled flag. First ACTIVE class,
+  // same convention as strategy-track requirements.
+  let visibleSteps = lesson?.steps ?? []
+  if (visibleSteps.length > 0) {
+    let classId: string | null = null
+    if (student) {
+      const enrollment = await prisma.classEnrollment.findFirst({
+        where: { studentId: student.id, status: 'ACTIVE', class: { active: true } },
+        orderBy: { enrolledAt: 'asc' },
+        select: { classId: true },
+      })
+      classId = enrollment?.classId ?? null
+    }
+    const overrides = await getClassVisibilityMap(
+      classId,
+      visibleSteps.map((s) => s.id)
+    )
+    visibleSteps = resolveVisibleSteps(visibleSteps, overrides)
+  }
+
   const idForType = (t: string) =>
     benchmark.assessments.find((a) => a.assessmentType === t)?.id ?? null
 
@@ -134,7 +158,7 @@ export default async function MissionPage({ params }: PageProps) {
     assessmentId: masteryAssessmentId,
     practiceAssessmentId: idForType('PRACTICE'),
     vocabCheckAssessmentId: idForType('VOCAB_CHECK'),
-    lessonSteps: lesson?.steps ?? [],
+    lessonSteps: visibleSteps,
     glossaryTerms,
     resumeStepId: progress?.currentStepId ?? null,
     derivedResumeStep,

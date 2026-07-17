@@ -18,7 +18,15 @@ export interface LessonStepLike {
 }
 
 /** Step types shown in the Guided Training walkthrough, in lesson order. */
-export const TRAINING_STEP_TYPES = ['VIDEO', 'NOTE', 'INTERACTIVE_CHECK', 'WORKED_EXAMPLE'] as const
+export const TRAINING_STEP_TYPES = [
+  'VIDEO',
+  'NOTE',
+  'INTERACTIVE_CHECK',
+  'WORKED_EXAMPLE',
+  'IMAGE',
+  'DIAGRAM',
+  'INFOGRAPHIC',
+] as const
 
 export function trainingStepsOf<T extends LessonStepLike>(steps: T[]): T[] {
   return steps.filter((s) => (TRAINING_STEP_TYPES as readonly string[]).includes(s.stepType))
