@@ -87,6 +87,23 @@ export async function seedLessonDefs(
       },
     })
 
+    // Lesson content editor guard (coarse, lesson-level): once an admin has
+    // structurally touched this lesson (added/removed/reordered a step via
+    // the editor), structureEditedAt is set and the seeder never creates,
+    // deletes, or renumbers any of its steps again on any future run — an
+    // admin-added step can't be mistaken for "dropped" and deleted, and a
+    // deliberately-removed step can't be resurrected by this def still
+    // listing it. This deliberately freezes the WHOLE lesson's step list,
+    // not just the changed step, mirroring how `enabled` is already
+    // permanently excluded from reseed today (simpler to reason about than
+    // per-step tombstones, at the cost of also freezing future unrelated
+    // fixes to this lesson).
+    const lessonRow = await prisma.lesson.findUniqueOrThrow({
+      where: { id: lessonId },
+      select: { structureEditedAt: true },
+    })
+    if (lessonRow.structureEditedAt) continue
+
     // Step ids are POSITIONAL (`lstep-<code>-<n>`), so inserting/removing a
     // step mid-lesson re-maps existing ids to different content. When the step
     // count changes, resume pointers into this lesson would silently aim at
@@ -101,11 +118,26 @@ export async function seedLessonDefs(
       })
     }
 
+    // Lesson content editor guard (fine-grained, per-step): a step an admin
+    // has hand-edited (contentEditedAt set) keeps its edited title/content/
+    // stepType forever — only its sequenceOrder/required still track the
+    // def, so OTHER, un-edited steps in the same lesson can still pick up a
+    // legitimate future seed-source fix.
+    const editedStepIds = new Set(
+      (
+        await prisma.lessonStep.findMany({
+          where: { lessonId, contentEditedAt: { not: null } },
+          select: { id: true },
+        })
+      ).map((s) => s.id)
+    )
+
     const keptIds: string[] = []
     for (let i = 0; i < def.steps.length; i++) {
       const s = def.steps[i]
       const stepId = `lstep-${codeKey(idKey)}-${String(i + 1).padStart(2, '0')}`
       keptIds.push(stepId)
+      const isEdited = editedStepIds.has(stepId)
       await prisma.lessonStep.upsert({
         where: { id: stepId },
         create: {
@@ -117,13 +149,15 @@ export async function seedLessonDefs(
           sequenceOrder: i + 1,
           required: s.required ?? true,
         },
-        update: {
-          stepType: s.stepType,
-          title: s.title,
-          content: s.content,
-          sequenceOrder: i + 1,
-          required: s.required ?? true,
-        },
+        update: isEdited
+          ? { sequenceOrder: i + 1, required: s.required ?? true }
+          : {
+              stepType: s.stepType,
+              title: s.title,
+              content: s.content,
+              sequenceOrder: i + 1,
+              required: s.required ?? true,
+            },
       })
     }
 
