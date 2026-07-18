@@ -12,6 +12,7 @@ export {
   editGlobalStepContent,
   setClassContentOverride,
   LessonEditorError,
+  LessonEditorInputError,
   LESSON_STEP_CONTENT_EDITED,
   type StepContentEditInput,
 } from './edit'

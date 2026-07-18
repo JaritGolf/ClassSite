@@ -15,6 +15,7 @@ import {
   editGlobalStepContent,
   setClassContentOverride,
   LessonEditorError,
+  LessonEditorInputError,
   LessonEditorValidationError,
 } from '@/lib/lesson-editor'
 import { YoutubeVerificationError } from '@/lib/lesson-editor/youtube'
@@ -254,6 +255,71 @@ describe('setClassContentOverride', () => {
         payload: { youtubeId: 'bad', title: '', description: 'short' },
       })
     ).rejects.toThrow(LessonEditorValidationError)
+  })
+})
+
+describe('setClassContentOverride — multiple classes at once', () => {
+  it('applies the same edit to every class named in the array', async () => {
+    await setClassContentOverride(teacherUserId, [classAId, classBId], noteStepId, {
+      stepType: 'NOTE',
+      payload: { text: 'Both classes see this.' },
+    })
+
+    const rowA = await prisma.classLessonStepVisibility.findUnique({
+      where: { classId_lessonStepId: { classId: classAId, lessonStepId: noteStepId } },
+    })
+    const rowB = await prisma.classLessonStepVisibility.findUnique({
+      where: { classId_lessonStepId: { classId: classBId, lessonStepId: noteStepId } },
+    })
+    expect(rowA?.overrideContent).toBe('Both classes see this.')
+    expect(rowB?.overrideContent).toBe('Both classes see this.')
+
+    const logs = await prisma.auditLog.findMany({
+      where: { actorUserId: teacherUserId, action: 'LESSON_STEP_CONTENT_EDITED', entityId: noteStepId },
+    })
+    expect(logs.filter((l) => (l.metadataJson as { classId?: string })?.classId === classAId)).not.toHaveLength(0)
+    expect(logs.filter((l) => (l.metadataJson as { classId?: string })?.classId === classBId)).not.toHaveLength(0)
+  })
+
+  it('rejects the whole batch (writes nothing) if any named class is not owned by the caller', async () => {
+    await setClassContentOverride(teacherUserId, classAId, noteStepId, { clear: true })
+    await setClassContentOverride(teacherUserId, classBId, noteStepId, { clear: true })
+
+    await expect(
+      setClassContentOverride(teacherUserId, [classAId, foreignClassId], noteStepId, {
+        stepType: 'NOTE',
+        payload: { text: 'Should never be written anywhere.' },
+      })
+    ).rejects.toThrow(RosterError)
+
+    const rowA = await prisma.classLessonStepVisibility.findUnique({
+      where: { classId_lessonStepId: { classId: classAId, lessonStepId: noteStepId } },
+    })
+    expect(rowA).toBeNull()
+  })
+
+  it('validates content exactly once for the whole batch — a malformed payload writes nothing', async () => {
+    await expect(
+      setClassContentOverride(teacherUserId, [classAId, classBId], videoStepId, {
+        stepType: 'VIDEO',
+        payload: { youtubeId: 'bad', title: '', description: 'short' },
+      })
+    ).rejects.toThrow(LessonEditorValidationError)
+
+    const rowA = await prisma.classLessonStepVisibility.findUnique({
+      where: { classId_lessonStepId: { classId: classAId, lessonStepId: videoStepId } },
+    })
+    const rowB = await prisma.classLessonStepVisibility.findUnique({
+      where: { classId_lessonStepId: { classId: classBId, lessonStepId: videoStepId } },
+    })
+    expect(rowA?.overrideContent ?? null).not.toBe('bad')
+    expect(rowB?.overrideContent ?? null).not.toBe('bad')
+  })
+
+  it('rejects an empty class list', async () => {
+    await expect(
+      setClassContentOverride(teacherUserId, [], noteStepId, { stepType: 'NOTE', payload: { text: 'x' } })
+    ).rejects.toThrow(LessonEditorInputError)
   })
 })
 

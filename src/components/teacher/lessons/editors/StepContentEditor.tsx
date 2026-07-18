@@ -253,6 +253,12 @@ function renderEditor(
   }
 }
 
+export interface StepContentClassOption {
+  id: string
+  name: string
+  period: string | null
+}
+
 export function StepContentEditor({
   stepId,
   stepType,
@@ -262,19 +268,26 @@ export function StepContentEditor({
   onSave,
   onDraftPreviewChange,
   saveLabel,
+  classOptions,
+  defaultCheckedClassIds,
 }: {
   stepId: string
   stepType: string
   initialTitle: string
   initialContent: string
   titleLabel: string
-  onSave: (input: { title?: string; payload: unknown }) => Promise<SaveResult>
+  onSave: (input: { title?: string; payload: unknown; classIds?: string[] }) => Promise<SaveResult>
   onDraftPreviewChange?: (content: string | null) => void
   saveLabel: string
+  /** When provided, replaces the plain save button with a checkbox per class
+   * so a teacher can apply this edit to several of their classes at once. */
+  classOptions?: StepContentClassOption[]
+  defaultCheckedClassIds?: string[]
 }) {
   const init = useMemo(() => initDraft(stepType, initialContent), [stepId, stepType, initialContent])
   const [draft, setDraft] = useState<DraftValue>(init.value)
   const [title, setTitle] = useState(initialTitle)
+  const [checkedClassIds, setCheckedClassIds] = useState<string[]>(defaultCheckedClassIds ?? [])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [serverFieldErrors, setServerFieldErrors] = useState<Record<string, string>>({})
@@ -286,13 +299,25 @@ export function StepContentEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [validation.serialized])
 
+  function toggleClass(classId: string) {
+    setCheckedClassIds((prev) =>
+      prev.includes(classId) ? prev.filter((id) => id !== classId) : [...prev, classId]
+    )
+  }
+
+  const noClassesSelected = !!classOptions && checkedClassIds.length === 0
+
   async function handleSave() {
-    if (!validation.valid) return
+    if (!validation.valid || noClassesSelected) return
     setSaving(true)
     setSaveError(null)
     setServerFieldErrors({})
     try {
-      const result = await onSave({ title, payload: toPayload(draft) })
+      const result = await onSave({
+        title,
+        payload: toPayload(draft),
+        classIds: classOptions ? checkedClassIds : undefined,
+      })
       if (!result.ok) {
         setSaveError(result.error ?? 'Something went wrong — try again.')
         setServerFieldErrors(result.fieldErrors ?? {})
@@ -304,6 +329,9 @@ export function StepContentEditor({
 
   const fieldErrors = { ...validation.fieldErrors, ...serverFieldErrors }
   const rootError = fieldErrors._root
+  const resolvedSaveLabel = classOptions
+    ? `Save for ${checkedClassIds.length} class${checkedClassIds.length === 1 ? '' : 'es'}`
+    : saveLabel
 
   return (
     <div className="space-y-4">
@@ -327,6 +355,30 @@ export function StepContentEditor({
 
       {renderEditor(draft, setDraft, fieldErrors, stepType)}
 
+      {classOptions && (
+        <fieldset className="rounded-md border border-gray-200 p-3">
+          <legend className="px-1 text-sm font-semibold text-gray-800">Apply to</legend>
+          <div className="space-y-1.5">
+            {classOptions.map((cls) => (
+              <label key={cls.id} className="flex items-center gap-2 text-sm text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={checkedClassIds.includes(cls.id)}
+                  onChange={() => toggleClass(cls.id)}
+                />
+                {cls.name}
+                {cls.period ? ` (P${cls.period})` : ''}
+              </label>
+            ))}
+          </div>
+          {noClassesSelected && (
+            <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">
+              Select at least one class.
+            </p>
+          )}
+        </fieldset>
+      )}
+
       {rootError && (
         <p role="alert" className="text-sm font-semibold text-rose-700">
           {rootError}
@@ -341,10 +393,10 @@ export function StepContentEditor({
       <button
         type="button"
         onClick={handleSave}
-        disabled={!validation.valid || saving}
+        disabled={!validation.valid || noClassesSelected || saving}
         className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
       >
-        {saving ? 'Saving…' : saveLabel}
+        {saving ? 'Saving…' : resolvedSaveLabel}
       </button>
     </div>
   )

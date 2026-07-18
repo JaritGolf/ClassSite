@@ -95,32 +95,56 @@ export async function editGlobalStepContent(
   })
 }
 
-/** Set (or clear) a class-scoped content override. Roster-guarded — the
- * caller must own `classId`. */
+export class LessonEditorInputError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'LessonEditorInputError'
+  }
+}
+
+/**
+ * Set (or clear) a class-scoped content override for one or more classes at
+ * once — a teacher can apply the same edit across several of their classes
+ * in a single save. Roster-guarded: EVERY class in `classIdOrIds` must be
+ * owned by the caller, checked before any write happens (so a request that
+ * names one foreign class fails atomically — it never partially applies to
+ * the classes the caller does own). Content is validated exactly ONCE
+ * regardless of how many classes are targeted (a single YouTube existence
+ * check, not one per class) and every class's write + audit log happens in
+ * one transaction.
+ */
 export async function setClassContentOverride(
   actorUserId: string,
-  classId: string,
+  classIdOrIds: string | string[],
   lessonStepId: string,
   input: StepContentEditInput | { clear: true }
 ): Promise<void> {
-  await assertClassOwnedByTeacher(actorUserId, classId)
+  const classIds = Array.isArray(classIdOrIds) ? classIdOrIds : [classIdOrIds]
+  if (classIds.length === 0) {
+    throw new LessonEditorInputError('At least one class must be selected')
+  }
+  for (const classId of classIds) {
+    await assertClassOwnedByTeacher(actorUserId, classId)
+  }
   const step = await getStepOrThrow(lessonStepId)
 
   if ('clear' in input) {
     await prisma.$transaction(async (tx) => {
-      await pruneOrUpdateOverrideRow(tx, classId, step.id, {
-        overrideTitle: null,
-        overrideContent: null,
-      })
-      await tx.auditLog.create({
-        data: {
-          actorUserId,
-          action: LESSON_STEP_CONTENT_EDITED,
-          entityType: 'LessonStep',
-          entityId: step.id,
-          metadataJson: { scope: 'class', classId, cleared: true },
-        },
-      })
+      for (const classId of classIds) {
+        await pruneOrUpdateOverrideRow(tx, classId, step.id, {
+          overrideTitle: null,
+          overrideContent: null,
+        })
+        await tx.auditLog.create({
+          data: {
+            actorUserId,
+            action: LESSON_STEP_CONTENT_EDITED,
+            entityType: 'LessonStep',
+            entityId: step.id,
+            metadataJson: { scope: 'class', classId, cleared: true },
+          },
+        })
+      }
     })
     return
   }
@@ -129,24 +153,26 @@ export async function setClassContentOverride(
   const content = await validateAndSerializeStepContent(step.stepType, input.payload)
 
   await prisma.$transaction(async (tx) => {
-    await pruneOrUpdateOverrideRow(tx, classId, step.id, {
-      overrideTitle: input.title ?? null,
-      overrideContent: content,
-    })
-    await tx.auditLog.create({
-      data: {
-        actorUserId,
-        action: LESSON_STEP_CONTENT_EDITED,
-        entityType: 'LessonStep',
-        entityId: step.id,
-        metadataJson: {
-          scope: 'class',
-          classId,
-          stepType: step.stepType,
-          titleAfter: input.title ?? null,
-          contentAfter: content,
+    for (const classId of classIds) {
+      await pruneOrUpdateOverrideRow(tx, classId, step.id, {
+        overrideTitle: input.title ?? null,
+        overrideContent: content,
+      })
+      await tx.auditLog.create({
+        data: {
+          actorUserId,
+          action: LESSON_STEP_CONTENT_EDITED,
+          entityType: 'LessonStep',
+          entityId: step.id,
+          metadataJson: {
+            scope: 'class',
+            classId,
+            stepType: step.stepType,
+            titleAfter: input.title ?? null,
+            contentAfter: content,
+          },
         },
-      },
-    })
+      })
+    }
   })
 }

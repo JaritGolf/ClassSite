@@ -139,7 +139,7 @@ export function LessonEditorWorkspace({
       const res = await fetch('/api/teacher/lessons/content', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classId: activeClassId, lessonStepId: stepId, clear: true }),
+        body: JSON.stringify({ classIds: [activeClassId], lessonStepId: stepId, clear: true }),
       })
       if (res.ok) router.refresh()
     } finally {
@@ -288,13 +288,13 @@ export function LessonEditorWorkspace({
                       initialTitle={effectiveTitle}
                       initialContent={effectiveContent}
                       titleLabel="Step title"
-                      saveLabel={
-                        capabilities.role === 'admin' ? 'Save for all classes' : 'Save for this class'
-                      }
+                      saveLabel={capabilities.role === 'admin' ? 'Save for all classes' : 'Save'}
+                      classOptions={capabilities.role === 'teacher' ? capabilities.classes : undefined}
+                      defaultCheckedClassIds={activeClassId ? [activeClassId] : []}
                       onDraftPreviewChange={(content) =>
                         setPreviewContent((prev) => ({ ...prev, [step.id]: content }))
                       }
-                      onSave={async ({ title, payload }) => {
+                      onSave={async ({ title, payload, classIds }) => {
                         if (capabilities.role === 'admin') {
                           const result = await postJson(
                             `/api/admin/lessons/steps/${step.id}`,
@@ -304,11 +304,11 @@ export function LessonEditorWorkspace({
                           if (result.ok) router.refresh()
                           return result
                         }
-                        if (!activeClassId) {
-                          return { ok: false, error: 'Choose a class first.' }
+                        if (!classIds || classIds.length === 0) {
+                          return { ok: false, error: 'Choose at least one class first.' }
                         }
                         const result = await postJson('/api/teacher/lessons/content', {
-                          classId: activeClassId,
+                          classIds,
                           lessonStepId: step.id,
                           stepType: step.stepType,
                           title,
