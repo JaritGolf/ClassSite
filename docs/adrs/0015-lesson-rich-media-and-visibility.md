@@ -35,7 +35,14 @@ but must remain teacher-controllable afterward.
    alternative), and a play button. **Zero external requests occur until the
    student deliberately clicks play**; only then does an iframe load from
    `youtube-nocookie.com` (YouTube's privacy-enhanced player) with
-   `referrerPolicy="no-referrer"`. The facade discloses this to the student
+   `referrerPolicy="origin"` (sends only the site's origin, never the specific
+   lesson/benchmark path — the property this facade actually needs).
+   **Correction (2026-07-17):** the original choice, `referrerPolicy="no-referrer"`,
+   was found in production to make YouTube's player reject the embed outright
+   ("Error 153: Video player configuration error") for every video — the
+   player requires some referrer to validate the request. `origin` preserves
+   the same privacy intent (no page-level student activity reaches Google)
+   without breaking playback. The facade discloses this to the student
    ("Video loads from YouTube's privacy-enhanced player when you press play").
    The nocookie host lives in a single exported constant in `VideoStepView.tsx`;
    the audit-17 no-analytics guard test is extended to forbid `youtube.com` /

@@ -35,3 +35,5 @@ export {
 } from './gating'
 
 export { TOGGLEABLE_STEP_TYPES, isToggleableStepType, resolveVisibleSteps } from './visibility'
+
+export { resolveEffectiveSteps, type StepOverride } from './content-resolution'

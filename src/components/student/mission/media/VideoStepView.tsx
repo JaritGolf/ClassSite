@@ -12,6 +12,14 @@
  *
  * `YOUTUBE_NOCOOKIE_EMBED_HOST` is the ONLY sanctioned external-media host in
  * src/ — pinned to this file by the audit-17 no-analytics guard test.
+ *
+ * `referrerPolicy="origin"` (not `no-referrer`, not the default
+ * `strict-origin-when-cross-origin`): confirmed live that `no-referrer`
+ * makes YouTube's player reject the embed outright ("Error 153: Video player
+ * configuration error") for every video — the player requires SOME referrer
+ * to validate the request. `origin` sends only the site's origin, never the
+ * specific lesson/benchmark path, which is the actual privacy property this
+ * facade is built around (no page-level student activity reaching Google).
  */
 
 import { useState } from 'react'
@@ -42,7 +50,7 @@ export function VideoStepView({
           title={title}
           allow="autoplay; encrypted-media; picture-in-picture"
           allowFullScreen
-          referrerPolicy="no-referrer"
+          referrerPolicy="origin"
           className="aspect-video w-full rounded-2xl border-2 border-gray-200 bg-gray-900"
         />
       ) : (
