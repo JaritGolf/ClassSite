@@ -8,6 +8,9 @@
 export { getBenchmarkClassPerformance } from './overview'
 export type { BenchmarkOverview } from './overview'
 
+export { getBenchmarkDescription } from './description'
+export type { BenchmarkDescription } from './description'
+
 export {
   getPerformanceByReadingLoad,
   getPerformanceByComplexity,

@@ -392,6 +392,7 @@ model Benchmark {
   reportingCategoryId String         @map("reporting_category_id")
   sequenceOrder       Int            @map("sequence_order")
   lessonSummary       String?        @map("lesson_summary")
+  officialStatement   String?        @map("official_statement")
   approvalStatus      ApprovalStatus @default(DRAFT) @map("approval_status")
   version             Int            @default(1)
 
