@@ -41,15 +41,30 @@ export default async function TeacherLessonPreviewPage({ params }: PageProps) {
 
   const roster = await getTeacherRoster(session.user.userId)
   const classIds = roster.classes.map((c) => c.id)
-  const overrides = classIds.length
+  const overrideRows = classIds.length
     ? await prisma.classLessonStepVisibility.findMany({
         where: {
           classId: { in: classIds },
           lessonStepId: { in: lesson.steps.map((s) => s.id) },
         },
-        select: { classId: true, lessonStepId: true, visible: true },
+        select: {
+          classId: true,
+          lessonStepId: true,
+          visible: true,
+          overrideTitle: true,
+          overrideContent: true,
+        },
       })
     : []
+  // The visibility toggle UI only cares about rows carrying a visibility
+  // opinion — a row that exists solely for a content override (visible left
+  // null) has nothing to show here (the content editor page renders that).
+  const overrides = overrideRows
+    .filter((o) => o.visible !== null)
+    .map((o) => ({ classId: o.classId, lessonStepId: o.lessonStepId, visible: o.visible as boolean }))
+  const classesWithOverrides = new Set(
+    overrideRows.filter((o) => o.overrideContent !== null).map((o) => o.classId)
+  )
 
   const glossaryTerms = await getGlossaryTermsForBenchmark(benchmark.id, null)
 
@@ -63,17 +78,31 @@ export default async function TeacherLessonPreviewPage({ params }: PageProps) {
           <h1 className="text-2xl font-bold text-gray-900">
             {benchmark.code} — {lesson.title}
           </h1>
-          <Link
-            href={`/teacher/lessons/${benchmark.code}/walkthrough`}
-            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-          >
-            ▶ Walk it like a student
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/teacher/lessons/${benchmark.code}/edit`}
+              className="rounded-lg border-2 border-b-4 border-indigo-800 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:translate-y-[1px] active:border-b-2"
+            >
+              Edit content for my classes
+            </Link>
+            <Link
+              href={`/teacher/lessons/${benchmark.code}/walkthrough`}
+              className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+            >
+              ▶ Walk it like a student
+            </Link>
+          </div>
         </div>
         <p className="mt-1 max-w-prose text-sm text-gray-600">
-          Every step at once, answers revealed. Use the controls on media steps to switch them
-          off for everyone or override them per class — or take the walkthrough to see the
-          step-by-step student experience.
+          Every step, in order. Use the controls on media steps to switch them off for everyone
+          or override them per class — or take the walkthrough to see the step-by-step student
+          experience.
+          {classesWithOverrides.size > 0 && (
+            <span className="ml-1">
+              {classesWithOverrides.size} of your class{classesWithOverrides.size === 1 ? '' : 'es'}{' '}
+              currently see different content than shown below.
+            </span>
+          )}
         </p>
       </div>
 

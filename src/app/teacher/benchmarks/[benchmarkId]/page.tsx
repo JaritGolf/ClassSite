@@ -9,6 +9,7 @@
 import { requireAuth } from '@/lib/auth'
 import {
   getBenchmarkClassPerformance,
+  getBenchmarkDescription,
   getPerformanceByReadingLoad,
   getPerformanceByComplexity,
   getPerformanceByStimulusType,
@@ -17,6 +18,7 @@ import {
   getBenchmarkSpacedHealth,
 } from '@/lib/benchmark-analytics'
 import { BenchmarkOverviewCard } from '@/components/teacher/benchmark/BenchmarkOverview'
+import { BenchmarkStandardCard } from '@/components/teacher/benchmark/BenchmarkStandardCard'
 import { ReadingLoadBreakdown } from '@/components/teacher/benchmark/ReadingLoadBreakdown'
 import { ComplexityBreakdown } from '@/components/teacher/benchmark/ComplexityBreakdown'
 import { StimulusTypeBreakdown } from '@/components/teacher/benchmark/StimulusTypeBreakdown'
@@ -36,9 +38,10 @@ export default async function BenchmarkDetailPage({ params }: Props) {
   const userId = session.user.userId
   const { benchmarkId } = params
 
-  const [overview, readingLoad, complexity, stimulusType, distractors, remediation, spacedHealth, roster] =
+  const [overview, description, readingLoad, complexity, stimulusType, distractors, remediation, spacedHealth, roster] =
     await Promise.all([
       getBenchmarkClassPerformance(userId, benchmarkId),
+      getBenchmarkDescription(benchmarkId),
       getPerformanceByReadingLoad(userId, benchmarkId),
       getPerformanceByComplexity(userId, benchmarkId),
       getPerformanceByStimulusType(userId, benchmarkId),
@@ -64,6 +67,9 @@ export default async function BenchmarkDetailPage({ params }: Props) {
         {overview.benchmarkCode} — {overview.title}
       </h1>
       <p className="text-sm text-gray-500">{overview.reportingCategoryName}</p>
+
+      {/* What this benchmark requires */}
+      <BenchmarkStandardCard description={description} />
 
       {/* Overview */}
       <BenchmarkOverviewCard overview={overview} />

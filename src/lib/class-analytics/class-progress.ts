@@ -136,6 +136,87 @@ export interface UnitMasteryRow {
   progressPercent: number
 }
 
+export interface UnitBenchmarkRow {
+  benchmarkId: string
+  benchmarkCode: string
+  title: string
+  sequenceOrder: number
+  masteredCount: number
+  totalStudents: number
+  masteryRatePercent: number
+  /** False when no student in the roster has a StudentProgress row for this benchmark yet. */
+  hasData: boolean
+}
+
+export interface UnitBenchmarkGroup {
+  unitId: string
+  unitTitle: string
+  unitSequenceOrder: number
+  gameRegionName: string
+  benchmarks: UnitBenchmarkRow[]
+}
+
+/**
+ * All benchmarks in every active unit, grouped by unit in curriculum order,
+ * merged with the teacher's class mastery counts. Unlike getClassMasteryByBenchmark,
+ * this never omits a benchmark just because no student has attempted it yet.
+ */
+export async function getBenchmarksGroupedByUnit(
+  teacherUserId: string
+): Promise<UnitBenchmarkGroup[]> {
+  const roster = await getTeacherRoster(teacherUserId)
+
+  const [units, progressRows] = await Promise.all([
+    prisma.unit.findMany({
+      where: { active: true },
+      orderBy: { sequenceOrder: 'asc' },
+      include: {
+        benchmarks: {
+          orderBy: { sequenceOrder: 'asc' },
+          select: { id: true, code: true, title: true, sequenceOrder: true },
+        },
+      },
+    }),
+    roster.allStudentIds.length === 0
+      ? Promise.resolve([])
+      : prisma.studentProgress.findMany({
+          where: { studentId: { in: roster.allStudentIds } },
+          select: { benchmarkId: true, status: true },
+        }),
+  ])
+
+  const byBenchmark = new Map<string, { total: number; mastered: number }>()
+  for (const row of progressRows) {
+    const entry = byBenchmark.get(row.benchmarkId) ?? { total: 0, mastered: 0 }
+    entry.total++
+    if (row.status === 'MASTERED') entry.mastered++
+    byBenchmark.set(row.benchmarkId, entry)
+  }
+
+  return units.map((unit) => ({
+    unitId: unit.id,
+    unitTitle: unit.title,
+    unitSequenceOrder: unit.sequenceOrder,
+    gameRegionName: unit.gameRegionName,
+    benchmarks: unit.benchmarks.map((b) => {
+      const agg = byBenchmark.get(b.id)
+      const totalStudents = agg?.total ?? 0
+      const masteredCount = agg?.mastered ?? 0
+      return {
+        benchmarkId: b.id,
+        benchmarkCode: b.code,
+        title: b.title,
+        sequenceOrder: b.sequenceOrder,
+        masteredCount,
+        totalStudents,
+        masteryRatePercent:
+          totalStudents === 0 ? 0 : Math.round((masteredCount / totalStudents) * 100),
+        hasData: totalStudents > 0,
+      }
+    }),
+  }))
+}
+
 export async function getClassMasteryByUnit(
   teacherUserId: string
 ): Promise<UnitMasteryRow[]> {

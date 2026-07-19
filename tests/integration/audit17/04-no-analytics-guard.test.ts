@@ -39,6 +39,14 @@ const FORBIDDEN_PATTERNS: RegExp[] = [
 // The single sanctioned location for the privacy-enhanced embed host.
 const NOCOOKIE_ALLOWED_FILE = 'components/student/mission/media/VideoStepView.tsx'
 
+// The single sanctioned location for a server-side (never browser-side)
+// call to YouTube's oEmbed endpoint, used only when an admin/teacher saves a
+// video edit (lesson content editor) to catch a bad video id before it goes
+// live. This never runs on a student's page load and carries no student
+// data — a different concern from rule #9 (no third-party tracking of
+// student activity), which the youtube.com pattern above otherwise guards.
+const OEMBED_ALLOWED_FILE = 'lib/lesson-editor/youtube.ts'
+
 function walk(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir)) {
@@ -58,8 +66,12 @@ describe('Audit 17 — Item 7: no third-party analytics', () => {
     const offenders: string[] = []
 
     for (const file of files) {
+      const relative = file.slice(SRC_ROOT.length + 1)
       const content = readFileSync(file, 'utf8')
       for (const pattern of FORBIDDEN_PATTERNS) {
+        if (pattern.source === /youtube\.com/i.source && relative === OEMBED_ALLOWED_FILE) {
+          continue
+        }
         if (pattern.test(content)) {
           offenders.push(`${file} :: ${pattern}`)
         }
@@ -76,5 +88,14 @@ describe('Audit 17 — Item 7: no third-party analytics', () => {
       .map((file) => file.slice(SRC_ROOT.length + 1))
 
     expect(containing).toEqual([NOCOOKIE_ALLOWED_FILE])
+  })
+
+  it('youtube.com appears only in the sanctioned server-side oEmbed check (lesson content editor)', () => {
+    const files = walk(SRC_ROOT)
+    const containing = files
+      .filter((file) => /youtube\.com/i.test(readFileSync(file, 'utf8')))
+      .map((file) => file.slice(SRC_ROOT.length + 1))
+
+    expect(containing).toEqual([OEMBED_ALLOWED_FILE])
   })
 })

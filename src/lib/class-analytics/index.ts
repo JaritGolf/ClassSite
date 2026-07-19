@@ -12,11 +12,14 @@ export {
   getClassMasteryByBenchmark,
   getClassMasteryByReportingCategory,
   getClassMasteryByUnit,
+  getBenchmarksGroupedByUnit,
 } from './class-progress'
 export type {
   BenchmarkMasteryRow,
   ReportingCategoryMasteryRow,
   UnitMasteryRow,
+  UnitBenchmarkRow,
+  UnitBenchmarkGroup,
 } from './class-progress'
 
 export { getMostMissedQuestions, getCommonMisconceptions } from './most-missed'

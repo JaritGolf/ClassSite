@@ -1,5 +1,6 @@
 /**
- * Lesson media visibility (ADR 0015).
+ * Lesson media visibility (ADR 0015) + per-class content overrides (lesson
+ * content editor).
  *
  * Teachers toggle MEDIA lesson steps (VIDEO/IMAGE/DIAGRAM/INFOGRAPHIC) in and
  * out of lessons at two scopes:
@@ -8,10 +9,18 @@
  *             roster-guarded via assertClassOwnedByTeacher
  * Core instructional steps are NOT toggleable — enforced here server-side
  * (isToggleableStepType), not just in the UI.
+ *
+ * The SAME ClassLessonStepVisibility row also carries an optional per-class
+ * content override (overrideTitle/overrideContent, all 10 step types) — see
+ * src/lib/lesson-editor/edit.ts for the write path and
+ * src/lib/lesson-content/content-resolution.ts for how the two independent
+ * axes (visibility, content) are resolved together.
  */
 
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { isToggleableStepType } from '@/lib/lesson-content'
+import type { StepOverride } from '@/lib/lesson-content'
 import { assertClassOwnedByTeacher } from '@/lib/teacher-roster'
 
 export {
@@ -86,7 +95,10 @@ export async function setGlobalStepEnabled(
 
 /**
  * Set (or clear, with 'inherit') a class-scoped visibility override for a
- * media step. Caller must own the class.
+ * media step. Caller must own the class. Uses pruneOrUpdateOverrideRow so a
+ * step that ALSO carries a content override for this class keeps that
+ * override when visibility is reset to 'inherit' — the two axes are
+ * independent facts on the same row.
  */
 export async function setClassStepVisibility(
   actorUserId: string,
@@ -98,18 +110,8 @@ export async function setClassStepVisibility(
   const step = await getToggleableStep(lessonStepId)
 
   await prisma.$transaction(async (tx) => {
-    if (state === 'inherit') {
-      await tx.classLessonStepVisibility.deleteMany({
-        where: { classId, lessonStepId: step.id },
-      })
-    } else {
-      const visible = state === 'show'
-      await tx.classLessonStepVisibility.upsert({
-        where: { classId_lessonStepId: { classId, lessonStepId: step.id } },
-        create: { classId, lessonStepId: step.id, visible },
-        update: { visible },
-      })
-    }
+    const visible = state === 'inherit' ? null : state === 'show'
+    await pruneOrUpdateOverrideRow(tx, classId, step.id, { visible })
     await tx.auditLog.create({
       data: {
         actorUserId,
@@ -134,7 +136,10 @@ export async function setClassStepVisibility(
 /**
  * Class-override map (stepId → visible) for a set of steps — feeds
  * resolveVisibleSteps. Empty map when classId is null (no active class:
- * only the global flag applies).
+ * only the global flag applies). Filters visible: {not: null} since a row
+ * may exist solely for a content override (visible left null) — such a row
+ * carries no visibility opinion and must not leak into this Map<string,
+ * boolean>.
  */
 export async function getClassVisibilityMap(
   classId: string | null,
@@ -142,8 +147,68 @@ export async function getClassVisibilityMap(
 ): Promise<Map<string, boolean>> {
   if (!classId || lessonStepIds.length === 0) return new Map()
   const rows = await prisma.classLessonStepVisibility.findMany({
-    where: { classId, lessonStepId: { in: lessonStepIds } },
+    where: { classId, lessonStepId: { in: lessonStepIds }, visible: { not: null } },
     select: { lessonStepId: true, visible: true },
   })
-  return new Map(rows.map((r) => [r.lessonStepId, r.visible]))
+  return new Map(rows.map((r) => [r.lessonStepId, r.visible as boolean]))
+}
+
+/**
+ * Class-override map (stepId → {visible, overrideTitle, overrideContent})
+ * for a set of steps — feeds resolveEffectiveSteps. Empty map when classId
+ * is null.
+ */
+export async function getClassStepOverrideMap(
+  classId: string | null,
+  lessonStepIds: string[]
+): Promise<Map<string, StepOverride>> {
+  if (!classId || lessonStepIds.length === 0) return new Map()
+  const rows = await prisma.classLessonStepVisibility.findMany({
+    where: { classId, lessonStepId: { in: lessonStepIds } },
+    select: { lessonStepId: true, visible: true, overrideTitle: true, overrideContent: true },
+  })
+  return new Map(
+    rows.map((r) => [
+      r.lessonStepId,
+      { visible: r.visible, overrideTitle: r.overrideTitle, overrideContent: r.overrideContent },
+    ])
+  )
+}
+
+/**
+ * Decide whether a ClassLessonStepVisibility row still needs to exist after
+ * a partial update, and create/update/delete it accordingly. This is the
+ * single place that owns this table's "does this row still carry any
+ * opinion" lifecycle rule — both the visibility toggle (above) and the
+ * content-override editor (src/lib/lesson-editor/edit.ts) go through it, so
+ * clearing one axis (e.g. resetting visibility to 'inherit') can never
+ * silently delete an unrelated override on the other axis (e.g. a content
+ * override) still present on the same row.
+ */
+export async function pruneOrUpdateOverrideRow(
+  tx: Prisma.TransactionClient,
+  classId: string,
+  lessonStepId: string,
+  patch: { visible?: boolean | null; overrideTitle?: string | null; overrideContent?: string | null }
+): Promise<void> {
+  const existing = await tx.classLessonStepVisibility.findUnique({
+    where: { classId_lessonStepId: { classId, lessonStepId } },
+  })
+  const merged = {
+    visible: existing?.visible ?? null,
+    overrideTitle: existing?.overrideTitle ?? null,
+    overrideContent: existing?.overrideContent ?? null,
+    ...patch,
+  }
+  const isEmpty = merged.visible === null && merged.overrideTitle === null && merged.overrideContent === null
+  if (isEmpty) {
+    await tx.classLessonStepVisibility.deleteMany({ where: { classId, lessonStepId } })
+  } else if (existing) {
+    await tx.classLessonStepVisibility.update({
+      where: { classId_lessonStepId: { classId, lessonStepId } },
+      data: merged,
+    })
+  } else {
+    await tx.classLessonStepVisibility.create({ data: { classId, lessonStepId, ...merged } })
+  }
 }
