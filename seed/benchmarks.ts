@@ -969,6 +969,7 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
           reportingCategoryId,
           sequenceOrder: bm.sequenceOrder,
           lessonSummary: bm.lessonSummary,
+          officialStatement: bm.officialStatement,
           approvalStatus: 'APPROVED',
           version: 1,
         },
@@ -978,6 +979,7 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
           reportingCategoryId,
           sequenceOrder: bm.sequenceOrder,
           lessonSummary: bm.lessonSummary,
+          officialStatement: bm.officialStatement,
         },
       })
       benchmarkCount++

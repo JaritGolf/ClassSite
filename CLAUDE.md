@@ -148,6 +148,102 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**TEACHER BENCHMARKS — UNIT-GROUPED LIST + FULL STANDARD DESCRIPTION (2026-07-18) — Tier 1
+`tsc` GREEN + Tier 2 jest GREEN for all touched/added code (see verification below;
+unrelated pre-existing suites showed cross-session DB flakiness, not a regression — see
+Last Action) + in-browser verification.** Owner: (1) the teacher `/teacher/benchmarks` list
+needed better organization/accessibility, and (2) the individual benchmark detail page
+needed a full description of what the benchmark actually requires, sufficient on its own.
+Scoped via AskUserQuestion: group the list by **Unit, in curriculum sequence order**
+(over grouping by Reporting Category, which already has its own page, or a flat list with
+a unit filter); persist the verbatim **official Florida standard statement** onto
+`Benchmark` via an **additive migration** (over reading `seed/official_standards.ts`
+directly at request time). What shipped:
+(1) **`getBenchmarksGroupedByUnit`** (`src/lib/class-analytics/class-progress.ts`, new,
+additive — the existing `getClassMasteryByBenchmark`/`getClassMasteryByReportingCategory`/
+`getClassMasteryByUnit` are untouched and still feed the dashboard/reports/CSV export):
+fetches every active unit with its benchmarks (sequence-ordered, mirroring the student
+Mission Map's query shape) merged with the teacher's roster mastery counts. **Fixes a real
+bug found during research:** the old list page's source, `getClassMasteryByBenchmark`,
+silently omitted any benchmark with zero student attempts — entire benchmarks (e.g. a
+whole not-yet-attempted unit) were invisible. The new function marks those `hasData:
+false` instead of dropping them.
+(2) **`/teacher/benchmarks` rewritten**: unit-grouped sections (header = unit title +
+`gameRegionName` + "N/M benchmarks at 80%+ class mastery"), a quick-jump nav across units,
+benchmarks sequence-ordered within each unit, unattempted benchmarks show a neutral "Not
+started" pill instead of an alarm-red 0%.
+(3) **`officialStatement` persisted** (migration
+`20260718120000_add_benchmark_official_statement`, additive nullable `TEXT` column,
+mirrors how `lessonSummary` already works): `seed/benchmarks.ts`'s upsert now writes
+`bm.officialStatement` (the field already existed in `BenchmarkDef` and was already
+populated for all 36 benchmarks via `official('SS.7.CG.x.y')` — ADR 0017's guardrail data,
+previously never persisted, only used as a test-time drift check). Reseeded; verified all
+36 benchmarks populated (`SELECT count(official_statement)` = 36).
+(4) **`getBenchmarkDescription`** (`src/lib/benchmark-analytics/description.ts`, new —
+kept separate from the roster-scoped `getBenchmarkClassPerformance` since this is static
+curriculum content, not class analytics): single query surfacing `officialStatement`,
+`lessonSummary`, ordered `BenchmarkClarification` bullets, and reporting-category/unit
+context — all either newly-persisted or already in the DB but never rendered anywhere.
+(5) **`BenchmarkStandardCard`** (`src/components/teacher/benchmark/`, new, admin-theme
+styled to match the page's other cards): renders the verbatim Florida Standard as a
+blockquote, "What This Benchmark Covers" (lesson summary), "Key Clarifications" (bulleted),
+and a unit/reporting-category footer. Wired into the detail page immediately under the
+`<h1>`, ahead of all the existing analytics cards, per the owner's "understand the
+benchmark from this page alone" ask.
+**Verification:** `tsc` 0 errors; the two new test files (`benchmarks-grouped-by-unit.test.ts`,
+`benchmark-description.test.ts`, 13 tests) plus the adjacent pre-existing
+`benchmark-performance.test.ts` (4 tests) all green in isolation (17/17); confirmed via
+`git stash` that a handful of unrelated full-suite failures (`assessment-allocation.test.ts`,
+`republic-challenge/session.test.ts`, `audit11/01`, `audit11/05`, and others that varied
+run-to-run) reproduce byte-identically with every change from this session fully reverted —
+pre-existing cross-session DB contention (a concurrent worktree session was active on the
+same shared Postgres instance throughout), not a regression. Browser-verified as the demo
+teacher: list page shows both units, quick-jump nav (`href="#unit-unit-N"`) confirmed via
+`window.location.hash`, SS.7.CG.1.6 (no student attempts) correctly shows "Not started"
+where it previously would have vanished entirely; detail pages for SS.7.CG.1.1 (Unit 1,
+attempted) and SS.7.CG.1.7 (Unit 2, untouched) both render the correct verbatim standard,
+lesson summary, clarifications, and unit/category context ahead of the analytics sections.
+**Env notes:** this worktree had no `node_modules` at all (unlike the sibling
+`lesson-video-playback-control-f7afc8` worktree) — symlinked it to the shared
+`node_modules.nosync` (same pattern as the main repo's own `node_modules -> node_modules.nosync`)
+rather than running a fresh `npm install`; `.env.local` copied over from the main repo
+(worktrees don't share gitignored files). `prisma migrate dev` is still non-interactive-
+incompatible in this harness — hand-wrote the migration SQL and applied via
+`migrate deploy`, per the established workaround. NOT committed — awaiting owner review.
+Commit message when ready: `feat(phase-9): unit-grouped benchmark list + full standard
+description on benchmark detail page`.
+
+---
+
+**EXPLAINER HOVERS — STUDENT TOP-NAV + POSITIONING FIXES (2026-07-17, extends ADR 0016) —
+Tier 1 `tsc` GREEN + in-browser verification (jest has unrelated pre-existing DB-debris
+failures, see Last Action).** Picked up two files left uncommitted from finishing the
+Phase 1 (student UI) explainer-hover rollout: `ExplainerHover.tsx` and `StudentNav.tsx`.
+(1) **`StudentNav` now wraps every top-nav item** (Dashboard/Mission Map/Daily
+Drill/Republic Challenge/Source Decoder/Strategy/Badges/Settings) in
+`<ExplainerHover variant="plain">` with a plain-language explainer, using the new
+`TrackIcon` set already built for the mission map/badges pass. (2) **`ExplainerHover`
+positioning rewritten to `position: fixed` computed from `getBoundingClientRect()`**
+instead of CSS `absolute` + `bottom-full`/`top-full`: a trigger inside the nav's
+`overflow-x-auto` row had its `overflow-y` silently coerced to `auto` too (CSS overflow
+spec — set one axis, get both), which clipped an absolutely-positioned popover popping up
+outside the row's own height even though it computed as visible/opacity-1. Auto-flips
+above/below off a 180px viewport-top threshold, clamps horizontally so it never runs off
+either edge. (3) Folded in the accumulated hard-won gotchas as code comments so they
+don't get silently reintroduced: single trigger span (no hit-testing seam), explicit
+`whitespace-normal` (fights inherited `whitespace-nowrap`), animation on the inner span
+only (an outer `animate-pop-in` would clobber the centering `translate(-50%,...)`), and
+`cursor-help`→`cursor-pointer` once open so a clickable trigger doesn't look dead.
+**Verification:** `tsc --noEmit` 0 errors; live browser walk as demo student Alex —
+hovered "Republic Challenge" (near viewport top, confirmed below-flip) and clicked
+through while its popover was open (the exact "shows but can't click" bug class this
+pass fixes) → navigated correctly; hovered "Settings" (rightmost nav item, confirmed
+horizontal clamp — popover stayed fully on-screen) and clicked through → navigated
+correctly; high-contrast mode spot-check on the nav popover (gray text + solid black
+border, no bright gradient bleed) — toggled on, verified, toggled back off, demo account
+left clean. Committed as
+`feat(phase-8): explainer hovers on student top nav + positioning fixes`.
+
 **TEACHER LESSON WALKTHROUGH — "walk it like a student" preview (2026-07-16, extends
 ADR 0015) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1313/1315 + the 2 intentional interim
 skips, 130 suites) + in-browser verification.** Owner: needed to preview lessons FAST from
@@ -844,6 +940,78 @@ the **district sign-offs** remain owner-pending.
 
 _(Update this at the end of every session.)_
 
+**Session of 2026-07-18 (Teacher benchmarks — unit-grouped list + full standard
+description):** Owner asked for two things on the teacher benchmark UI: (1) better
+organization of the `/teacher/benchmarks` list so it's easier to browse, and (2) a full
+description of what each benchmark requires on its own detail page, sufficient for a
+teacher to understand it without cross-referencing anything else. Explored both pages +
+the schema first: found the list was a flat table sorted by mastery rate that silently
+**omitted any benchmark with zero student attempts** (a real bug, not just an ordering
+gap), and found the detail page had rich analytics but zero descriptive content, even
+though `Benchmark.lessonSummary` and `BenchmarkClarification` rows were already persisted
+and simply never queried/rendered — and the verbatim official Florida standard wording
+existed only in the checked-in `seed/official_standards.ts` guardrail snapshot (ADR 0017),
+never in the database. Scoped two decisions via AskUserQuestion: group the list by **Unit**
+in curriculum order (not Reporting Category, which already has its own page), and persist
+`officialStatement` onto `Benchmark` via a small additive migration (not a request-time
+read from the seed file) so `seed/` stays seed-only and the app reads only from Postgres.
+Built: `getBenchmarksGroupedByUnit` (new, additive — existing mastery functions untouched),
+list page rewrite (unit sections, quick-jump nav, sequence order, neutral "Not started"
+pill for unattempted benchmarks), migration `20260718120000_add_benchmark_official_statement`
++ seed wiring + reseed (verified all 36 benchmarks populated), `getBenchmarkDescription` +
+`BenchmarkStandardCard` (verbatim standard blockquote + lesson summary + clarification
+bullets + unit/category context) wired into the detail page ahead of the analytics cards.
+**Verification:** `tsc` 0 errors; the 2 new test files + the adjacent
+`benchmark-performance.test.ts` all green in isolation (17/17 tests, 3/3 suites). The full
+suite showed a shifting set of unrelated failures across runs (4, then 7, then 14 distinct
+suites, never the same set twice) — confirmed via `git stash` that
+`assessment-allocation.test.ts` fails identically with every change from this session fully
+reverted, i.e. pre-existing cross-session DB contention (another Claude Code worktree
+session — `lesson-video-playback-control-f7afc8` — was actively running against the same
+shared Postgres instance the whole time), not a regression. Browser-verified live as the
+demo teacher: list page groups Unit 1/Unit 2 correctly, quick-jump nav confirmed via
+`window.location.hash`, SS.7.CG.1.6 (zero attempts) now visible with a "Not started" pill
+where it previously would not have appeared at all; detail pages for SS.7.CG.1.1 (Unit 1)
+and SS.7.CG.1.7 (Unit 2) both show the correct verbatim standard/summary/clarifications/
+context. **Env notes:** this worktree had no `node_modules` (git worktrees don't get one
+automatically) — symlinked to the shared `node_modules.nosync` rather than a fresh install,
+matching the main repo's own symlink convention; `.env.local` isn't shared between
+worktrees (gitignored) so it had to be copied over; `prisma migrate dev` remains
+non-interactive-incompatible here, used the established hand-written-migration-SQL +
+`migrate deploy` workaround. NOT committed — awaiting owner review. Commit message when
+ready: `feat(phase-9): unit-grouped benchmark list + full standard description on
+benchmark detail page`.
+
+**Session of 2026-07-17 (Explainer hovers — student top-nav + positioning fixes,
+finishes the Phase 1 rollout):** Picked up two files left uncommitted at the end of the
+earlier explainer-hover session: `ExplainerHover.tsx` and `StudentNav.tsx`. Verified
+they were isolated from the large amount of other uncommitted work in this tree (Canva
+stimuli, lesson media, standards realignment, teacher walkthrough) via
+`git diff --stat` scoped to just those two files, then confirmed by stashing them and
+re-running the jest suite — the failures that showed up (`seed.test.ts`,
+`audit11/01`, `assessment-allocation.test.ts`, etc.) reproduced identically with my
+files fully reverted, confirming they're pre-existing DB-state debris (questions with 0
+options / null externalKey in the shared dev DB) unrelated to this change, not a
+regression from it. Also hit the documented concurrent-session hazard mid-session — a
+stray `next-server`/`next dev` from another session was running and had to be killed
+before jest would run cleanly; it later died on its own and had to be restarted via
+`preview_start` for the browser verification pass. Built: `StudentNav` now wraps all 8
+top-nav items in `ExplainerHover`; `ExplainerHover` positioning moved from CSS
+`absolute` to `position: fixed` off `getBoundingClientRect()` (the nav's
+`overflow-x-auto` was silently clipping the popover via the CSS overflow-axis-coercion
+rule), with auto-flip and horizontal clamping. **Verification:** `tsc` 0 errors; live
+browser walk as demo student Alex — below-flip case (Republic Challenge, near viewport
+top) and horizontal-clamp case (Settings, rightmost nav item) both confirmed visually,
+AND both confirmed click-through-able while the popover was showing (the specific bug
+class — "popover shows but you can't click through" — that this session's fixes
+target); high-contrast mode spot-checked on the nav popover (neutralizes to gray text +
+solid border, no bright bleed-through), then toggled back off to leave the demo account
+clean. Committed as `feat(phase-8): explainer hovers on student top nav + positioning
+fixes`. **Remaining scope (not done this session, still zero coverage per grep):**
+admin pages (`theme="admin"` — parents/retention/calibration/audit/users/eoc-scores +
+AdminNav), parent pages (`theme="admin"` — parent dashboard/student-detail/
+ParentSummaryView), and the deferred keyboard-focus/touch triggers tracked in ADR 0016.
+
 **Session of 2026-07-16 (Teacher lesson walkthrough — resumed rich-media session):** Owner
 asked for fast lesson previews from the teacher dashboard: move through a whole lesson
 quickly, see every element, never answer a question. (Session resumed after the standards
@@ -1463,6 +1631,8 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-07-16] `LessonSeedDef.idKey` separates lesson row identity from benchmark assignment (ADR 0017): every carried lesson pins its ORIGINAL deterministic ids (so step rows and resume pointers survive) while `benchmarkCode` carries the official code. Caught live: the first seed run without idKey shuffled lesson content across row ids (upsert-by-current-code); rows reconverged on re-seed after pinning, one orphan row (`lesson-SS7CG17`) deleted. New lessons for repurposed codes use a distinct `R` id space (`lesson-SS7CG11R`).
 - [2026-07-16] Interim 1.1/1.2 blocks exempt from the media requirement only (`interim: true` on LessonSeedDef): the media pass belongs to the ADR 0015 track (concurrent session) and the owner-flagged full content build. Every other lesson-template guarantee is still enforced on them. Remove the flag when the full build lands.
 - [2026-07-16] Guardrail snapshot is checked in, not live-fetched: jest cannot call MCP, so `seed/official_standards.ts` carries the verbatim CASE statements (dated header, "do not edit"). Refreshing it is a deliberate act against the authoritative source; the alignment test pins defs to it by exact statement identity + topical anchors, deliberately NOT pinning def prose verbatim (defs may be edited freely as long as they stay on-topic).
+- [2026-07-18] Benchmark list grouping (teacher benchmarks reorg): chose to group `/teacher/benchmarks` by Unit in curriculum sequence order over grouping by Reporting Category (already has its own page, `/teacher/reporting-categories`) or a flat list with a unit filter dropdown (owner's explicit choice via AskUserQuestion). New `getBenchmarksGroupedByUnit` is additive — it does not replace or modify `getClassMasteryByBenchmark`, which still feeds the dashboard, `/teacher/reports`, and the CSV export. Reversible by adding a second grouping mode/toggle later without touching the existing function.
+- [2026-07-18] `officialStatement` persisted via migration, not read from seed at request time (teacher benchmark description): chose an additive nullable `Benchmark.officialStatement` column (migration `20260718120000_add_benchmark_official_statement`), written by `seed/benchmarks.ts`'s existing upsert, over importing `seed/official_standards.ts` directly into app code at render time (owner's explicit choice via AskUserQuestion). Keeps `seed/` doing only seeding and the app reading only from Postgres, consistent with the "PostgreSQL only" rule, and mirrors how `lessonSummary` already works. Reversible by dropping the column and switching `getBenchmarkDescription` to a direct import if ever needed.
 
 ---
 

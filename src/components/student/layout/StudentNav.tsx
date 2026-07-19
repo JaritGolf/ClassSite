@@ -4,15 +4,51 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
-const NAV_ITEMS: { href: string; label: string; icon: TrackIconName }[] = [
-  { href: '/student/dashboard', label: 'Dashboard', icon: 'home' },
-  { href: '/student/map', label: 'Mission Map', icon: 'map' },
-  { href: '/student/daily-drill', label: 'Daily Drill', icon: 'bolt' },
-  { href: '/student/republic-challenge', label: 'Republic Challenge', icon: 'shield' },
-  { href: '/student/source-decoder', label: 'Source Decoder', icon: 'search' },
-  { href: '/student/strategy', label: 'Strategy', icon: 'compass' },
-  { href: '/student/badges', label: 'Badges', icon: 'medal' },
+const NAV_ITEMS: { href: string; label: string; icon: TrackIconName; explain: string }[] = [
+  {
+    href: '/student/dashboard',
+    label: 'Dashboard',
+    icon: 'home',
+    explain: 'Your home base — your EOC readiness, streak, and what to do next.',
+  },
+  {
+    href: '/student/map',
+    label: 'Mission Map',
+    icon: 'map',
+    explain: 'The full path of missions for the year. Master one to unlock the next.',
+  },
+  {
+    href: '/student/daily-drill',
+    label: 'Daily Drill',
+    icon: 'bolt',
+    explain: "A short daily review that brings back questions you're starting to forget, timed to when you're about to forget them.",
+  },
+  {
+    href: '/student/republic-challenge',
+    label: 'Republic Challenge',
+    icon: 'shield',
+    explain: 'Optional review sessions that mix questions across missions — great for staying sharp between Mastery Challenges.',
+  },
+  {
+    href: '/student/source-decoder',
+    label: 'Source Decoder',
+    icon: 'search',
+    explain: 'Practice reading and analyzing historical documents, charts, and other sources.',
+  },
+  {
+    href: '/student/strategy',
+    label: 'Strategy',
+    icon: 'compass',
+    explain: 'Learn and practice test-taking strategies — a separate track from your civics missions.',
+  },
+  {
+    href: '/student/badges',
+    label: 'Badges',
+    icon: 'medal',
+    explain: "See what you've earned and what's still open.",
+  },
 ]
 
 export function StudentNav() {
@@ -41,8 +77,12 @@ export function StudentNav() {
               }`}
               aria-current={active ? 'page' : undefined}
             >
-              <TrackIcon name={item.icon} className="h-4 w-4 flex-shrink-0" />
-              {item.label}
+              <ExplainerHover title={item.label} text={item.explain} variant="plain">
+                <span className="flex items-center gap-1.5">
+                  <TrackIcon name={item.icon} className="h-4 w-4 flex-shrink-0" />
+                  {item.label}
+                </span>
+              </ExplainerHover>
             </Link>
           )
         })}
@@ -53,7 +93,13 @@ export function StudentNav() {
           href="/student/settings"
           className="rounded-xl px-3 py-2 text-sm font-display font-semibold text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
         >
-          Settings
+          <ExplainerHover
+            title="Settings"
+            text="Accessibility tools and preferences — high contrast, large text, read-aloud language, and more."
+            variant="plain"
+          >
+            Settings
+          </ExplainerHover>
         </Link>
         <form action="/api/auth/signout" method="POST">
           <button
