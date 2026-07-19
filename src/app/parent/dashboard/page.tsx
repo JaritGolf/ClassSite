@@ -9,6 +9,7 @@
 import Link from 'next/link'
 import { requireAuth } from '@/lib/auth'
 import { isParentPortalEnabled, getVerifiedLinkedStudents } from '@/lib/parent-portal'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 export default async function ParentDashboard() {
   const session = await requireAuth(['PARENT'])
@@ -32,8 +33,15 @@ export default async function ParentDashboard() {
       <header>
         <h1 className="text-2xl font-bold text-gray-900">Your Students</h1>
         <p className="mt-1 text-sm text-gray-600">
-          View each child's Civics Quest progress. Reports never include test questions or
-          answer keys.
+          View each child's Civics Quest progress.{' '}
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="What's included"
+            text="Progress summaries show mission status, overall readiness, and scores — never the actual test questions or answer keys."
+          >
+            Reports never include test questions or answer keys.
+          </ExplainerHover>
         </p>
       </header>
 

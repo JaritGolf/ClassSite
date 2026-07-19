@@ -10,6 +10,7 @@
 
 import { resolveRetentionConfig, purgeExpiredData } from '@/lib/retention'
 import { RetentionRunButton } from '@/components/admin/retention/RetentionRunButton'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 function describeDays(days: number): string {
   return days > 0 ? `${days} days` : 'Retain forever (disabled)'
@@ -55,7 +56,15 @@ export default async function RetentionPage() {
 
       <section className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">
-          Dry-run preview (eligible now)
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Dry-run preview"
+            text={'A preview only — it counts what would be deleted without actually deleting anything. Nothing is removed until you click "Run purge now" below.'}
+          >
+            Dry-run preview
+          </ExplainerHover>{' '}
+          (eligible now)
         </h2>
         {anyConfigured ? (
           <ul className="space-y-1 text-sm text-gray-700">

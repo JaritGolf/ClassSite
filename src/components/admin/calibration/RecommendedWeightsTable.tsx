@@ -1,3 +1,5 @@
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
+
 interface WeightChange {
   current: number
   recommended: number
@@ -20,7 +22,16 @@ export function RecommendedWeightsTable({ recommendedWeightChanges }: Recommende
             <th className="px-4 py-3 text-left font-medium text-gray-700">Reporting Category</th>
             <th className="px-4 py-3 text-right font-medium text-gray-700">Current Weight</th>
             <th className="px-4 py-3 text-right font-medium text-gray-700">Recommended</th>
-            <th className="px-4 py-3 text-right font-medium text-gray-700">Change</th>
+            <th className="px-4 py-3 text-right font-medium text-gray-700">
+              <ExplainerHover
+                theme="admin"
+                variant="underline"
+                title="Change"
+                text="The difference between the current and recommended weight, as a percentage-point shift. Green means the category would count for more; red means less."
+              >
+                Change
+              </ExplainerHover>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">

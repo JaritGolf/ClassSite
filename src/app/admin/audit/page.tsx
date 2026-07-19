@@ -10,6 +10,7 @@
 
 import Link from 'next/link'
 import { listAuditLogs } from '@/lib/audit'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface AuditPageProps {
   searchParams: {
@@ -117,8 +118,26 @@ export default async function AuditPage({ searchParams }: AuditPageProps) {
               <th className="px-4 py-2">Timestamp (UTC)</th>
               <th className="px-4 py-2">Action</th>
               <th className="px-4 py-2">Entity</th>
-              <th className="px-4 py-2">Actor</th>
-              <th className="px-4 py-2">Metadata</th>
+              <th className="px-4 py-2">
+                <ExplainerHover
+                  theme="admin"
+                  variant="underline"
+                  title="Actor"
+                  text="The internal user ID of whoever performed this action. A dash means the system did it automatically (no logged-in user)."
+                >
+                  Actor
+                </ExplainerHover>
+              </th>
+              <th className="px-4 py-2">
+                <ExplainerHover
+                  theme="admin"
+                  variant="underline"
+                  title="Metadata"
+                  text="Extra details captured for this specific action, shown as raw JSON — e.g. which fields changed or what was exported."
+                >
+                  Metadata
+                </ExplainerHover>
+              </th>
             </tr>
           </thead>
           <tbody>

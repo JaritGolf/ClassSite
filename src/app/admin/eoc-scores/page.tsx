@@ -8,6 +8,7 @@
 import { prisma } from '@/lib/db'
 import { ScoreListTable } from '@/components/admin/eoc-scores/ScoreListTable'
 import { ScoreImportForm } from '@/components/admin/eoc-scores/ScoreImportForm'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 // Default to current school year (calendar-based: August–July)
 function currentSchoolYear(): string {
@@ -44,7 +45,16 @@ export default async function EocScoresPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">EOC Scores</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="EOC Scores"
+            text="Students' actual end-of-course exam results, entered here once the district releases them. Used to check how well in-app readiness estimates predicted real scores."
+          >
+            EOC Scores
+          </ExplainerHover>
+        </h1>
         <p className="text-sm text-gray-600 mt-1">
           School year: <span className="font-medium">{schoolYear}</span>
           {' — '}

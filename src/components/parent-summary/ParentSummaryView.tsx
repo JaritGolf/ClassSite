@@ -8,6 +8,7 @@
 
 import type { ParentSummaryVM } from '@/lib/parent-summary'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 function formatDate(d: Date): string {
   return new Date(d).toLocaleDateString('en-US', {
@@ -46,7 +47,16 @@ export function ParentSummaryView({ summary }: { summary: ParentSummaryVM }) {
 
       {/* EOC readiness */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Civics Readiness</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Civics Readiness"
+            text="An estimate of how ready this student is for the end-of-course civics exam, based on their mission progress so far. It updates as they learn more — it isn't a final grade."
+          >
+            Civics Readiness
+          </ExplainerHover>
+        </h2>
         <div className="mt-2 rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-bold text-emerald-600">
@@ -115,7 +125,16 @@ export function ParentSummaryView({ summary }: { summary: ParentSummaryVM }) {
 
       {/* Remediation status */}
       <section>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Review Activities</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Review Activities"
+            text="Extra practice the app assigns automatically after a student struggles with a topic, to help it click before they try again."
+          >
+            Review Activities
+          </ExplainerHover>
+        </h2>
         <div className="mt-2 grid grid-cols-3 gap-3">
           <div className="rounded-xl border border-gray-200 bg-white p-3 text-center">
             <p className="text-xl font-bold text-gray-700">{summary.remediation.assignedCount}</p>
@@ -188,7 +207,16 @@ export function ParentSummaryView({ summary }: { summary: ParentSummaryVM }) {
       {/* Positive progress indicators */}
       {summary.positiveIndicators.length > 0 && (
         <section className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4">
-          <h2 className="text-sm font-semibold text-emerald-800">Bright Spots</h2>
+          <h2 className="text-sm font-semibold text-emerald-800">
+            <ExplainerHover
+              theme="admin"
+              variant="underline"
+              title="Bright Spots"
+              text="Recent wins worth celebrating — badges earned, streaks kept, or milestones hit."
+            >
+              Bright Spots
+            </ExplainerHover>
+          </h2>
           <ul className="mt-2 space-y-1 text-sm text-emerald-900">
             {summary.positiveIndicators.map((p, i) => (
               <li key={i} className="flex gap-2">

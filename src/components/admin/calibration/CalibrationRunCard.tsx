@@ -1,5 +1,6 @@
 import { RecommendedWeightsTable } from './RecommendedWeightsTable'
 import { ApproveRunDialog } from './ApproveRunDialog'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface CalibrationRun {
   id: string
@@ -38,7 +39,14 @@ export function CalibrationRunCard({ run }: CalibrationRunCardProps) {
       <div className="px-5 py-4 space-y-4">
         {run.correlationReadinessToScaled != null && (
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-600">Overall readiness → scaled score:</span>
+            <ExplainerHover
+              theme="admin"
+              variant="underline"
+              title="Correlation (r)"
+              text="How closely in-app readiness tracked real EOC scores across students in this run. Ranges from -1 to 1 — closer to 1 means readiness was a strong predictor of the actual score."
+            >
+              <span className="text-sm text-gray-600">Overall readiness → scaled score:</span>
+            </ExplainerHover>
             <span className="font-mono font-medium text-indigo-700">
               r = {run.correlationReadinessToScaled.toFixed(3)}
             </span>
@@ -46,7 +54,16 @@ export function CalibrationRunCard({ run }: CalibrationRunCardProps) {
         )}
         {run.recommendedWeightChanges && (
           <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Recommended Weight Changes</p>
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              <ExplainerHover
+                theme="admin"
+                variant="underline"
+                title="Recommended Weight Changes"
+                text="Suggested adjustments to how much each reporting category counts, based on which categories' readiness best predicted real scores. Nothing changes until you approve a run below."
+              >
+                Recommended Weight Changes
+              </ExplainerHover>
+            </p>
             <RecommendedWeightsTable recommendedWeightChanges={run.recommendedWeightChanges} />
           </div>
         )}

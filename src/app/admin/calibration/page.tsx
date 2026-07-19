@@ -15,6 +15,7 @@ import { CalibrationStatusBanner } from '@/components/admin/calibration/Calibrat
 import { RunCalibrationButton } from '@/components/admin/calibration/RunCalibrationButton'
 import { CalibrationRunCard } from '@/components/admin/calibration/CalibrationRunCard'
 import { ActiveWeightsPanel } from '@/components/admin/calibration/ActiveWeightsPanel'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 function currentSchoolYear(): string {
   const now = new Date()
@@ -45,7 +46,16 @@ export default async function CalibrationPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">EOC Calibration</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="EOC Calibration"
+            text="Compares how well the app's readiness estimates predicted students' real EOC scores, and lets you approve adjusted category weights based on that comparison."
+          >
+            EOC Calibration
+          </ExplainerHover>
+        </h1>
         <p className="text-sm text-gray-600 mt-1">
           School year: <span className="font-medium">{schoolYear}</span>
         </p>

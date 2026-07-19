@@ -9,6 +9,7 @@
 import { prisma } from '@/lib/db'
 import { listParents, isParentPortalEnabled } from '@/lib/parent-portal'
 import { ParentManager } from '@/components/admin/parents/ParentManager'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 export default async function AdminParentsPage() {
   const [parents, studentRows] = await Promise.all([
@@ -31,7 +32,15 @@ export default async function AdminParentsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Parents</h1>
         <p className="mt-1 text-sm text-gray-600">
           Create parent accounts, link them to students, and verify identity. Only{' '}
-          <span className="font-medium">verified</span> links show progress to a parent.
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Verified"
+            text="Once you verify a link, that parent can see that student's progress in the family portal. Pending and rejected links show nothing."
+          >
+            <span className="font-medium">verified</span>
+          </ExplainerHover>{' '}
+          links show progress to a parent.
         </p>
       </div>
 

@@ -9,6 +9,7 @@
  */
 
 import type { ActiveWeightSource } from '@/lib/eoc-analytics'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 function formatPercent(weight: number): string {
   return `${(weight * 100).toFixed(1)}%`
@@ -29,7 +30,16 @@ export function ActiveWeightsPanel({ source }: { source: ActiveWeightSource }) {
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">Active Readiness Weights</h2>
+        <h2 className="text-lg font-semibold text-gray-900">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Active Readiness Weights"
+            text="How much each reporting category counts toward a student's overall EOC readiness percentage right now."
+          >
+            Active Readiness Weights
+          </ExplainerHover>
+        </h2>
         <span
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
             isCalibrated

@@ -1,3 +1,5 @@
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
+
 interface EocScore {
   id: string
   studentId: string
@@ -35,8 +37,26 @@ export function ScoreListTable({ scores }: ScoreListTableProps) {
           <tr>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Student</th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">School Year</th>
-            <th className="px-4 py-3 text-right font-medium text-gray-700">Scaled Score</th>
-            <th className="px-4 py-3 text-right font-medium text-gray-700">Level</th>
+            <th className="px-4 py-3 text-right font-medium text-gray-700">
+              <ExplainerHover
+                theme="admin"
+                variant="underline"
+                title="Scaled Score"
+                text="The official EOC score on the state's reporting scale — not a raw percent-correct."
+              >
+                Scaled Score
+              </ExplainerHover>
+            </th>
+            <th className="px-4 py-3 text-right font-medium text-gray-700">
+              <ExplainerHover
+                theme="admin"
+                variant="underline"
+                title="Achievement Level"
+                text="The state's 1-5 achievement level for this exam. Level 3 and above is typically considered passing."
+              >
+                Level
+              </ExplainerHover>
+            </th>
             <th className="px-4 py-3 text-left font-medium text-gray-700">Entered</th>
           </tr>
         </thead>

@@ -7,6 +7,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface ParentLink {
   linkId: string
@@ -152,13 +153,20 @@ export function ParentManager({
                     >
                       <span className="font-medium text-gray-800">{l.studentName}</span>
                       <span className="capitalize text-gray-600">{l.relationship}</span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          STATUS_STYLE[l.verifiedStatus]
-                        }`}
+                      <ExplainerHover
+                        theme="admin"
+                        variant="plain"
+                        title="Link status"
+                        text="Pending means the link exists but doesn't show data yet. Verified means the parent can see this student's progress. Rejected means the link is disabled."
                       >
-                        {l.verifiedStatus}
-                      </span>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                            STATUS_STYLE[l.verifiedStatus]
+                          }`}
+                        >
+                          {l.verifiedStatus}
+                        </span>
+                      </ExplainerHover>
                       <span className="ml-auto flex gap-2">
                         {l.verifiedStatus !== 'VERIFIED' && (
                           <button
@@ -246,7 +254,14 @@ function AddLinkForm({
         </select>
       </label>
       <label className="flex flex-col text-xs font-medium text-gray-600">
-        Relationship
+        <ExplainerHover
+          theme="admin"
+          variant="underline"
+          title="Relationship"
+          text={'A free-text label like "mother" or "guardian" — shown to the parent, not used for any access decisions.'}
+        >
+          Relationship
+        </ExplainerHover>
         <input
           type="text"
           value={relationship}
