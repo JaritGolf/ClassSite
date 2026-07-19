@@ -30,6 +30,12 @@ interface StimulusDisplayProps {
   /** Levels for which approved content exists (enables opt-up/opt-down) */
   availableLevels?: number[]
   onLevelChange?: (newLevel: number) => void
+  /**
+   * Same-origin path (under public/) for visual stimuli (CHART/TIMELINE/
+   * FLOWCHART/…). The text content below the image is its accessible
+   * equivalent — it feeds read-aloud, chunking, and glossary as usual.
+   */
+  mediaUrl?: string | null
 }
 
 const LEVEL_LABELS: Record<number, string> = {
@@ -47,6 +53,7 @@ export function StimulusDisplay({
   glossaryAnnotations,
   availableLevels,
   onLevelChange,
+  mediaUrl,
 }: StimulusDisplayProps) {
   const [chunkingEnabled, setChunkingEnabled] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -235,6 +242,17 @@ export function StimulusDisplay({
             </button>
           ))}
         </div>
+      )}
+
+      {/* Visual stimulus (chart/timeline/flowchart image). Same-origin asset
+          under public/. The text below is its accessible equivalent, so the
+          image itself is presentational detail beyond the title. */}
+      {mediaUrl && (
+        <img
+          src={mediaUrl}
+          alt={title}
+          className="mx-auto w-full max-w-xl rounded-xl border-2 border-amber-200 bg-white"
+        />
       )}
 
       {/* Passage content */}

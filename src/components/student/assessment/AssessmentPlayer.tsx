@@ -21,6 +21,8 @@ interface StimulusData {
   resolvedLevel: number
   fromVariant: boolean
   glossaryAnnotations: GlossaryAnnotation[]
+  /** Same-origin image path for visual stimuli (chart/timeline/flowchart). */
+  mediaUrl?: string | null
 }
 
 interface Question {
@@ -304,6 +306,7 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
             resolvedLevel={currentQ.stimulus.resolvedLevel}
             fromVariant={currentQ.stimulus.fromVariant}
             glossaryAnnotations={currentQ.stimulus.glossaryAnnotations}
+            mediaUrl={currentQ.stimulus.mediaUrl}
           />
         )}
         <p className="text-lg font-semibold leading-relaxed text-gray-900">{currentQ.prompt}</p>

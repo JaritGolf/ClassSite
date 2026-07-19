@@ -25,6 +25,7 @@ import { seedUnit1Interim } from './questions/unit1_interim'
 import { seedUnit2Questions } from './questions/unit2'
 import { seedRemediationItems } from './remediation_items'
 import { seedStimuliUnit1 } from './stimuli_unit1'
+import { seedVisualStimuli } from './stimuli_visuals'
 import { seedBadges } from './badges'
 import { seedMissionAssessments } from './assessments'
 
@@ -68,6 +69,9 @@ async function main() {
 
   console.log('10/12 Stimuli — Unit 1 reading-load variants + accommodations')
   await seedStimuliUnit1(prisma)
+
+  console.log('10b/12 Visual stimuli (Canva TIMELINE/CHART/FLOWCHART pilot — ADR 0018)')
+  await seedVisualStimuli(prisma)
 
   console.log('11/12 Badges')
   await seedBadges(prisma)

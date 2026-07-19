@@ -14,7 +14,7 @@ export default async function SourceLabPage({ params }: PageProps) {
 
   const stimulus = await prisma.stimulus.findUnique({
     where: { id: params.id },
-    select: { id: true, title: true, content: true, readingLoadLevel: true },
+    select: { id: true, title: true, content: true, readingLoadLevel: true, mediaUrl: true },
   })
   if (!stimulus) notFound()
 
@@ -49,6 +49,7 @@ export default async function SourceLabPage({ params }: PageProps) {
         resolvedLevel={resolvedLevel}
         fromVariant={false}
         glossaryAnnotations={glossaryAnnotations}
+        mediaUrl={stimulus.mediaUrl}
       />
     </div>
   )

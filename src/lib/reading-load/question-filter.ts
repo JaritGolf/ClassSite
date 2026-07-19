@@ -25,6 +25,14 @@ export interface StimulusAttachment {
   resolvedLevel: number
   fromVariant: boolean
   glossaryAnnotations: GlossaryAnnotation[]
+  /**
+   * Same-origin path (under public/, e.g. "/stimuli/…png") for visual stimuli
+   * (CHART/TIMELINE/FLOWCHART/…). The text variants remain the accessible
+   * equivalent of the visual (they describe its content at each reading level),
+   * so grading and accommodations are unaffected. Display-only.
+   */
+  mediaUrl: string | null
+  stimulusType: string
 }
 
 // ── fetchStimulusForQuestion ───────────────────────────────────────────────
@@ -57,6 +65,8 @@ export async function fetchStimulusForQuestion(
       title: true,
       content: true,
       readingLoadLevel: true,
+      mediaUrl: true,
+      stimulusType: true,
       variants: {
         select: {
           readingLoadLevel: true,
@@ -83,6 +93,8 @@ export async function fetchStimulusForQuestion(
     resolvedLevel: selection.resolvedLevel,
     fromVariant: selection.fromVariant,
     glossaryAnnotations: annotations,
+    mediaUrl: stimulus.mediaUrl,
+    stimulusType: stimulus.stimulusType,
   }
 }
 
