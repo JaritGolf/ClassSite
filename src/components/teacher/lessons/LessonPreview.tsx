@@ -108,6 +108,7 @@ export function LessonPreview({
                   required: step.required,
                 }}
                 glossaryTerms={glossaryTerms}
+                revealAnswers
               />
             </div>
           </li>

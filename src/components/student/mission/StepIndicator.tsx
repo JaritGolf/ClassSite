@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
@@ -15,9 +16,14 @@ const STEPS: { key: string; label: string; icon: TrackIconName; explainer: strin
 interface StepIndicatorProps {
   currentStep: string
   completedSteps: string[]
+  /**
+   * Teacher preview (ADR 0015): makes each step a jump button. Absent on
+   * student surfaces, where the indicator stays display-only.
+   */
+  onStepClick?: (stepKey: string) => void
 }
 
-export function StepIndicator({ currentStep, completedSteps }: StepIndicatorProps) {
+export function StepIndicator({ currentStep, completedSteps, onStepClick }: StepIndicatorProps) {
   return (
     // tabIndex: the step list can overflow horizontally — keyboard users need
     // to be able to focus the scroll region to pan it (axe scrollable-region-focusable).
@@ -37,7 +43,11 @@ export function StepIndicator({ currentStep, completedSteps }: StepIndicatorProp
                 }`}
               />
             )}
-            <div className="flex min-w-[68px] flex-col items-center gap-1">
+            <Tile
+              onStepClick={onStepClick ? () => onStepClick(step.key) : undefined}
+              isCurrent={isCurrent}
+              label={step.label}
+            >
               <div
                 className={`flex h-9 w-9 items-center justify-center rounded-xl border-b-2 ${
                   isComplete
@@ -62,10 +72,40 @@ export function StepIndicator({ currentStep, completedSteps }: StepIndicatorProp
                   {step.label}
                 </span>
               </ExplainerHover>
-            </div>
+            </Tile>
           </div>
         )
       })}
     </nav>
+  )
+}
+
+/**
+ * Step tile: a plain div for students; a jump button in teacher preview.
+ * Shared classes keep the two renderings visually identical.
+ */
+function Tile({
+  onStepClick,
+  isCurrent,
+  label,
+  children,
+}: {
+  onStepClick?: () => void
+  isCurrent: boolean
+  label: string
+  children: ReactNode
+}) {
+  const layout = 'flex min-w-[68px] flex-col items-center gap-1'
+  if (!onStepClick) return <div className={layout}>{children}</div>
+  return (
+    <button
+      type="button"
+      onClick={onStepClick}
+      aria-label={`Jump to ${label}`}
+      aria-current={isCurrent ? 'step' : undefined}
+      className={`${layout} rounded-xl p-0.5 transition-colors hover:bg-indigo-50`}
+    >
+      {children}
+    </button>
   )
 }

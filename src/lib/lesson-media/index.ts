@@ -14,6 +14,14 @@ import { prisma } from '@/lib/db'
 import { isToggleableStepType } from '@/lib/lesson-content'
 import { assertClassOwnedByTeacher } from '@/lib/teacher-roster'
 
+export {
+  getAssessmentPreviewsForBenchmark,
+  PREVIEW_ASSESSMENT_TYPES,
+  type AssessmentPreview,
+  type AssessmentPreviewQuestion,
+  type PreviewAssessmentType,
+} from './assessment-preview'
+
 export const LESSON_MEDIA_AUDIT_ACTION = 'LESSON_MEDIA_VISIBILITY_CHANGED'
 
 export type ClassVisibilityState = 'inherit' | 'show' | 'hide'

@@ -59,12 +59,21 @@ export default async function TeacherLessonPreviewPage({ params }: PageProps) {
         <Link href="/teacher/lessons" className="text-sm text-indigo-600 hover:underline">
           ← All lessons
         </Link>
-        <h1 className="mt-1 text-2xl font-bold text-gray-900">
-          {benchmark.code} — {lesson.title}
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {benchmark.code} — {lesson.title}
+          </h1>
+          <Link
+            href={`/teacher/lessons/${benchmark.code}/walkthrough`}
+            className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+          >
+            ▶ Walk it like a student
+          </Link>
+        </div>
         <p className="mt-1 max-w-prose text-sm text-gray-600">
-          Every step, in order. Use the controls on media steps to switch them off for everyone
-          or override them per class.
+          Every step at once, answers revealed. Use the controls on media steps to switch them
+          off for everyone or override them per class — or take the walkthrough to see the
+          step-by-step student experience.
         </p>
       </div>
 

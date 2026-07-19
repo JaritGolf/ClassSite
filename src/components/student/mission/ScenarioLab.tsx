@@ -17,9 +17,13 @@ import { LessonStepRenderer, type LessonStepView } from './LessonStepRenderer'
 interface ScenarioLabProps {
   steps: LessonStepView[]
   onComplete: () => void
+  /** Teacher preview (ADR 0015): completion never gated by guiding questions. */
+  ungated?: boolean
+  /** Teacher preview: guiding questions render as static answer keys. */
+  revealAnswers?: boolean
 }
 
-export function ScenarioLab({ steps, onComplete }: ScenarioLabProps) {
+export function ScenarioLab({ steps, onComplete, ungated, revealAnswers }: ScenarioLabProps) {
   const [attempted, setAttempted] = useState<Set<string>>(new Set())
 
   // Only steps that actually parse as source-analysis gate completion — a
@@ -27,7 +31,7 @@ export function ScenarioLab({ steps, onComplete }: ScenarioLabProps) {
   const gatingIds = steps
     .filter((s) => parseStepContent(s.stepType, s.content).kind === 'source-analysis')
     .map((s) => s.id)
-  const allAttempted = gatingIds.every((id) => attempted.has(id))
+  const allAttempted = ungated || gatingIds.every((id) => attempted.has(id))
 
   function markAttempted(stepId: string) {
     setAttempted((prev) => {
@@ -56,7 +60,7 @@ export function ScenarioLab({ steps, onComplete }: ScenarioLabProps) {
       {steps.map((step) => (
         <div key={step.id} className="space-y-2">
           <p className="font-display text-base font-bold text-sky-800">{step.title}</p>
-          <LessonStepRenderer step={step} onAttempted={markAttempted} />
+          <LessonStepRenderer step={step} onAttempted={markAttempted} revealAnswers={revealAnswers} />
         </div>
       ))}
 

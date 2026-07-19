@@ -43,17 +43,24 @@ interface LessonStepRendererProps {
   onAttempted?: (stepId: string) => void
   /** Tier-2 verbs + tier-3 civics terms for note glossary popovers. */
   glossaryTerms?: GlossaryTerm[]
+  /**
+   * Teacher preview (ADR 0015): render checks/worked examples/source questions
+   * as a static answer key — correct answer highlighted, all feedback visible,
+   * zero interaction. NEVER set on student surfaces.
+   */
+  revealAnswers?: boolean
 }
 
 export function LessonStepRenderer({
   step,
   onAttempted,
   glossaryTerms,
+  revealAnswers,
 }: LessonStepRendererProps) {
   const parsed = parseStepContent(step.stepType, step.content)
 
   if (parsed.kind === 'worked-example') {
-    return <WorkedExampleView {...parsed} />
+    return <WorkedExampleView {...parsed} revealAll={revealAnswers} />
   }
   if (parsed.kind === 'interactive-check') {
     return (
@@ -62,6 +69,7 @@ export function LessonStepRenderer({
         question={parsed.question}
         options={parsed.options}
         onFirstAttempt={() => onAttempted?.(step.id)}
+        revealAll={revealAnswers}
       />
     )
   }
@@ -74,6 +82,7 @@ export function LessonStepRenderer({
         passage={parsed.passage}
         guidingQuestions={parsed.guidingQuestions}
         onAllAttempted={() => onAttempted?.(step.id)}
+        revealAll={revealAnswers}
       />
     )
   }
@@ -174,13 +183,16 @@ function WorkedExampleView({
   thinkAloud,
   answer,
   whyItWorks,
+  revealAll,
 }: {
   problem: string
   thinkAloud: string[]
   answer: string
   whyItWorks: string
+  /** Teacher preview: start fully expanded (thoughts + answer + why). */
+  revealAll?: boolean
 }) {
-  const [revealed, setRevealed] = useState(0)
+  const [revealed, setRevealed] = useState(revealAll ? thinkAloud.length : 0)
   const allRevealed = revealed >= thinkAloud.length
 
   return (
@@ -265,10 +277,13 @@ export function CheckQuestion({
   question,
   options,
   onFirstAttempt,
+  revealAll,
 }: {
   question: string
   options: CheckOption[]
   onFirstAttempt?: () => void
+  /** Teacher preview: static answer key — no interaction, all feedback shown. */
+  revealAll?: boolean
 }) {
   // Authored check JSON lists the correct option first — shuffle so the right
   // answer isn't predictably "A" (ungraded self-check, so a client-side
@@ -297,6 +312,53 @@ export function CheckQuestion({
   }
 
   const letters = ['A', 'B', 'C', 'D']
+
+  // Teacher preview: static answer key — every option with its feedback, the
+  // correct one highlighted, no clicks required (and none possible).
+  if (revealAll) {
+    return (
+      <div className="space-y-3">
+        <p className="text-base font-bold leading-7 text-gray-900">{question}</p>
+        <ul className="space-y-2.5" aria-label="Answer key">
+          {shuffledOptions.map((opt, i) => (
+            <li
+              key={i}
+              className={`rounded-2xl border-2 px-4 py-3 ${
+                opt.correct ? 'border-green-500 bg-green-50' : 'border-gray-200 bg-white'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  className={`mt-px flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg font-display text-sm font-bold ${
+                    opt.correct ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  {opt.correct ? '✓' : letters[i] ?? '•'}
+                </span>
+                <div className="pt-0.5">
+                  <p className="text-base leading-snug text-gray-800">
+                    {opt.text}
+                    {opt.correct && (
+                      <span className="ml-2 rounded-full bg-green-600 px-2 py-0.5 text-xs font-bold text-white">
+                        correct answer
+                      </span>
+                    )}
+                  </p>
+                  <p
+                    className={`mt-1 text-sm leading-6 ${
+                      opt.correct ? 'text-green-900' : 'text-gray-600'
+                    }`}
+                  >
+                    {opt.feedback}
+                  </p>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-3">
@@ -390,6 +452,7 @@ function SourceAnalysisView({
   passage,
   guidingQuestions,
   onAllAttempted,
+  revealAll,
 }: {
   stepId: string
   sourceTitle: string
@@ -397,6 +460,8 @@ function SourceAnalysisView({
   passage: string
   guidingQuestions: { question: string; options: CheckOption[] }[]
   onAllAttempted?: () => void
+  /** Teacher preview: guiding questions render as static answer keys. */
+  revealAll?: boolean
 }) {
   const [attemptedQs, setAttemptedQs] = useState<Set<number>>(new Set())
 
@@ -431,6 +496,7 @@ function SourceAnalysisView({
             question={gq.question}
             options={gq.options}
             onFirstAttempt={() => markAttempted(qi)}
+            revealAll={revealAll}
           />
         </div>
       ))}

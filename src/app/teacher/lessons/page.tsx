@@ -95,12 +95,20 @@ export default async function TeacherLessonsPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/teacher/lessons/${lesson.benchmark.code}`}
-                      className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
-                    >
-                      Manage media
-                    </Link>
+                    <div className="flex items-center justify-end gap-2">
+                      <Link
+                        href={`/teacher/lessons/${lesson.benchmark.code}/walkthrough`}
+                        className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                      >
+                        ▶ Walkthrough
+                      </Link>
+                      <Link
+                        href={`/teacher/lessons/${lesson.benchmark.code}`}
+                        className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                      >
+                        Manage media
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               )

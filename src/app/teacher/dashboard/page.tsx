@@ -4,6 +4,7 @@
  */
 
 import { requireAuth } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 import {
   getClassStatusDistribution,
   getClassMasteryByBenchmark,
@@ -28,6 +29,7 @@ import { OffRampList } from '@/components/teacher/dashboard/OffRampList'
 import { RecommendedSmallGroups } from '@/components/teacher/dashboard/RecommendedSmallGroups'
 import { EocReadinessTrendChart } from '@/components/teacher/dashboard/EocReadinessTrendChart'
 import { StrategyCompletionTable } from '@/components/teacher/dashboard/StrategyCompletionTable'
+import { LessonPreviewLinks } from '@/components/teacher/dashboard/LessonPreviewLinks'
 
 export default async function TeacherDashboard() {
   const session = await requireAuth(['TEACHER'])
@@ -60,6 +62,13 @@ export default async function TeacherDashboard() {
     getClassDecayRates(roster.teacherId),
     getStrategyCompletionStatus(userId),
   ])
+
+  // Lesson walkthrough quick links (ADR 0015 teacher preview).
+  const previewLessons = await prisma.lesson.findMany({
+    where: { approvalStatus: 'APPROVED' },
+    orderBy: { benchmark: { sequenceOrder: 'asc' } },
+    select: { title: true, benchmark: { select: { code: true } } },
+  })
 
   const totalStudents = roster.allStudentIds.length
   const masteryRateAll =
@@ -106,6 +115,14 @@ export default async function TeacherDashboard() {
           explain="Benchmarks where several students' spaced-review performance has recently dropped — a sign the class needs a refresher."
         />
       </div>
+
+      {/* Lesson previews (ADR 0015) */}
+      <LessonPreviewLinks
+        lessons={previewLessons.map((l) => ({
+          benchmarkCode: l.benchmark.code,
+          lessonTitle: l.title,
+        }))}
+      />
 
       {/* Status distribution */}
       <StatusDistribution distribution={statusDistribution} />

@@ -23,6 +23,10 @@ interface TrainingWalkthroughProps {
   initialIndex?: number
   /** Reports position changes so the flow can persist the resume point. */
   onIndexChange?: (index: number, stepId: string) => void
+  /** Teacher preview (ADR 0015): Next is never gated by required checks. */
+  ungated?: boolean
+  /** Teacher preview: checks/worked examples render as static answer keys. */
+  revealAnswers?: boolean
 }
 
 export function TrainingWalkthrough({
@@ -31,6 +35,8 @@ export function TrainingWalkthrough({
   glossaryTerms,
   initialIndex = 0,
   onIndexChange,
+  ungated,
+  revealAnswers,
 }: TrainingWalkthroughProps) {
   const [index, setIndex] = useState(() =>
     Math.min(Math.max(0, initialIndex), Math.max(0, steps.length - 1))
@@ -45,7 +51,7 @@ export function TrainingWalkthrough({
 
   const step = steps[index]
   const isLast = index === steps.length - 1
-  const mayAdvance = step ? canAdvance(step, attempted) : true
+  const mayAdvance = ungated || (step ? canAdvance(step, attempted) : true)
 
   function markAttempted(stepId: string) {
     setAttempted((prev) => {
@@ -90,6 +96,7 @@ export function TrainingWalkthrough({
         step={step}
         onAttempted={markAttempted}
         glossaryTerms={glossaryTerms}
+        revealAnswers={revealAnswers}
       />
 
       <div className="flex items-center justify-between gap-3 pt-1">
@@ -103,7 +110,7 @@ export function TrainingWalkthrough({
         </button>
 
         <div className="flex items-center gap-3">
-          {!mayAdvance && stepNeedsAttempt(step) && (
+          {!mayAdvance && !ungated && stepNeedsAttempt(step) && (
             <p className="text-sm font-semibold text-amber-700">Try the quick check to continue</p>
           )}
           {isLast ? (
