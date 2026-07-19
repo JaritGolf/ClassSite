@@ -10,6 +10,7 @@ import { getClassCalibrationTrend, getOverconfidenceStudents } from '@/lib/calib
 import { ClassCalibrationTrend } from '@/components/teacher/calibration/ClassCalibrationTrend'
 import { OverconfidencePatternList } from '@/components/teacher/calibration/OverconfidencePatternList'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 export default async function CalibrationPage() {
   const session = await requireAuth(['TEACHER'])
@@ -23,7 +24,16 @@ export default async function CalibrationPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Calibration Dashboard</h1>
+        <h1 className="text-xl font-bold text-gray-900">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Calibration"
+            text={"Whether students' confidence ratings match their actual accuracy — a well-calibrated student says \"Very sure\" only when they're right."}
+          >
+            Calibration Dashboard
+          </ExplainerHover>
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
           Calibration measures whether students&apos; confidence matches their accuracy.
           A well-calibrated student is &quot;Very sure&quot; only when they&apos;re actually correct.
@@ -42,7 +52,16 @@ export default async function CalibrationPage() {
 
       {/* Overconfidence patterns */}
       <div>
-        <h2 className="text-base font-semibold text-gray-800 mb-3">Overconfidence Patterns</h2>
+        <h2 className="text-base font-semibold text-gray-800 mb-3">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Overconfidence Patterns"
+            text="Students who say they're very sure but are frequently wrong — a sign they may need to slow down and double-check before answering."
+          >
+            Overconfidence Patterns
+          </ExplainerHover>
+        </h2>
         <p className="text-xs text-gray-500 mb-4">
           Students who are frequently &quot;Very sure&quot; but wrong (gap ≥ 30%). Minimum 5 high-confidence
           responses required.

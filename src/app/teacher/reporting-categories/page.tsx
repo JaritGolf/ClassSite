@@ -10,6 +10,7 @@ import { getTeacherRoster } from '@/lib/teacher-roster'
 import { getClassMasteryByReportingCategory } from '@/lib/class-analytics'
 import { computeClassReadiness } from '@/lib/eoc-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 export default async function ReportingCategoriesPage() {
   const session = await requireAuth(['TEACHER'])
@@ -52,7 +53,16 @@ export default async function ReportingCategoriesPage() {
           <thead>
             <tr className="border-b border-gray-200 text-left text-gray-500">
               <th className="py-2 pr-4 font-medium">Republic Pillar (Reporting Category)</th>
-              <th className="py-2 pr-4 font-medium">EOC Weight</th>
+              <th className="py-2 pr-4 font-medium">
+                <ExplainerHover
+                  theme="admin"
+                  variant="underline"
+                  title="EOC Weight"
+                  text="How much this category counts toward the overall EOC readiness estimate. Categories aren't weighted equally on the real exam."
+                >
+                  EOC Weight
+                </ExplainerHover>
+              </th>
               <th className="py-2 pr-4 font-medium">Mastery</th>
               <th className="py-2 pr-4 font-medium">Readiness</th>
             </tr>

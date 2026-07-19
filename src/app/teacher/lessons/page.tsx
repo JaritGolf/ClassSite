@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getTeacherRoster } from '@/lib/teacher-roster'
 import { TOGGLEABLE_STEP_TYPES } from '@/lib/lesson-content'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 /**
  * Lesson media overview (ADR 0015): every benchmark with an APPROVED lesson,
@@ -51,8 +52,26 @@ export default async function TeacherLessonsPage() {
             <tr>
               <th className="px-4 py-3">Benchmark</th>
               <th className="px-4 py-3">Lesson</th>
-              <th className="px-4 py-3">Media steps</th>
-              <th className="px-4 py-3">Toggled off</th>
+              <th className="px-4 py-3">
+                <ExplainerHover
+                  theme="admin"
+                  variant="underline"
+                  title="Media steps"
+                  text="Videos, images, diagrams, and infographics in this lesson — the optional pieces you can switch on or off. Core instruction (notes, checks, worked examples) always stays on."
+                >
+                  Media steps
+                </ExplainerHover>
+              </th>
+              <th className="px-4 py-3">
+                <ExplainerHover
+                  theme="admin"
+                  variant="underline"
+                  title="Toggled off"
+                  text="How many media steps are currently hidden from students — either globally or just for one of your classes."
+                >
+                  Toggled off
+                </ExplainerHover>
+              </th>
               <th className="px-4 py-3" />
             </tr>
           </thead>
