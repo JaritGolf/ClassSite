@@ -152,6 +152,15 @@ enum LessonStepType {
   INFOGRAPHIC
 }
 
+// Did this LessonStep's row come from the static seed defs, or was it
+// added in-app by an admin via the lesson content editor? Lets the seeder
+// know a lesson's step LIST has diverged from its LessonSeedDef (see
+// Lesson.structureEditedAt) without needing to diff the two.
+enum LessonStepSource {
+  SEED
+  ADMIN
+}
+
 enum ResourceType {
   VIDEO
   ARTICLE
@@ -497,6 +506,12 @@ model Lesson {
   studentFriendlyTarget String         @map("student_friendly_target")
   approvalStatus        ApprovalStatus @default(DRAFT) @map("approval_status")
   version               Int            @default(1)
+  // Set the moment an admin adds/removes/reorders this lesson's steps via the
+  // content editor. Once set, the seeder never touches this lesson's step
+  // list again on any future `db:seed` run (see seed/lessons/_seeder.ts) —
+  // admin-added steps can't be mistaken for "dropped" and deleted, and a
+  // deliberately-removed step can't be resurrected by its old seed def.
+  structureEditedAt DateTime? @map("structure_edited_at")
 
   benchmark Benchmark   @relation(fields: [benchmarkId], references: [id])
   steps     LessonStep[]
@@ -515,6 +530,12 @@ model LessonStep {
   // Global teacher kill-switch for media steps (per-class overrides live on
   // ClassLessonStepVisibility). Core instructional steps stay enabled.
   enabled       Boolean        @default(true)
+  // Set the moment an admin edits this step's global content via the content
+  // editor. Once set, a reseed excludes title/content/stepType from this
+  // step's update payload (title/content stay whatever the admin set) —
+  // mirrors how `enabled` is already permanently excluded from reseed today.
+  contentEditedAt DateTime?        @map("content_edited_at")
+  source          LessonStepSource @default(SEED) @map("source")
 
   lesson          Lesson                      @relation(fields: [lessonId], references: [id])
   currentProgress StudentProgress[]           @relation("CurrentLessonStep")
@@ -523,23 +544,58 @@ model LessonStep {
   @@map("lesson_steps")
 }
 
-// Per-class tri-state override for a lesson step's visibility: row absent =
-// inherit the step's global `enabled` flag; visible=true forces show,
-// visible=false forces hide. Cascade: an override is meaningless once its
-// step is deleted (the lesson seeder deletes dropped steps on re-seed).
+// Per-class override for a lesson step, on two independent axes:
+//   - visibility: null = inherit the step's global `enabled` flag;
+//     true/false forces show/hide (existing ADR 0015 behavior, unchanged).
+//   - content: overrideTitle/overrideContent null = inherit the step's
+//     global title/content; non-null = this class sees the override instead
+//     (ADR TBD — lesson content editor). The two axes are independent: a
+//     step can be globally enabled but hidden for class A while also
+//     carrying a content override that only matters for class B.
+// A row with all three overrides null is meaningless and is pruned (see
+// pruneOrUpdateOverrideRow in src/lib/lesson-media/index.ts). Cascade: an
+// override is meaningless once its step is deleted.
 model ClassLessonStepVisibility {
-  id           String   @id @default(cuid())
-  classId      String   @map("class_id")
-  lessonStepId String   @map("lesson_step_id")
-  visible      Boolean
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  classId         String   @map("class_id")
+  lessonStepId    String   @map("lesson_step_id")
+  visible         Boolean?
+  overrideTitle   String?  @map("override_title")
+  overrideContent String?  @map("override_content")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   class      Class      @relation(fields: [classId], references: [id])
   lessonStep LessonStep @relation(fields: [lessonStepId], references: [id], onDelete: Cascade)
 
   @@unique([classId, lessonStepId])
   @@map("class_lesson_step_visibility")
+}
+
+// Binary storage for teacher/admin-uploaded lesson images (Postgres, not
+// local disk — this app is documented as stateless/horizontally-scalable
+// behind a load balancer; a filesystem write would only be visible from
+// whichever instance received the upload). Served by
+// src/app/media/uploads/[id]/route.ts at the public path
+// `/media/uploads/<id>` — a cuid is lowercase alphanumeric, so it already
+// matches ImageSchema.asset's `/media/...` pattern with no schema changes.
+// Rows are immutable once created (content-addressed by id) — safe to cache
+// the served response forever.
+model UploadedLessonImage {
+  id         String   @id @default(cuid())
+  mimeType   String   @map("mime_type")
+  byteSize   Int      @map("byte_size")
+  // Nullable: the hand-rolled dimension parser (src/lib/media-upload/format.ts)
+  // is best-effort for some formats (e.g. lossless WebP) and returns null on
+  // a parse miss rather than failing the upload — the uploader just types
+  // width/height in manually on the subsequent content-edit call.
+  width      Int?
+  height     Int?
+  data       Bytes
+  uploadedBy String   @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("uploaded_lesson_images")
 }
 
 // ============================================================

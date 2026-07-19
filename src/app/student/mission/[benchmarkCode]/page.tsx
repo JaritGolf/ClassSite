@@ -3,8 +3,8 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getStudentAccommodations } from '@/lib/reading-load'
 import { resolveL1Language, getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
-import { resolveVisibleSteps } from '@/lib/lesson-content'
-import { getClassVisibilityMap } from '@/lib/lesson-media'
+import { resolveEffectiveSteps } from '@/lib/lesson-content'
+import { getClassStepOverrideMap } from '@/lib/lesson-media'
 import { MissionFlow } from '@/components/student/mission/MissionFlow'
 
 interface PageProps {
@@ -103,9 +103,11 @@ export default async function MissionPage({ params }: PageProps) {
 
   const lesson = benchmark.lessons[0]
 
-  // Teacher media visibility (ADR 0015): filter steps server-side — per-class
-  // override wins, else the step's global enabled flag. First ACTIVE class,
-  // same convention as strategy-track requirements.
+  // Teacher media visibility (ADR 0015) + per-class content overrides
+  // (lesson content editor): resolve steps server-side — a class's content
+  // override wins over the global default, and its visibility override wins
+  // over the step's global enabled flag; the two axes are independent. First
+  // ACTIVE class, same convention as strategy-track requirements.
   let visibleSteps = lesson?.steps ?? []
   if (visibleSteps.length > 0) {
     let classId: string | null = null
@@ -117,11 +119,11 @@ export default async function MissionPage({ params }: PageProps) {
       })
       classId = enrollment?.classId ?? null
     }
-    const overrides = await getClassVisibilityMap(
+    const overrides = await getClassStepOverrideMap(
       classId,
       visibleSteps.map((s) => s.id)
     )
-    visibleSteps = resolveVisibleSteps(visibleSteps, overrides)
+    visibleSteps = resolveEffectiveSteps(visibleSteps, overrides)
   }
 
   const idForType = (t: string) =>
