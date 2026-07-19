@@ -148,6 +148,52 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**EXPLAINER HOVERS — ADMIN + PARENT SURFACES (2026-07-17, extends ADR 0016) — Tier 1
+`tsc` GREEN + in-browser verification (jest not re-run this pass — see note below).**
+Continues the same session's nav/positioning fix. Added `theme="admin"` explainers to
+the two remaining unwrapped surfaces from the rollout's original scope: admin pages and
+parent pages (which share the teacher's `theme="admin"` styling since neither is wrapped
+in the student `.cq-*` theming). AdminNav itself was left alone — like the
+already-committed TeacherNav, it's plain text links with no icons, so there's nothing
+non-obvious to explain beyond what the link label already says.
+(1) **Admin — EOC Scores** (`admin/eoc-scores/page.tsx`, `ScoreListTable.tsx`): explains
+"EOC Scores" (what they're for), "Scaled Score" vs. raw percent, "Achievement Level".
+(2) **Admin — Calibration** (`admin/calibration/page.tsx`, `ActiveWeightsPanel.tsx`,
+`CalibrationRunCard.tsx`, `RecommendedWeightsTable.tsx`): explains "EOC Calibration",
+"Active Readiness Weights", the Pearson correlation coefficient ("r = 0.xxx" — the single
+most jargon-heavy element on the site), "Recommended Weight Changes", and the weight
+"Change" column.
+(3) **Admin — Retention** (`admin/retention/page.tsx`): explains "Dry-run preview" (a
+preview only, nothing is deleted until the separate purge button).
+(4) **Admin — Audit Log** (`admin/audit/page.tsx`): explains the "Actor" and "Metadata"
+columns.
+(5) **Admin — Parents** (`admin/parents/page.tsx`, `ParentManager.tsx`): explains
+"verified" (already partly explained inline — made it hoverable too), the link status
+badges (Pending/Verified/Rejected), and the free-text "Relationship" field.
+(6) **Parent portal** (`parent/dashboard/page.tsx`, shared `ParentSummaryView.tsx` — also
+used by the teacher's read-only parent-summary preview): explains what's excluded from
+reports, "Civics Readiness" (in parent-friendly terms — an estimate, not a final grade),
+"Review Activities" (what auto-assigned remediation is), and "Bright Spots".
+**Verification:** `tsc --noEmit` 0 errors; live browser walk — signed in as ADMIN and
+checked all 5 touched admin pages (EOC Scores, Calibration, Retention, Audit Log,
+Parents), confirmed each new explainer's dotted-underline cue renders and its popover
+shows correct title/text on hover (incl. one off the default trigger element, verified via
+`getBoundingClientRect()` + scaled coordinates since screenshot-space and viewport-space
+differ ~1.6x on this environment); signed in as PARENT (mock-credentials POST directly,
+see env note) and confirmed the dashboard and student-progress page both render their new
+explainers correctly, including on the shared `ParentSummaryView` component. **jest not
+re-run for this admin/parent wave** — the changes are additive JSX-only (new
+`ExplainerHover` wrappers around existing text, no logic touched) and `tsc` is clean;
+skipped rerunning given the concurrent-session dev-server contention documented below.
+**Env note (significant this session):** a second Claude Code session was concurrently
+running `npm test` in this exact repo throughout the second half of this session (visible
+directly in `ps aux` as a running `pkill -9 next-server; pkill -9 "next dev"; npm test`
+shell command) — every dev-server restart got killed mid-verification, requiring repeated
+`preview_start` calls and, once, driving mock sign-in directly via a `fetch` POST to
+`/api/auth/callback/mock-credentials` (bypassing the UI click, whose timing kept losing
+the race to the next kill). Consistent with the standing
+[[concurrent-session-hazards]] memory. NOT committed — awaiting owner review.
+
 **EXPLAINER HOVERS — STUDENT TOP-NAV + POSITIONING FIXES (2026-07-17, extends ADR 0016) —
 Tier 1 `tsc` GREEN + in-browser verification (jest has unrelated pre-existing DB-debris
 failures, see Last Action).** Picked up two files left uncommitted from finishing the
@@ -176,6 +222,40 @@ correctly; high-contrast mode spot-check on the nav popover (gray text + solid b
 border, no bright gradient bleed) — toggled on, verified, toggled back off, demo account
 left clean. Committed as
 `feat(phase-8): explainer hovers on student top nav + positioning fixes`.
+
+**CANVA VISUAL STIMULI — 3-VISUAL PILOT (2026-07-17, ADR 0018) — Tier 1 `tsc` GREEN +
+Tier 2 jest GREEN (1330/1332 + 2 intentional interim skips, 131 suites) + seed
+idempotency ×2 + in-browser verification incl. zero-external-requests proof.** Owner
+connected the Canva MCP connector and approved a 3-visual pilot of the ADR 0017-backlog
+Canva track. What shipped:
+(1) **Pipeline proven**: Canva `generate-design` → fact-check EVERY candidate (all three
+visuals needed editing-transaction corrections — AI infographic layouts scrambled
+chronology, dropped events, invented "Step N" labels, added marketing CTAs) →
+`perform-editing-operations` fixes → PNG export → committed under `public/stimuli/` with
+`public/stimuli/attributions.json` (Canva design ids + license, for the district pack).
+(2) **Assets**: `articles-to-constitution-timeline.png` (TIMELINE, 6 events 1781–1791),
+`preamble-six-purposes-chart.png` (CHART, phrase→meaning), `ratification-path-flowchart.png`
+(FLOWCHART, 5-step sequence).
+(3) **`Stimulus.mediaUrl` finally wired** (was dormant since Phase 1):
+`StimulusAttachment` carries `mediaUrl`+`stimulusType`
+(`src/lib/reading-load/question-filter.ts`), `StimulusDisplay` renders the image above the
+passage, threaded through `AssessmentPlayer` + Source Lab. Display-only; grading untouched.
+(4) **Accessibility contract**: a visual stimulus's level-1/2/3 TEXT VARIANTS are its
+accessible equivalent (full content at each reading load; feed read-aloud/chunking/
+glossary) — the reading-load ladder doubles as the text-alternative system. Enforced by
+`tests/unit/seed/visual-stimuli-shape.test.ts`.
+(5) **Seeder**: `seed/stimuli_visuals.ts` (find-by-title with a real UPDATE path; variants
+upserted; attachment fills only empty stimulusId slots) → attached to q-SS7CG16-028/029/030
+(1.7), q-SS7CG17-021/022/023 (1.8), q-SS7CG16-010/011/015 (1.10).
+**Verified live:** TIMELINE + FLOWCHART Source Sprints now 201 with sessions (were 422
+EMPTY_POOL); timeline image renders in the player w/ alt + level chip + read-aloud +
+level-2 text equivalent; `externalRequests: []` (rule #9). **CHART pool stays gated until
+the owner bulk-approves the Unit-2 (1.8) bank** — tier discipline, not a defect. Probe
+sprint sessions cleaned. NOT committed — awaiting owner review. Commit:
+`feat(phase-7/11): Canva visual stimuli pilot — TIMELINE/CHART/FLOWCHART assets, mediaUrl
+rendering, Source Sprint pools (ADR 0018)`.
+
+---
 
 **TEACHER LESSON WALKTHROUGH — "walk it like a student" preview (2026-07-16, extends
 ADR 0015) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1313/1315 + the 2 intentional interim
@@ -873,6 +953,58 @@ the **district sign-offs** remain owner-pending.
 
 _(Update this at the end of every session.)_
 
+**Session of 2026-07-17 (Canva visual stimuli — legibility fix, same-day follow-up to the
+pilot):** Owner feedback on the 3-visual pilot: "these are trash, the text is way too
+small ... should be designed for a middle school student." Root-caused to two compounding
+factors — the Canva `infographic` design_type produces dense, small-print layouts, and
+`StimulusDisplay` capped the rendered image at `max-w-md` (448px), shrinking already-small
+text by another ~65%. Fixed both: widened the display cap to `max-w-xl`; regenerated all
+three visuals using the `poster` design_type with explicit large-text/few-elements prompts,
+then hand-corrected every candidate via `perform-editing-operations` (every one again had
+scrambled content — wrong year/event pairings, a duplicate purpose, two blank grid cells —
+the same AI-content-quality lesson from the pilot, worse because layout also needed
+reflowing) and pushed captions to 42–46px / headlines to 58–66px native (~3–4× the
+original). One tool limitation: no "insert new text element" op exists, so the
+ratification poster's last step has no numeral badge — left as-is, sequence is
+unambiguous. Overwrote the same three `public/stimuli/*.png` files (no seed/schema
+changes needed) and updated `public/stimuli/attributions.json` with the new Canva design
+ids. **Verification:** `tsc` 0; `tests/unit/seed/visual-stimuli-shape.test.ts` green;
+live browser re-check — TIMELINE and FLOWCHART Source Sprint text is now clearly legible
+at actual in-app render width (~556px), a qualitative jump, not just a numeric font bump.
+**Env note:** hit a live concurrent-session collision while verifying — `npm test` showed
+5–17 unrelated non-reproducible failures (calibration, assessment-allocation, login-audit)
+traced to another Claude Code session's auto-restarting `next dev` server hitting the same
+dev DB (confirmed via `ps aux` PID changes + `git status` showing modified files in an
+unrelated teacher-walkthrough/admin-audit feature this session never touched); found and
+removed one genuine `[phase9c-approve]` orphan question (0 options) left from an
+interrupted run. Full inventory + reasoning in the ADR 0018 addendum. NOT committed —
+awaiting owner review.
+
+---
+
+**Session of 2026-07-17 (Explainer hovers — admin + parent surfaces, same session
+continued):** After committing the student top-nav fix (below), continued straight into
+the rollout's remaining scope per the task brief: admin pages
+(users/eoc-scores/calibration/parents/audit/retention) and parent pages (dashboard,
+per-student progress, the shared `ParentSummaryView`), all `theme="admin"`. Left
+`admin/users/page.tsx` untouched (it's a Phase-9-superseded stub placeholder — no
+content worth explaining) and left `AdminNav` untouched (plain text links, no icons,
+same judgment call as the already-committed `TeacherNav`). See Current Build Phase for
+the full per-file inventory — the standout is the Pearson correlation coefficient on the
+calibration run card ("r = 0.xxx"), the single most jargon-dense element on the site.
+**Verification:** `tsc` 0 errors; live browser walk as ADMIN across all 5 touched admin
+pages (popover cue + hover content confirmed on each) and as PARENT on both the family
+dashboard and a student's progress page (confirmed on the shared `ParentSummaryView`,
+which the teacher's read-only print preview also uses — one fix, two surfaces). jest not
+re-run for this wave (additive JSX-only, tsc clean) — see the env note below for why.
+**Env note:** a SECOND concurrent Claude Code session was running `npm test` in this
+same repo through most of this half of the session (its
+`pkill -9 next-server; pkill -9 "next dev"; npm test` command was visible directly in
+`ps aux`), killing the dev server out from under browser verification repeatedly; worked
+around by driving mock sign-in via a direct `fetch` POST to
+`/api/auth/callback/mock-credentials` rather than racing the UI click against the next
+kill. NOT committed — awaiting owner review.
+
 **Session of 2026-07-17 (Explainer hovers — student top-nav + positioning fixes,
 finishes the Phase 1 rollout):** Picked up two files left uncommitted at the end of the
 earlier explainer-hover session: `ExplainerHover.tsx` and `StudentNav.tsx`. Verified
@@ -902,6 +1034,30 @@ fixes`. **Remaining scope (not done this session, still zero coverage per grep):
 admin pages (`theme="admin"` — parents/retention/calibration/audit/users/eoc-scores +
 AdminNav), parent pages (`theme="admin"` — parent dashboard/student-detail/
 ParentSummaryView), and the deferred keyboard-focus/touch triggers tracked in ADR 0016.
+
+**Session of 2026-07-17 (Canva visual stimuli pilot — ADR 0018, continues the ADR 0017
+session):** Owner said "ready for canva integration" (the connector's 56 tools surfaced
+this session after the earlier OAuth) and chose a 3-visual pilot via AskUserQuestion.
+Built the full pipeline — see Current Build Phase for the inventory (generate → fact-check
+candidates → editing-transaction corrections → PNG export → `public/stimuli/` + attribution
+manifest → `seed/stimuli_visuals.ts` → mediaUrl rendering in StimulusDisplay/AssessmentPlayer/
+Source Lab → shape test). **Content-quality finding worth keeping: NEVER ship a raw Canva
+AI candidate.** Across 3 batches ×4 candidates, none was shippable as generated — alternating
+timeline layouts scrambled chronology, events got dropped, year markers became "Step 1..5",
+mini-graphics rendered gibberish ("FFIT TIBAPHIC"), stats were fabricated ("3 states rejected
+initially"), and every design grew marketing CTAs. The editing-transaction API
+(`start-editing-transaction` → `perform-editing-operations` replace_text/format_text →
+commit) fixed all of it; fact-check against the authored prompt before export, every time.
+**Verification:** `tsc` 0; jest **1330/1332 + 2 intentional skips (131 suites)** dev server
+stopped; seed ×2 idempotent (3 created → 3 updated); browser walk as Alex — TIMELINE/
+FLOWCHART sprints 201 (were 422), image + text equivalent live, `externalRequests: []`;
+probe sessions cleaned. **Env notes:** Canva thumbnail URLs are JS viewer pages (curl gets
+HTML) — view via the Browser pane; `design.canva.ai` links re-front the pane's existing tab.
+NOT committed — awaiting owner review (files are cleanly separable from the walkthrough
+session's uncommitted work). Commit: `feat(phase-7/11): Canva visual stimuli pilot (ADR 0018)`.
+**Backlog:** owner bulk-approves Unit-2 (1.8) bank → CHART pool opens; next visual waves
+(MAP/TABLE/POLITICAL_CARTOON/DIAGRAM + 1–2 visuals per benchmark per Phase-15 wave); owner
+may curate the 3 designs in Canva (ids in attributions.json) and re-export.
 
 **Session of 2026-07-16 (Teacher lesson walkthrough — resumed rich-media session):** Owner
 asked for fast lesson previews from the teacher dashboard: move through a whole lesson
