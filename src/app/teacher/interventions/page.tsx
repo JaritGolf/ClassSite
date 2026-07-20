@@ -14,6 +14,7 @@ import {
 } from '@/lib/class-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
 import { AlertBadge } from '@/components/teacher/shared/AlertBadge'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
 import type { NeedingActionRow, SmallGroup, OffRampRow } from '@/lib/class-analytics'
 
@@ -192,7 +193,16 @@ function OffRampTable({ rows }: { rows: OffRampRow[] }) {
             <th className="px-4 py-3">Student</th>
             <th className="px-4 py-3">Benchmark</th>
             <th className="px-4 py-3">Triggered</th>
-            <th className="px-4 py-3">Conference</th>
+            <th className="px-4 py-3">
+              <ExplainerHover
+                theme="admin"
+                variant="underline"
+                title="Conference"
+                text="Whether you've logged a 1:1 check-in with this student about the off-ramp. This is a manual tracking note, not required for the student's progress."
+              >
+                Conference
+              </ExplainerHover>
+            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">

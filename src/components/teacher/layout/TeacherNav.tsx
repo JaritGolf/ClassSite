@@ -2,22 +2,79 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 const NAV_ITEMS = [
-  { href: '/teacher/dashboard', label: 'Dashboard' },
-  { href: '/teacher/classes', label: 'Classes' },
-  { href: '/teacher/benchmarks', label: 'Benchmarks' },
-  { href: '/teacher/reporting-categories', label: 'Reporting Categories' },
-  { href: '/teacher/eoc-readiness', label: 'EOC Readiness' },
-  { href: '/teacher/students', label: 'Students' },
-  { href: '/teacher/decay', label: 'Decay' },
-  { href: '/teacher/calibration', label: 'Calibration' },
-  { href: '/teacher/questions', label: 'Question Bank' },
-  { href: '/teacher/lessons', label: 'Lessons' },
-  { href: '/teacher/content', label: 'Content' },
-  { href: '/teacher/interventions', label: 'Interventions' },
-  { href: '/teacher/reports', label: 'Reports' },
-  { href: '/teacher/settings', label: 'Settings' },
+  {
+    href: '/teacher/dashboard',
+    label: 'Dashboard',
+    explain: 'Your class overview — mastery, readiness, and alerts at a glance.',
+  },
+  {
+    href: '/teacher/classes',
+    label: 'Classes',
+    explain: 'Your rosters, plus Republic Challenge and Strategist Track settings per class.',
+  },
+  {
+    href: '/teacher/benchmarks',
+    label: 'Benchmarks',
+    explain: 'Every SS.7.CG standard in the course, grouped by unit, with your class’s mastery rate on each.',
+  },
+  {
+    href: '/teacher/reporting-categories',
+    label: 'Reporting Categories',
+    explain: 'The four EOC blueprint groupings (Republic Pillars) — mastery and readiness rolled up by category.',
+  },
+  {
+    href: '/teacher/eoc-readiness',
+    label: 'EOC Readiness',
+    explain: 'Your class’s estimated exam readiness, overall and by category — a preparation estimate, not a predicted score.',
+  },
+  {
+    href: '/teacher/students',
+    label: 'Students',
+    explain: 'Browse your roster by class, or search for any student to jump straight to their profile.',
+  },
+  {
+    href: '/teacher/decay',
+    label: 'Decay',
+    explain: 'Which mastered benchmarks students are starting to forget, so you can bring the material back before it’s lost.',
+  },
+  {
+    href: '/teacher/calibration',
+    label: 'Calibration',
+    explain: 'Whether students’ confidence ratings match their actual accuracy.',
+  },
+  {
+    href: '/teacher/questions',
+    label: 'Question Bank',
+    explain: 'Every question in the bank, with tagging, reading-load, and approval status.',
+  },
+  {
+    href: '/teacher/lessons',
+    label: 'Lessons',
+    explain: 'Preview each lesson and control which videos, images, and diagrams your students see.',
+  },
+  {
+    href: '/teacher/content',
+    label: 'Content',
+    explain: 'Review and approve AI-drafted or teacher-submitted content before it’s shown to students.',
+  },
+  {
+    href: '/teacher/interventions',
+    label: 'Interventions',
+    explain: 'Students who need attention — off-ramp, decay spikes, overdue remediation, or overconfidence.',
+  },
+  {
+    href: '/teacher/reports',
+    label: 'Reports',
+    explain: 'Daily action plan and whole-roster mastery reports, exportable to CSV or PDF.',
+  },
+  {
+    href: '/teacher/settings',
+    label: 'Settings',
+    explain: 'Substitute mode and per-class sub-prep notes.',
+  },
 ]
 
 export function TeacherNav() {
@@ -37,7 +94,9 @@ export function TeacherNav() {
                 : 'text-gray-600 hover:text-indigo-600 hover:bg-gray-50'
             }`}
           >
-            {item.label}
+            <ExplainerHover theme="admin" variant="plain" title={item.label} text={item.explain}>
+              {item.label}
+            </ExplainerHover>
           </Link>
         ))}
       </div>

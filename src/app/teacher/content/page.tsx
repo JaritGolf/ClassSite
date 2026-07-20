@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth'
 import { listApprovalQueue } from '@/lib/content-approval'
 import { ApprovalQueueTable } from '@/components/teacher/content/ApprovalQueueTable'
 import { ApprovalFilters } from '@/components/teacher/content/ApprovalFilters'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import type { ApprovableEntity } from '@/lib/content-approval'
 import type { ApprovalStatus } from '@prisma/client'
 
@@ -29,7 +30,16 @@ export default async function ContentPage({ searchParams }: ContentPageProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Content Approval Queue</h1>
+        <h1 className="text-2xl font-bold text-gray-900">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Content Approval Queue"
+            text="AI-drafted or teacher-submitted content (questions, lessons, terms, and more) waiting for your review before it can be shown to students."
+          >
+            Content Approval Queue
+          </ExplainerHover>
+        </h1>
         <a
           href="/teacher/content/bulk-approve"
           className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"

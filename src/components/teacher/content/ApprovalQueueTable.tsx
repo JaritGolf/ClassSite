@@ -1,6 +1,7 @@
 import type { QueueItem } from '@/lib/content-approval'
 import { ApprovalQueueRow } from './ApprovalQueueRow'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface ApprovalQueueTableProps {
   items: QueueItem[]
@@ -24,7 +25,16 @@ export function ApprovalQueueTable({ items }: ApprovalQueueTableProps) {
             <th className="px-4 py-3 text-left font-medium text-gray-500">Type</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500">Content</th>
             <th className="px-4 py-3 text-left font-medium text-gray-500">Benchmark</th>
-            <th className="px-4 py-3 text-left font-medium text-gray-500">Status</th>
+            <th className="px-4 py-3 text-left font-medium text-gray-500">
+              <ExplainerHover
+                theme="admin"
+                variant="underline"
+                title="Status"
+                text="Draft: still being written. Needs Review / Needs Revision: waiting on you. Approved: visible to students. Archived: retired, hidden everywhere."
+              >
+                Status
+              </ExplainerHover>
+            </th>
             <th className="px-4 py-3 text-right font-medium text-gray-500">Actions</th>
           </tr>
         </thead>

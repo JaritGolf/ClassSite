@@ -8,6 +8,7 @@
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { validateQuestionTags } from '@/lib/eoc-alignment'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import type { ApprovalStatus, Prisma } from '@prisma/client'
 
 const STATUSES: ApprovalStatus[] = ['DRAFT', 'NEEDS_REVIEW', 'APPROVED', 'NEEDS_REVISION', 'ARCHIVED']
@@ -108,9 +109,27 @@ export default async function QuestionBankPage({ searchParams }: PageProps) {
               <th className="py-2 pr-4 font-medium">Benchmark</th>
               <th className="py-2 pr-4 font-medium">Prompt</th>
               <th className="py-2 pr-4 font-medium">Type</th>
-              <th className="py-2 pr-4 font-medium">RL</th>
+              <th className="py-2 pr-4 font-medium">
+                <ExplainerHover
+                  theme="admin"
+                  variant="underline"
+                  title="Reading Load (RL)"
+                  text="1 = paraphrase + glossary, 2 = chunked excerpt (EOC-equivalent), 3 = raw passage. Higher levels ask students to read more independently."
+                >
+                  RL
+                </ExplainerHover>
+              </th>
               <th className="py-2 pr-4 font-medium">Complexity</th>
-              <th className="py-2 pr-4 font-medium">Status</th>
+              <th className="py-2 pr-4 font-medium">
+                <ExplainerHover
+                  theme="admin"
+                  variant="underline"
+                  title="Status"
+                  text="Draft: still being written. Needs Review / Needs Revision: waiting on you. Approved: visible to students. Archived: retired."
+                >
+                  Status
+                </ExplainerHover>
+              </th>
               <th className="py-2 pr-4 font-medium">Tags</th>
             </tr>
           </thead>

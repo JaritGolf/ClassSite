@@ -10,6 +10,7 @@
 import { requireAuth } from '@/lib/auth'
 import { getBenchmarksGroupedByUnit } from '@/lib/class-analytics'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
 
 export default async function BenchmarksPage() {
@@ -72,7 +73,16 @@ export default async function BenchmarksPage() {
                     <th className="px-4 py-3">Benchmark</th>
                     <th className="px-4 py-3">Title</th>
                     <th className="px-4 py-3 text-right">Mastered</th>
-                    <th className="px-4 py-3 text-right">Rate</th>
+                    <th className="px-4 py-3 text-right">
+                      <ExplainerHover
+                        theme="admin"
+                        variant="underline"
+                        title="Rate"
+                        text="The percentage of your students who have reached mastery on this benchmark."
+                      >
+                        Rate
+                      </ExplainerHover>
+                    </th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>

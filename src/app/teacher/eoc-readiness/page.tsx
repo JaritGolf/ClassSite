@@ -11,6 +11,7 @@ import { getEocReadinessTrend } from '@/lib/class-analytics'
 import { computeClassReadiness, getDimensionBreakdownForClass } from '@/lib/eoc-analytics'
 import { EocReadinessTrendChart } from '@/components/teacher/dashboard/EocReadinessTrendChart'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 export default async function EocReadinessPage() {
   const session = await requireAuth(['TEACHER'])
@@ -54,7 +55,16 @@ export default async function EocReadinessPage() {
             <thead>
               <tr className="border-b border-gray-200 text-left text-gray-500">
                 <th className="py-2 pr-4 font-medium">Category</th>
-                <th className="py-2 pr-4 font-medium">Readiness</th>
+                <th className="py-2 pr-4 font-medium">
+                  <ExplainerHover
+                    theme="admin"
+                    variant="underline"
+                    title="Readiness"
+                    text="The percentage in parentheses is a confidence range — with more student attempts, that range narrows."
+                  >
+                    Readiness
+                  </ExplainerHover>
+                </th>
                 <th className="py-2 pr-4 font-medium">Mastered / Total</th>
               </tr>
             </thead>

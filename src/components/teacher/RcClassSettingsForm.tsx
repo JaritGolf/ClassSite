@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface Settings {
   rcSessionLengthOverride: number | null
@@ -54,7 +55,17 @@ export function RcClassSettingsForm({ classId, className, initial }: Props) {
   return (
     <form onSubmit={handleSave} className="space-y-6 max-w-xl">
       <header>
-        <h2 className="text-xl font-bold text-gray-900">Republic Challenge — {className}</h2>
+        <h2 className="text-xl font-bold text-gray-900">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Republic Challenge"
+            text="The student-facing name for cumulative EOC-style review — optional practice sessions that mix questions across missions, separate from the graded Mastery Challenges."
+          >
+            Republic Challenge
+          </ExplainerHover>{' '}
+          — {className}
+        </h2>
         <p className="text-sm text-gray-500 mt-1">
           These settings affect Quick Review, Mixed Mission, Endurance Trial, and Final
           Republic Trial for all students enrolled in this class.
@@ -128,7 +139,16 @@ export function RcClassSettingsForm({ classId, className, initial }: Props) {
       </Field>
 
       <div className="border-t border-gray-100 pt-4">
-        <h3 className="text-sm font-bold text-gray-800">Strategist Track</h3>
+        <h3 className="text-sm font-bold text-gray-800">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Strategist Track"
+            text="A separate mini-progression that teaches test-taking strategies, apart from the civics content itself."
+          >
+            Strategist Track
+          </ExplainerHover>
+        </h3>
       </div>
 
       <Field

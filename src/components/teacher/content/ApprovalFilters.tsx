@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import type { ApprovableEntity } from '@/lib/content-approval'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 const ENTITY_TYPES: { value: ApprovableEntity | ''; label: string }[] = [
   { value: '', label: 'All types' },
@@ -60,7 +61,16 @@ export function ApprovalFilters() {
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+        <label className="block text-xs font-medium text-gray-700 mb-1">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Status"
+            text="Draft: still being written. Needs Review / Needs Revision: waiting on you. Approved: visible to students. Archived: retired, hidden everywhere."
+          >
+            Status
+          </ExplainerHover>
+        </label>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
