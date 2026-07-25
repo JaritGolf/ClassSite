@@ -1,4 +1,5 @@
 import { getStaminaLengthForDate } from '@/lib/republic-challenge'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 const ROWS = [
   { label: 'Aug-Oct', length: 10 },
@@ -14,7 +15,16 @@ export function StaminaLadderPreview() {
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 max-w-md">
-      <h3 className="font-semibold text-gray-800 text-sm mb-2">Stamina ladder</h3>
+      <h3 className="font-semibold text-gray-800 text-sm mb-2">
+        <ExplainerHover
+          theme="admin"
+          variant="underline"
+          title="Stamina ladder"
+          text="Endurance Trial length grows automatically through the year so students build up to a full-length exam gradually, instead of all at once."
+        >
+          Stamina ladder
+        </ExplainerHover>
+      </h3>
       <p className="text-xs text-gray-500 mb-3">
         Endurance Trial session length by time of year (spec §19.1). Today:{' '}
         <span className="font-medium text-indigo-700">

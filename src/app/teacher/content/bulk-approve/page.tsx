@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { BulkApproveConfirmDialog } from '@/components/teacher/content/BulkApproveConfirmDialog'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import type { BulkApproveCriteria, ApprovableEntity } from '@/lib/content-approval'
 
 const ENTITY_TYPES: ApprovableEntity[] = [
@@ -20,7 +21,16 @@ export default function BulkApprovePage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Bulk Approve Content</h1>
+      <h1 className="text-2xl font-bold text-gray-900">
+        <ExplainerHover
+          theme="admin"
+          variant="underline"
+          title="Bulk Approve Content"
+          text="Approve every matching item at once instead of one-by-one in the queue — you'll see exactly what matches before anything is approved."
+        >
+          Bulk Approve Content
+        </ExplainerHover>
+      </h1>
 
       <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm space-y-4">
         <div>

@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { ClassOverrideRow, PreviewClass } from './LessonPreview'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 const ERROR_MESSAGES: Record<string, string> = {
   SUB_MODE_READ_ONLY: 'Substitute mode is read-only.',
@@ -92,30 +93,37 @@ export function StepVisibilityControls({
                   {cls.name}
                   {cls.period ? ` (P${cls.period})` : ''}
                 </span>
-                <span
-                  role="group"
-                  aria-label={`Visibility for ${cls.name}`}
-                  className="inline-flex overflow-hidden rounded-md border border-gray-300"
+                <ExplainerHover
+                  theme="admin"
+                  variant="plain"
+                  title="Inherit / Show / Hide"
+                  text="Inherit follows the global on/off switch above. Show or Hide locks this class to that setting regardless of the global switch."
                 >
-                  {(['inherit', 'show', 'hide'] as const).map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      disabled={busy}
-                      aria-pressed={state === option}
-                      onClick={() =>
-                        post({ scope: 'class', classId: cls.id, lessonStepId, state: option })
-                      }
-                      className={`px-2.5 py-1 text-xs font-medium capitalize transition-colors disabled:opacity-50 ${
-                        state === option
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-white text-gray-600 hover:bg-gray-50'
-                      }`}
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </span>
+                  <span
+                    role="group"
+                    aria-label={`Visibility for ${cls.name}`}
+                    className="inline-flex overflow-hidden rounded-md border border-gray-300"
+                  >
+                    {(['inherit', 'show', 'hide'] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        disabled={busy}
+                        aria-pressed={state === option}
+                        onClick={() =>
+                          post({ scope: 'class', classId: cls.id, lessonStepId, state: option })
+                        }
+                        className={`px-2.5 py-1 text-xs font-medium capitalize transition-colors disabled:opacity-50 ${
+                          state === option
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </span>
+                </ExplainerHover>
                 <span
                   className={`text-xs font-semibold ${
                     effective ? 'text-green-700' : 'text-amber-700'

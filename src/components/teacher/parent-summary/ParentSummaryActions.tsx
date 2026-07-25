@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface Props {
   studentId: string
@@ -41,13 +42,20 @@ export function ParentSummaryActions({ studentId, fieldsIncluded }: Props) {
       >
         Save as PDF
       </button>
-      <button
-        onClick={markShared}
-        disabled={state === 'sharing' || state === 'shared'}
-        className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+      <ExplainerHover
+        theme="admin"
+        variant="plain"
+        title="Mark as shared"
+        text="Just records a note in the audit log that you shared this summary with the family — it doesn't send anything or notify the parent automatically."
       >
-        {state === 'shared' ? 'Marked as shared ✓' : state === 'sharing' ? 'Recording…' : 'Mark as shared'}
-      </button>
+        <button
+          onClick={markShared}
+          disabled={state === 'sharing' || state === 'shared'}
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+        >
+          {state === 'shared' ? 'Marked as shared ✓' : state === 'sharing' ? 'Recording…' : 'Mark as shared'}
+        </button>
+      </ExplainerHover>
       {state === 'error' && (
         <span role="alert" className="text-sm text-red-600">
           Could not record share — try again.

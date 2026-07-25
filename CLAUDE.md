@@ -206,6 +206,76 @@ due-count correctly dropped 4→3; no console errors; `DashboardHero`'s existing
 Map"/"Continue Mission" behavior confirmed unaffected. NOT committed — awaiting owner review.
 Commit message when ready: `feat(phase-9): dashboard "pick up where you left off" —
 cross-surface last-activity tracking + resume card`.
+**EXPLAINER HOVERS — TEACHER SURFACES FULL SWEEP (2026-07-19, extends ADR 0016) — Tier 1
+`tsc` GREEN + in-browser verification (jest not re-run — additive JSX-only, see note
+below).** Owner asked to extend the explainer-hover rollout to "the teacher page."
+Surveyed all ~22 teacher routes: dashboard, student profile, benchmark detail/
+calibration/decay, and reports already had coverage from earlier sessions (each shipped
+independently across several unrelated feature commits). Swept the remaining pages,
+`theme="admin"`, prioritizing genuinely non-obvious jargon over restating text that
+already had a full explanatory sentence beside it:
+(1) **Benchmarks list** (`teacher/benchmarks/page.tsx`): "Rate" column.
+(2) **Republic Challenge class settings** (`RcClassSettingsForm.tsx`,
+`StaminaLadderPreview.tsx`): "Republic Challenge" + "Strategist Track" section headers,
+"Stamina ladder" header — the field-level `hint` text already covers the individual
+inputs, so only the section-level jargon needed a hover.
+(3) **Content approval** (`teacher/content/page.tsx`, `.../bulk-approve/page.tsx`,
+`ApprovalFilters.tsx`, `ApprovalQueueTable.tsx`): "Content Approval Queue", "Bulk Approve
+Content", and the Status filter/column (Draft/Needs Review/Needs Revision/Approved/
+Archived) explained once and reused verbatim in both places it appears.
+(4) **EOC Readiness** (`teacher/eoc-readiness/page.tsx`): "Readiness" column — the
+`(low–high%)` figure next to each percent is a confidence interval, previously unexplained.
+(5) **Interventions** (`teacher/interventions/page.tsx`): the off-ramp table's
+"Conference" column (a manual check-in log, not a system requirement).
+(6) **Lesson Media overview** (`teacher/lessons/page.tsx`): "Media steps" / "Toggled off"
+columns. **Lesson manage view** (`StepVisibilityControls.tsx`): the per-class
+Inherit/Show/Hide segmented control — "Inherit" reads as jargon on its own.
+(7) **Question Bank** (`teacher/questions/page.tsx`): the "RL" column — a raw,
+un-expanded abbreviation for Reading Load — plus the Status column (reused copy from
+item 3).
+(8) **Reporting Categories** (`teacher/reporting-categories/page.tsx`): "EOC Weight"
+column — categories aren't weighted equally on the real exam, which the raw percentage
+doesn't convey on its own.
+(9) **Light touch, headers only** (`teacher/calibration/page.tsx`,
+`teacher/decay/page.tsx`): "Calibration"/"Overconfidence Patterns" and "Decay" — these
+pages already had full explanatory paragraphs beneath the headers, so the hover is a
+short, consistent restatement rather than new information.
+(10) **Parent-summary print view** (`ParentSummaryActions.tsx`, teacher-only toolbar):
+"Mark as shared" — clarifies it only records an audit-log entry and doesn't notify or
+send anything to the parent.
+(11) **`TeacherNav` top tabs** (`teacher/layout/TeacherNav.tsx`, same-session follow-up):
+owner explicitly asked for hovers on "the tabs at the top of the teacher page" —
+reverses the initial judgment call to leave it alone (made by analogy to the plain-text,
+no-icon `AdminNav`/`StudentNav`-before-icons state). All 14 nav items now wrap in
+`<ExplainerHover variant="plain">`, mirroring the exact pattern already proven on
+`StudentNav` (same scrollable-row positioning fix applies for free, no new code needed
+in `ExplainerHover` itself). Verified live: hover + click-through on "EOC Readiness"
+(mid-row) and horizontal-clamp + click-through on "Settings" (rightmost item, reached by
+scrolling the nav's own `overflow-x-auto` row) both correct.
+**Bug caught and fixed again this pass:** wrote `\"` inside a couple of plain
+double-quoted JSX string attributes (same class of bug as the retention/ParentManager
+fix two sessions ago) — JSX attribute strings don't support backslash escapes the way JS
+string literals do. `tsc` caught both immediately; fixed by wrapping the value in
+`{"..."}` (a real JS string literal, which does support escapes).
+**Verification:** `tsc --noEmit` 0 errors across all 17 touched files; live browser walk
+as Ms Teacher — confirmed underline cues and correct hover copy on Republic Challenge
+settings (incl. Strategist Track + stamina ladder), Question Bank (RL + Status),
+Content Approval Queue (header + Status filter/column), EOC Readiness (Readiness
+column), Reporting Categories (EOC Weight), and Lesson Media overview (Media steps +
+Toggled off); did not force-confirm the Interventions "Conference" column or the
+StepVisibilityControls Inherit/Show/Hide group live (no off-ramp students / no
+class overrides in the demo data to exercise them against) — code-reviewed instead,
+same proven `ExplainerHover` component used everywhere else this pass. jest not re-run
+(additive JSX-only, `tsc` clean) given env contention (see note). NOT committed —
+awaiting owner review.
+**Env note:** port 3000 was occupied by a **different git worktree**
+(`.claude/worktrees/server-restart-db16d3`) belonging to a concurrent session — its
+`next-server` process's cwd resolved there via `lsof`, confirming it was serving
+entirely different source than this session's edits (not just a contended port).
+Verified live against my own `next dev` on an autoPort-assigned port instead; confirmed
+the `mock-credentials` sign-in flow works normally even though `NEXTAUTH_URL` is
+hardcoded to `:3000` in `.env.local` (session cookies scope to the actual request
+origin, not the configured value) — extends the existing documented env gotcha.
 
 ---
 
@@ -1114,6 +1184,33 @@ session). NOT committed — awaiting owner review. Commit message when ready:
 tracking + resume card`.
 
 ---
+**Session of 2026-07-19 (Explainer hovers — teacher surfaces full sweep):** Owner said
+"we need to add hover explainers to the teacher page." Since the teacher side has ~20
+routes with uneven prior coverage (dashboard/profile/benchmark/calibration/decay/reports
+already done across earlier, unrelated sessions), asked via AskUserQuestion whether this
+meant one specific page or a full sweep — owner chose full sweep. Surveyed every teacher
+page + its rendered subcomponents, then added `theme="admin"` explainers to the
+genuinely uncovered jargon across 16 files — full inventory in Current Build Phase. Kept
+additions to headers/columns that were either raw jargon (the "RL" abbreviation) or not
+already accompanied by a full explanatory sentence, to avoid redundant clutter on pages
+that already over-explain (e.g., skipped per-field hovers in `RcClassSettingsForm` since
+each field already has a `hint` line). **Repeated the exact escaped-quote JSX bug from
+two sessions ago** (`\"` inside a plain string attribute isn't valid — JSX attributes
+don't support backslash escapes) — `tsc` caught it immediately in the calibration page
+edit; fixed the same way as last time, by wrapping the value in a real JS string literal
+`{"..."}`. **Verification:** `tsc` 0 errors; live browser walk as Ms Teacher confirmed
+correct hover copy on six pages by name (Republic Challenge settings incl. Strategist
+Track + stamina ladder, Question Bank RL + Status, Content Approval Queue, EOC
+Readiness, Reporting Categories, Lesson Media overview); two elements
+(Interventions' off-ramp "Conference" column, the lesson editor's Inherit/Show/Hide
+group) weren't exercisable in the current demo data and were verified by code review
+instead, using the same `ExplainerHover` component already proven live elsewhere this
+session. **Env find:** port 3000 was bound to a *different git worktree*
+(`.claude/worktrees/server-restart-db16d3`, confirmed via `lsof` on the listening
+process's cwd) — not just port contention, but an entirely different checkout serving
+stale code. Verified instead against my own `next dev` on an autoPort port; confirmed
+`mock-credentials` sign-in still works despite the `NEXTAUTH_URL=:3000` mismatch (session
+cookies scope to the actual request origin). NOT committed — awaiting owner review.
 
 **Session of 2026-07-18 (Teacher benchmarks — unit-grouped list + full standard
 description):** Owner asked for two things on the teacher benchmark UI: (1) better

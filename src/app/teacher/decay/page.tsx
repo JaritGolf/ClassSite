@@ -13,6 +13,7 @@ import { ClassDecayTable } from '@/components/teacher/decay/ClassDecayTable'
 import { SpikeAlerts } from '@/components/teacher/decay/SpikeAlerts'
 import { ReprimeButton } from '@/components/teacher/benchmark/ReprimeButton'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 export default async function DecayPage() {
   const session = await requireAuth(['TEACHER'])
@@ -25,7 +26,16 @@ export default async function DecayPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">Decay Dashboard</h1>
+        <h1 className="text-xl font-bold text-gray-900">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Decay"
+            text="How much students are forgetting material they once mastered. Tracked so the spaced-review system can bring it back before it's fully lost."
+          >
+            Decay Dashboard
+          </ExplainerHover>
+        </h1>
         <p className="text-sm text-gray-500 mt-1">
           Track which benchmarks students are forgetting. Decay = most recent review quality &lt; 3.
           Spike = ≥ 50% of class decaying.
