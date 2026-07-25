@@ -2,11 +2,13 @@ import { requireAuth, getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { recordActivity, getOrCreateStreak } from '@/lib/streak'
 import { getFirstUnreadBeat } from '@/lib/narrative'
+import { getLastActivityForStudent } from '@/lib/student-activity'
 import { DashboardHero } from '@/components/student/dashboard/DashboardHero'
 import { ReadinessMeter } from '@/components/student/dashboard/ReadinessMeter'
 import { DrillCTA } from '@/components/student/dashboard/DrillCTA'
 import { StreakWidget } from '@/components/student/dashboard/StreakWidget'
 import { BadgeRack } from '@/components/student/dashboard/BadgeRack'
+import { ContinueLastActivity } from '@/components/student/dashboard/ContinueLastActivity'
 import { NarrativeOverlayWrapper } from '@/components/student/layout/NarrativeOverlayWrapper'
 import { TrackIcon } from '@/components/ui/TrackIcon'
 
@@ -34,6 +36,7 @@ export default async function StudentDashboard() {
     totalCount,
     firstUnit,
     activeRemediation,
+    lastActivity,
   ] = await Promise.all([
     prisma.studentProgress.findFirst({
       where: { studentId: student.id, status: 'IN_PROGRESS' },
@@ -74,6 +77,8 @@ export default async function StudentDashboard() {
       orderBy: { assignedAt: 'desc' },
       include: { remediationItem: { select: { title: true } } },
     }),
+    // Dashboard "pick up where you left off" — genuinely last-touched activity
+    getLastActivityForStudent(student.id),
   ])
 
   const streakState = await recordActivity(student.id, new Date())
@@ -107,7 +112,20 @@ export default async function StudentDashboard() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-8">
-      <div className="animate-pop-in">
+      {lastActivity && (
+        <div className="animate-pop-in">
+          <ContinueLastActivity
+            activity={{
+              label: lastActivity.label,
+              subLabel: lastActivity.subLabel,
+              href: lastActivity.href,
+              icon: lastActivity.icon,
+              occurredAt: lastActivity.occurredAt.toISOString(),
+            }}
+          />
+        </div>
+      )}
+      <div className="animate-pop-in [animation-delay:60ms]">
         <DashboardHero currentMission={missionData} studentName={session.user.name} />
       </div>
       <div className="animate-pop-in [animation-delay:90ms]">

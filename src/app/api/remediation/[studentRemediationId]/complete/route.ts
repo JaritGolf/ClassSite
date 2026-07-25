@@ -19,6 +19,7 @@ import type { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { completeRemediation, RemediationError } from '@/lib/remediation'
+import { recordLastActivity } from '@/lib/student-activity'
 
 interface RouteParams {
   params: { studentRemediationId: string }
@@ -48,6 +49,14 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
 
   try {
     const result = await completeRemediation(params.studentRemediationId, student.id)
+
+    // Dashboard "pick up where you left off" — non-fatal, display-only.
+    try {
+      await recordLastActivity(student.id, 'REMEDIATION', params.studentRemediationId)
+    } catch (e) {
+      console.error('[student-activity]', e instanceof Error ? e.message : e)
+    }
+
     return NextResponse.json(result)
   } catch (err) {
     if (err instanceof RemediationError) {

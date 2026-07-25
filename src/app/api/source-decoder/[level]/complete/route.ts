@@ -12,6 +12,7 @@ import type { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { completeSourceDecoderLevel, SourceDecoderError } from '@/lib/reading-load'
+import { recordLastActivity } from '@/lib/student-activity'
 
 interface RouteParams {
   params: { level: string }
@@ -50,6 +51,14 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
 
   try {
     const result = await completeSourceDecoderLevel(student.id, levelNum)
+
+    // Dashboard "pick up where you left off" — non-fatal, display-only.
+    try {
+      await recordLastActivity(student.id, 'SOURCE_DECODER', String(levelNum))
+    } catch (e) {
+      console.error('[student-activity]', e instanceof Error ? e.message : e)
+    }
+
     return NextResponse.json({
       level: result.level,
       completedAt: result.completedAt.toISOString(),
