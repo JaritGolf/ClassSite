@@ -148,6 +148,106 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**STUDENT ACTIVITY SESSIONS — WHEN THEY WORKED, HOW LONG, WHAT THEY GOT DONE (2026-07-30,
+ADR 0019) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1489 passed + 2 intentional skips,
+145 suites, ×2 runs, sharded) + in-browser verification both roles.** Owner needed to
+monitor when students are on the platform, how long they work, and how much progress each
+session produced. **Nothing existed to answer any of the three.**
+**The finding that shaped the design:** auth uses `session: {strategy:'jwt'}` with **no DB
+adapter** (`src/lib/auth/options.ts:150`), so `events.signIn` fires only on a genuine
+sign-in — a student returning with a valid cookie fires nothing, and a login-event design
+would have reported ~one "login" per month per student. The only prior "last seen" was
+`StreakState.lastActiveDate`, a `@db.Date` column (time truncated) on one self-overwriting
+row. Duration was not derivable: `AttemptResponse.timeSeconds` exists but **no client has
+ever sent it**, and reading a lesson leaves zero server trace.
+What shipped:
+(1) **Schema** (`20260730120000_student_activity_sessions` + `20260730130000_activity_session_last_area`):
+`StudentActivitySession` (startedAt/lastActiveAt/endedAt/activeSeconds/areaSeconds JSON/
+lastArea/startedByLogin) + indexes `(studentId, startedAt)` and `(lastActiveAt)`; plus
+`AssessmentAttempt(studentId, submittedAt)` and `SpacedReviewEvent(studentId, occurredAt)`
+— the latter model previously had **no indexes at all**.
+(2) **Activity-driven sessioning, not auth-driven**: first activity after a 15-min gap opens
+a new session. `events.signIn` still writes a `STUDENT_LOGIN` audit row and sets
+`startedByLogin`, so a real authentication stays distinguishable — but it is not the source
+of truth for "when they got to work". The UI column is labeled **"Started"**, never "Logged
+in", with an explainer hover saying exactly that.
+(3) **Bounded-delta active time** (`sessionize.activeDelta`): each touch credits
+`min(elapsed, 90s)`. This is what makes "active time" honest — the heartbeat stops on hidden
+tab / 5-min idle, so an un-capped elapsed gap would report a forgotten tab as an hour of
+work. It also lets the client heartbeat and server-side work-touches accumulate through one
+path without double-counting. Wall-clock span stays derivable and is shown alongside.
+(4) **`src/lib/activity-sessions/`**: `config` (tunables + bucketed area vocabulary +
+`areaFromPathname`), `sessionize` (pure — the unit-test surface), `touch`
+(`touchActivity`/`touchActivitySafe`/`closeStaleSessions`), `report`
+(`getStudentSessionHistory`/`getClassSessionActivity`/`getLivePresence`), `login`.
+(5) **Instrumentation**: invisible `ActivityHeartbeat` mounted once in the student layout
+(60s interval, pauses on hidden tab, stops after 5 min without input, `sendBeacon` on
+pagehide, sends only a bucketed area enum — **never a raw path**); `POST /api/student/activity/ping`
+(role-gated, studentId from the session cookie only); `touchActivitySafe` at the 6 existing
+`recordActivity` sites so a session exists around graded work even with JS blocked.
+(6) **Progress by time window, not a session FK**: session progress is computed against the
+already-timestamped tables (attempts/reviews/mastery/remediation/badges) inside
+`[startedAt, endedAt ?? lastActiveAt]`. Deliberately does **not** stamp an
+`activitySessionId` onto five hot student write paths — reversible, zero write-path risk.
+(7) **`lastArea` vs `areaSeconds` (bug caught by a failing test, then fixed properly):** the
+live panel first derived "current area" from the largest area tally, which is wrong twice
+over — a brand-new session has no tallies, and a student who spent 30m on missions then
+opened the drill would still read "Missions". Added a `lastArea` column: elapsed time is
+credited to where they *were*, `lastArea` records where they *are*.
+(8) **Teacher UI** — third tab on `/teacher/reports?tab=activity` (owner's placement choice):
+`LivePresencePanel` (On now / Idle / Not on, 30s poll that pauses on hidden tab, manual
+refresh; deliberately **not** an `aria-live` region — announcing a 22-row roster every 30s
+would wreck screen-reader use), `SessionActivityTable` (per-student rollup, keeps
+zero-activity students visible), `SessionDetailList` (per-session `<details>`: Active
+headline + span + area breakdown + what got done), `DateRangePicker`, 4 `StatCard`s,
+`ExplainerHover theme="admin"` throughout. `ClassPicker` gained a `tab` prop (it hardcoded
+`tab=daily`). `SessionHistoryCard` on the student profile.
+(9) **Export/retention/privacy**: `buildActivityReportCsv` + `?type=activity`;
+`ACTIVITY_SESSION_RETENTION_DAYS` (default 0 = keep forever) through policy/purge/admin
+page/`.env.example`/runbook; `privacy-review.md` + `data-retention.md` updated (first-party
+only, bucketed areas not URLs, roster-scoped, monitoring data ≠ academic record).
+**Deliberately NOT in the parent portal** — `ParentSummaryVM` is an allowlist with a guard
+test; whether behavioral monitoring is parent-appropriate is an owner/district policy call
+against spec §23.
+**Verification:** `tsc` 0 errors; jest **1489 passed + 2 intentional skips, 145/145 suites,
+green twice** (sharded 4× — see env note); live browser walk — student sign-in opened a
+session with `startedByLogin: true` + `STUDENT_LOGIN` audit row, heartbeat fired 204 from the
+component's own handler, **`read_network_requests` showed zero external hosts** (rule #9), a
+real drill review + badge attributed to the correct session, active 179s < span 336s proving
+the delta cap under real conditions, `lastArea` flipped dashboard→drill and the live panel
+followed ("Alex Student → Daily Drill · 5m"); as teacher, the Activity tab rendered
+correctly, CSV downloaded with real rows, range picker preserved `tab=activity`, Daily tab
+unaffected. **Security probes: bogus classId → 403 on both the live route and the CSV
+export, missing classId → 400, TEACHER hitting the student ping → 403, unauthenticated ping
+→ 401, and an area of `../../etc/passwd` fell back to `other` instead of landing in the JSON
+keys.** All verification rows removed and `npm run db:seed:demo` re-run — demo left clean.
+NOT committed — awaiting owner review.
+**Pre-existing test-infra bugs found and fixed in passing (out of original scope, but they
+blocked a genuinely green suite and were poisoning the shared dev DB every run):**
+`audit11/01` and `audit11/05` teardowns deleted a **globally**-matched set of ephemeral
+assessments while only clearing their own student's attempts → FK violation → teardown
+aborted → assessments leaked → `assessment-allocation`'s "exactly one PRACTICE per
+benchmark" failed on the next run, a self-perpetuating cycle. `eoc-analytics/trend-daily`
+created a second class (`'EocTrend Empty'`) in a test body and never deleted it, so **every**
+run left an orphan that FK-blocked the teacher delete thereafter; `eoc-analytics/readiness`
+had the same shape. All now delete by teacher/assessment rather than by this-run's id.
+Confirmed pre-existing by `git stash`: with every change from this session reverted, the
+identical failures reproduced (and *more* — 1.3 **and** 1.4). Also swept 4 orphan
+`[phase9c-approve]` questions and 23 orphan `audit11-01 seed` assessments out of the dev DB.
+**Env notes:** the full suite in one process exhausts Postgres connections
+(`FATAL: sorry, too many clients already`, 145 suites × PrismaClient) — **run it as
+`--shard=i/4`**, per the standing memory; `prisma generate` fails copying its own query
+engine onto itself through the `node_modules -> node_modules.nosync` symlink (client types
+still regenerate — hand-copy `@prisma/engines/libquery_engine-*.dylib.node` into
+`.prisma/client/` afterward); bare `npx jest` misses `DATABASE_URL` (use `npm test`, which
+passes `--env-file-if-exists=.env.local`); the Browser pane reports
+`visibilityState: 'hidden'`, which correctly suppresses the heartbeat — override
+`document.visibilityState` and dispatch `visibilitychange` to exercise the real component;
+`git stash pop` hung mid-operation (working tree applied, stash entry not dropped) per the
+documented git-hang issue — verify state before retrying.
+
+---
+
 **EXPLAINER HOVERS — TEACHER SURFACES FULL SWEEP (2026-07-19, extends ADR 0016) — Tier 1
 `tsc` GREEN + in-browser verification (jest not re-run — additive JSX-only, see note
 below).** Owner asked to extend the explainer-hover rollout to "the teacher page."
@@ -1095,6 +1195,33 @@ the **district sign-offs** remain owner-pending.
 
 _(Update this at the end of every session.)_
 
+**Session of 2026-07-30 (Student activity sessions — monitoring when students work):**
+Owner: "I need to be able to monitor when the students are on the platform and what they were
+able to accomplish during each session — when they logged on, how long they were working, and
+how much progress they made." Explored first (2 Explore agents: existing timestamped-activity
+inventory + teacher analytics surface map) and found the platform could answer **none** of the
+three, and that the obvious hook doesn't work: JWT sessions with no DB adapter mean
+`events.signIn` fires only on a real sign-in, not on a daily return. Scoped four decisions via
+AskUserQuestion — active time as the headline metric (idle/hidden-tab excluded, span shown
+alongside), Activity as a third tab on `/teacher/reports`, live panel **and** history, and
+counts + area breakdown for per-session detail. Owner took all four recommendations. Built the
+full stack — see Current Build Phase for the inventory and verification. **Design bug caught by
+my own failing test and fixed properly rather than by relaxing the assertion:** deriving "current
+area" from the largest area tally is wrong for a just-arrived student (no tallies yet) and for one
+who just switched activities; added a `lastArea` column so "where time went" and "where they are
+now" are separate facts. **Also fixed three pre-existing test-infra bugs** (audit11/01, audit11/05,
+eoc-analytics/trend-daily + readiness teardowns) that were leaking fixtures into the shared dev DB
+on every run and making a green suite impossible — confirmed pre-existing via `git stash` (identical
+failures reproduced with all my work reverted, and one *extra*). **Verification:** `tsc` 0; jest
+**1489 passed + 2 intentional skips, 145/145 suites, green across two full sharded runs**; live
+browser walk as both roles including a zero-external-requests network check (rule #9), a real drill
+review attributed to the right session, active-time < span proven with live data, and five security
+probes (403/403/400/403/401 + area-injection fallback). All verification rows deleted and
+`npm run db:seed:demo` re-run; demo left clean. **Env note:** the full suite must be run
+`--shard=i/4` — 145 suites in one process exhaust Postgres connections. NOT committed — awaiting
+owner review. Commit message when ready: `feat(phase-9): student activity sessions — time on
+platform, live presence, per-session progress (ADR 0019)`.
+
 **Session of 2026-07-19 (Explainer hovers — teacher surfaces full sweep):** Owner said
 "we need to add hover explainers to the teacher page." Since the teacher side has ~20
 routes with uneven prior coverage (dashboard/profile/benchmark/calibration/decay/reports
@@ -1895,6 +2022,11 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-07-16] Interim 1.1/1.2 blocks exempt from the media requirement only (`interim: true` on LessonSeedDef): the media pass belongs to the ADR 0015 track (concurrent session) and the owner-flagged full content build. Every other lesson-template guarantee is still enforced on them. Remove the flag when the full build lands.
 - [2026-07-16] Guardrail snapshot is checked in, not live-fetched: jest cannot call MCP, so `seed/official_standards.ts` carries the verbatim CASE statements (dated header, "do not edit"). Refreshing it is a deliberate act against the authoritative source; the alignment test pins defs to it by exact statement identity + topical anchors, deliberately NOT pinning def prose verbatim (defs may be edited freely as long as they stay on-topic).
 - [2026-07-18] Benchmark list grouping (teacher benchmarks reorg): chose to group `/teacher/benchmarks` by Unit in curriculum sequence order over grouping by Reporting Category (already has its own page, `/teacher/reporting-categories`) or a flat list with a unit filter dropdown (owner's explicit choice via AskUserQuestion). New `getBenchmarksGroupedByUnit` is additive — it does not replace or modify `getClassMasteryByBenchmark`, which still feeds the dashboard, `/teacher/reports`, and the CSV export. Reversible by adding a second grouping mode/toggle later without touching the existing function.
+- [2026-07-30] Activity sessions are activity-driven, not auth-driven (ADR 0019): a session opens on the first activity after a 15-minute gap, NOT on a login event. Forced by the auth design — `session: {strategy:'jwt'}` with no DB adapter means `events.signIn` fires only on a genuine sign-in, so a student returning with a valid cookie would produce no record. `STUDENT_LOGIN` audit rows + `startedByLogin` keep real authentications distinguishable. Deliberately did NOT shorten the JWT `maxAge` to force re-auth — making 7th graders re-enter credentials daily to improve a report is the wrong trade. Reversible only by adding a DB session adapter.
+- [2026-07-30] Active time = sum of bounded deltas, capped at 90s per touch (ADR 0019): chosen over crediting raw elapsed time so a hidden/abandoned tab cannot inflate the number, and so the client heartbeat and server-side work-touches can both feed one accumulator without double-counting. Wall-clock span is not stored — it is always `lastActiveAt - startedAt`. Reversible by changing `ACTIVE_DELTA_CAP_SECONDS` (raising it toward the ping interval makes the metric more permissive).
+- [2026-07-30] Session progress attributed by time window, not by a session foreign key (ADR 0019): chosen over stamping `activitySessionId` onto AssessmentAttempt/AttemptResponse/SpacedReviewEvent/StudentProgress/StudentRemediation, which would mean a schema change plus edits to five hot student write paths including assessment submission. The imprecision is bounded by the 15-minute inter-session gap. Reversible (and worth revisiting) if per-event session attribution is ever needed.
+- [2026-07-30] `lastArea` is stored separately from `areaSeconds` (ADR 0019): elapsed time is credited to the area the student was already in, while `lastArea` records where they are now. Needed because the live panel's "what are they working on" cannot be derived from the largest tally — a brand-new session has no tallies, and a student who just switched activities would be misreported. Caught by a failing test during verification.
+- [2026-07-30] Duplicate-session write race accepted rather than locked (ADR 0019): two simultaneous first-requests can each open a session; `mergeAdjacentSessions` collapses them on read. Chosen over a lock/serializable transaction on a per-minute hot path. Reversible if duplicates ever prove more than cosmetic.
 - [2026-07-18] `officialStatement` persisted via migration, not read from seed at request time (teacher benchmark description): chose an additive nullable `Benchmark.officialStatement` column (migration `20260718120000_add_benchmark_official_statement`), written by `seed/benchmarks.ts`'s existing upsert, over importing `seed/official_standards.ts` directly into app code at render time (owner's explicit choice via AskUserQuestion). Keeps `seed/` doing only seeding and the app reading only from Postgres, consistent with the "PostgreSQL only" rule, and mirrors how `lessonSummary` already works. Reversible by dropping the column and switching `getBenchmarkDescription` to a direct import if ever needed.
 
 ---

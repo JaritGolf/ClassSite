@@ -14,6 +14,8 @@ import { AccommodationEditor } from '@/components/teacher/student/AccommodationE
 import { VoidAttemptButton } from '@/components/teacher/student/VoidAttemptButton'
 import { OverrideControl } from '@/components/teacher/student/OverrideControl'
 import { StrategyOverridePanel } from '@/components/teacher/student/StrategyOverridePanel'
+import { SessionHistoryCard } from '@/components/teacher/student/SessionHistoryCard'
+import { getStudentSessionHistory } from '@/lib/activity-sessions'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
@@ -47,6 +49,12 @@ export default async function StudentProfilePage({ params }: PageProps) {
     code: b.code,
     title: b.title,
   }))
+
+  // Recent work sessions. Authorization already enforced above by
+  // getStudentProfileForTeacher's roster guard.
+  const sessionHistory = await getStudentSessionHistory(params.studentId, {
+    limit: 20,
+  })
 
   return (
     <div className="space-y-6">
@@ -181,6 +189,9 @@ export default async function StudentProfilePage({ params }: PageProps) {
           </div>
         )}
       </div>
+
+      {/* When this student was on the platform and what they got done */}
+      <SessionHistoryCard sessions={sessionHistory} />
 
       {/* Apply a new override */}
       <OverrideControl studentId={params.studentId} benchmarks={overrideBenchmarks} />

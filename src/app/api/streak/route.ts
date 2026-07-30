@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { recordActivity } from '@/lib/streak'
+import { touchActivitySafe } from '@/lib/activity-sessions'
 
 export async function GET() {
   const session = await getSession()
@@ -15,6 +16,7 @@ export async function GET() {
   if (!student) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
 
   const streak = await recordActivity(student.id, new Date())
+  await touchActivitySafe(student.id, { area: 'other' })
   return NextResponse.json({
     currentLength: streak.currentLength,
     longestLength: streak.longestLength,

@@ -13,12 +13,21 @@ export interface RetentionConfig {
   auditLogRetentionDays: number
   /** Delete voided assessment attempts older than this many days. 0 = keep. */
   voidedAttemptRetentionDays: number
+  /**
+   * Delete student activity-session rows older than this many days. 0 = keep.
+   *
+   * Behavioral monitoring data on minors, so districts may well want a shorter
+   * window here than for academic records — the session row is not itself an
+   * academic record, and deleting it does not touch any student work.
+   */
+  activitySessionRetentionDays: number
 }
 
 /** Default policy: retain everything (conservative — spec §0 rule 6). */
 export const DEFAULT_RETENTION_CONFIG: RetentionConfig = {
   auditLogRetentionDays: 0,
   voidedAttemptRetentionDays: 0,
+  activitySessionRetentionDays: 0,
 }
 
 /**
@@ -42,6 +51,9 @@ export function resolveRetentionConfig(
   return {
     auditLogRetentionDays: parseRetentionDays(env.AUDIT_LOG_RETENTION_DAYS),
     voidedAttemptRetentionDays: parseRetentionDays(env.VOIDED_ATTEMPT_RETENTION_DAYS),
+    activitySessionRetentionDays: parseRetentionDays(
+      env.ACTIVITY_SESSION_RETENTION_DAYS
+    ),
   }
 }
 

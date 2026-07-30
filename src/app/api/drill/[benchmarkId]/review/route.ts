@@ -19,6 +19,7 @@ import { gradeReviewAnswer, submitReview, ReviewError } from '@/lib/spaced-retri
 import { DrillReviewSchema } from '@/lib/assessment/wire'
 import { recordActivity } from '@/lib/streak'
 import { evaluateAndAwardBadges } from '@/lib/badges'
+import { touchActivitySafe } from '@/lib/activity-sessions'
 import { prisma } from '@/lib/db'
 
 export async function POST(
@@ -94,6 +95,8 @@ export async function POST(
     } catch (hookErr) {
       console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
     }
+
+    await touchActivitySafe(student.id, { area: 'drill' })
 
     return NextResponse.json({
       isCorrect,

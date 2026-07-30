@@ -105,6 +105,18 @@ afterAll(async () => {
   })
   if (ephemeral.length > 0) {
     const ids = ephemeral.map((a) => a.id)
+    // The `ephemeral` query above is global, so it can match assessments that
+    // OTHER students have attempts against. Clear those dependents too, or the
+    // assessment delete below is FK-blocked, this teardown aborts, and the
+    // ephemeral assessments leak — which then breaks assessment-allocation's
+    // "exactly one PRACTICE per benchmark" assertion on the next run.
+    await prisma.attemptResponse.deleteMany({
+      where: { attempt: { assessmentId: { in: ids } } },
+    })
+    await prisma.adaptiveSessionState.deleteMany({
+      where: { attempt: { assessmentId: { in: ids } } },
+    })
+    await prisma.assessmentAttempt.deleteMany({ where: { assessmentId: { in: ids } } })
     await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: { in: ids } } })
     await prisma.assessment.deleteMany({ where: { id: { in: ids } } })
   }

@@ -22,6 +22,7 @@ import { gradeAndSubmit, SubmitSchema, AssessmentError } from '@/lib/assessment'
 import { updateProgressAfterAttempt } from '@/lib/mastery'
 import { recordActivity } from '@/lib/streak'
 import { evaluateAndAwardBadges } from '@/lib/badges'
+import { touchActivitySafe } from '@/lib/activity-sessions'
 
 interface RouteParams {
   params: { assessmentId: string }
@@ -88,6 +89,10 @@ export async function POST(req: NextRequest, { params: _params }: RouteParams) {
     } catch (hookErr) {
       console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
     }
+
+    // Guarantees an activity session exists around graded work even if the
+    // client heartbeat never ran. Self-wrapped; write-debounced server-side.
+    await touchActivitySafe(student.id, { area: 'assessment' })
 
     return NextResponse.json(result)
   } catch (err) {

@@ -19,7 +19,14 @@ const prisma = new PrismaClient()
 
 const S_CLEVERID = 'test-audit17-03-student'
 const ANCIENT = new Date('2013-01-01T00:00:00.000Z')
-const CONFIG = { auditLogRetentionDays: 3650, voidedAttemptRetentionDays: 3650 }
+// activitySessionRetentionDays stays 0 (retain forever) so this suite's real
+// purge run cannot touch activity-session rows belonging to other suites; that
+// branch has its own coverage in tests/integration/activity-sessions.test.ts.
+const CONFIG = {
+  auditLogRetentionDays: 3650,
+  voidedAttemptRetentionDays: 3650,
+  activitySessionRetentionDays: 0,
+}
 const AUDIT_MARKER = 'TEST_AUDIT17_03_ANCIENT'
 
 let studentId: string
@@ -146,9 +153,14 @@ describe('Audit 17 — Item 8: retention purge', () => {
   it('does nothing when thresholds are unset (retain forever)', async () => {
     const result = await purgeExpiredData({
       dryRun: true,
-      config: { auditLogRetentionDays: 0, voidedAttemptRetentionDays: 0 },
+      config: {
+        auditLogRetentionDays: 0,
+        voidedAttemptRetentionDays: 0,
+        activitySessionRetentionDays: 0,
+      },
     })
     expect(result.auditLogsDeleted).toBe(0)
     expect(result.voidedAttemptsDeleted).toBe(0)
+    expect(result.activitySessionsDeleted).toBe(0)
   })
 })

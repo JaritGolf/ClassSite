@@ -267,6 +267,7 @@ model Student {
   streakState           StreakState?
   narrativeProgress     NarrativeProgress[]
   uiSettings            StudentUiSettings?
+  activitySessions      StudentActivitySession[]
 
   @@map("students")
 }
@@ -810,6 +811,8 @@ model AssessmentAttempt {
 
   @@index([assessmentId, studentId])
   @@index([studentId, voided])
+  /// Supports session-window progress attribution (activity-sessions report).
+  @@index([studentId, submittedAt])
   @@map("assessment_attempts")
 }
 
@@ -942,6 +945,8 @@ model SpacedReviewEvent {
   benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
   question  Question  @relation(fields: [questionId], references: [id])
 
+  /// Supports session-window progress attribution (activity-sessions report).
+  @@index([studentId, occurredAt])
   @@map("spaced_review_events")
 }
 
@@ -1203,6 +1208,52 @@ model NarrativeProgress {
 
   @@unique([studentId, unitId])
   @@map("narrative_progress")
+}
+
+// ============================================================
+// STUDENT ACTIVITY SESSIONS
+// Answers "when was this student on the platform, for how long, and what did
+// they get done" — see docs/adrs/0019-student-activity-sessions.md.
+//
+// Sessions are ACTIVITY-driven, not auth-driven: the auth layer uses JWT
+// sessions with no DB adapter, so `events.signIn` only fires on a genuine
+// sign-in (a student returning with a valid cookie fires nothing). The first
+// activity after a gap of SESSION_GAP_MINUTES opens a new session instead.
+//
+// `activeSeconds` accumulates BOUNDED deltas (see sessionize.activeDelta) so a
+// backgrounded or abandoned tab cannot inflate it; the wall-clock span is
+// always derivable as lastActiveAt - startedAt.
+//
+// Progress is attributed to a session by TIME WINDOW against the existing
+// tables (attempts, review events, mastery) — no session id is stamped onto
+// student work rows.
+// ============================================================
+
+model StudentActivitySession {
+  id            String    @id @default(cuid())
+  studentId     String    @map("student_id")
+  startedAt     DateTime  @default(now()) @map("started_at")
+  lastActiveAt  DateTime  @default(now()) @map("last_active_at")
+  /// Set when the session is idle-closed or superseded. Null = still open.
+  endedAt       DateTime? @map("ended_at")
+  /// Engaged time in seconds — sum of bounded per-touch deltas, never span.
+  activeSeconds Int       @default(0) @map("active_seconds")
+  /// Bucketed area → seconds, e.g. { "mission": 1320, "drill": 480 }.
+  /// Area is a validated enum at the API boundary; raw paths are never stored.
+  areaSeconds   Json?     @map("area_seconds")
+  /// Where the student was on their MOST RECENT touch — what the live panel
+  /// shows. Distinct from areaSeconds, which is where time has accumulated:
+  /// a student who spent 30m on missions then opened the drill is "on" the
+  /// drill, and a student who just arrived has a current area but no tallies.
+  lastArea      String?   @map("last_area")
+  /// True when this session was opened by a real sign-in (vs. resumed work).
+  startedByLogin Boolean  @default(false) @map("started_by_login")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@index([studentId, startedAt])
+  @@index([lastActiveAt])
+  @@map("student_activity_sessions")
 }
 
 model StudentUiSettings {

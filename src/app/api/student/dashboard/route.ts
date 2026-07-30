@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getOrCreateStreak, recordActivity } from '@/lib/streak'
+import { touchActivitySafe } from '@/lib/activity-sessions'
 
 export async function GET() {
   const session = await getSession()
@@ -53,6 +54,8 @@ export async function GET() {
     // Total benchmark count
     prisma.benchmark.count(),
   ])
+
+  await touchActivitySafe(student.id, { area: 'dashboard' })
 
   const pct = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0
   const readinessMeter = { pct, ciLow: Math.max(0, pct - 5), ciHigh: Math.min(100, pct + 5) }

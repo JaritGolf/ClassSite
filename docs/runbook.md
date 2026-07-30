@@ -85,6 +85,7 @@ Copy `.env.example` to `.env.local` for local development. Full inventory:
 | `FEATURE_EOC_REVIEW` / `FEATURE_LEADERBOARDS` / `FEATURE_AI_DRAFTING` | No | Reserved flags (not yet wired) |
 | `AUDIT_LOG_RETENTION_DAYS` | No | Retention threshold for audit logs; `0`/unset = keep forever (Phase 17) |
 | `VOIDED_ATTEMPT_RETENTION_DAYS` | No | Retention threshold for voided attempts; `0`/unset = keep forever (Phase 17) |
+| `ACTIVITY_SESSION_RETENTION_DAYS` | No | Retention threshold for student activity/session monitoring rows; `0`/unset = keep forever (ADR 0019) |
 | `MOCK_AUTH` | Dev only | Enables mock auth; **never** in production |
 
 See `.env.example` for descriptions and defaults, and `docs/data-retention.md` for the

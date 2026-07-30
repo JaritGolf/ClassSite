@@ -30,6 +30,7 @@ export interface PurgeResult {
   auditLogsDeleted: number
   voidedAttemptsDeleted: number
   attemptResponsesDeleted: number
+  activitySessionsDeleted: number
   config: RetentionConfig
 }
 
@@ -44,9 +45,15 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
 
   const auditCutoff = cutoffDate(config.auditLogRetentionDays, now)
   const voidedCutoff = cutoffDate(config.voidedAttemptRetentionDays, now)
+  const activityCutoff = cutoffDate(config.activitySessionRetentionDays, now)
 
   // ── Identify eligible rows ──────────────────────────────────────────────────
   const auditWhere = auditCutoff ? { createdAt: { lt: auditCutoff } } : null
+
+  // Activity sessions have no children, so they age out on startedAt alone.
+  const activityWhere = activityCutoff
+    ? { startedAt: { lt: activityCutoff } }
+    : null
 
   const eligibleAttemptIds: string[] = voidedCutoff
     ? (
@@ -68,12 +75,17 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
         })
       : 0
 
+  const activitySessionsEligible = activityWhere
+    ? await prisma.studentActivitySession.count({ where: activityWhere })
+    : 0
+
   if (dryRun) {
     return {
       dryRun: true,
       auditLogsDeleted: auditLogsEligible,
       voidedAttemptsDeleted: eligibleAttemptIds.length,
       attemptResponsesDeleted: responsesEligible,
+      activitySessionsDeleted: activitySessionsEligible,
       config,
     }
   }
@@ -83,6 +95,7 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
     let auditLogsDeleted = 0
     let attemptResponsesDeleted = 0
     let voidedAttemptsDeleted = 0
+    let activitySessionsDeleted = 0
 
     if (eligibleAttemptIds.length > 0) {
       const resp = await tx.attemptResponse.deleteMany({
@@ -100,12 +113,24 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
       voidedAttemptsDeleted = att.count
     }
 
+    if (activityWhere) {
+      const sessions = await tx.studentActivitySession.deleteMany({
+        where: activityWhere,
+      })
+      activitySessionsDeleted = sessions.count
+    }
+
     if (auditWhere) {
       const logs = await tx.auditLog.deleteMany({ where: auditWhere })
       auditLogsDeleted = logs.count
     }
 
-    return { auditLogsDeleted, attemptResponsesDeleted, voidedAttemptsDeleted }
+    return {
+      auditLogsDeleted,
+      attemptResponsesDeleted,
+      voidedAttemptsDeleted,
+      activitySessionsDeleted,
+    }
   })
 
   // Record the purge itself (written AFTER the audit-log deletion above so it

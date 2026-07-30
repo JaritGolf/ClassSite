@@ -1,6 +1,7 @@
 import { requireAuth, getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { recordActivity, getOrCreateStreak } from '@/lib/streak'
+import { touchActivitySafe } from '@/lib/activity-sessions'
 import { getFirstUnreadBeat } from '@/lib/narrative'
 import { DashboardHero } from '@/components/student/dashboard/DashboardHero'
 import { ReadinessMeter } from '@/components/student/dashboard/ReadinessMeter'
@@ -77,6 +78,7 @@ export default async function StudentDashboard() {
   ])
 
   const streakState = await recordActivity(student.id, new Date())
+  await touchActivitySafe(student.id, { area: 'dashboard' })
 
   const pct = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0
   const readinessMeter = { pct, ciLow: Math.max(0, pct - 5), ciHigh: Math.min(100, pct + 5) }

@@ -19,8 +19,11 @@
 | EOC readiness metrics | Yes | derived / `EocReadinessSnapshot` | Computed |
 | Actual EOC scores | Conditional | `EocActualScore` | **Admin only, consent-gated** (`consentAcknowledged`) |
 | Parent/guardian data | If portal enabled | `Parent`, `ParentStudentLink` | Auth + linking only (Phase 18) |
+| Activity / time-on-platform | Yes | `StudentActivitySession` | When a student was working, for how long, and which app area. **Bucketed area names only — no URLs, no page-by-page trail.** Teacher-visible, roster-scoped. See ADR 0019 |
+| Student login events | Yes | `AuditLog` (`STUDENT_LOGIN`) | Genuine sign-ins only (JWT sessions mean this is not one row per visit) |
 | Health/behavior/sensitive notes | **No** | — | Not modeled |
 | External gradebook data | **No** | — | Internal only |
+| Keystroke / screen / webcam monitoring | **No** | — | Not modeled. Activity tracking records elapsed time and app area only |
 
 ## 2. Privacy & security controls (spec §25.2)
 
@@ -31,8 +34,9 @@
   students and an allowlisted field set (`src/lib/parent-summary`).
 - **Audit logging of sensitive actions.** `AuditLog` records overrides, content approval,
   accommodations, EOC score import, calibration approval, report exports
-  (`REPORT_EXPORTED`), audit-log export (`AUDIT_LOG_EXPORTED`), and retention purges
-  (`RETENTION_PURGE`). Queryable + exportable at `/admin/audit`.
+  (`REPORT_EXPORTED`), audit-log export (`AUDIT_LOG_EXPORTED`), retention purges
+  (`RETENTION_PURGE`), and logins (`PARENT_LOGIN`, `STUDENT_LOGIN`). Queryable + exportable
+  at `/admin/audit`.
 - **Answer keys never exposed.** Question option `isCorrect`/`feedback` are deliberately
   omitted from student-facing assessment payloads (`src/lib/assessment/question-fetcher.ts`);
   report exports are column-allowlisted and never include item-level/distractor data
@@ -47,13 +51,26 @@
   hosting plan.
 - **Secure sessions.** JWT cookies signed with `SESSION_SECRET` (ADR 0002); `MOCK_AUTH`
   hard-disabled when `NODE_ENV=production`.
+- **Activity monitoring is bounded and first-party** (ADR 0019). The heartbeat posts to this
+  app's own route only — no third-party endpoint is involved (rule #9 intact). It records
+  elapsed time and a **bucketed app area** (`mission`, `drill`, …); raw pathnames are never
+  transmitted or stored, so there is no page-by-page browsing trail. The student is resolved
+  server-side from the session cookie, never from a request parameter, so no student can log
+  activity as another. Reads are roster-scoped inside the domain layer
+  (`getClassSessionActivity` / `getLivePresence` both call `assertClassOwnedByTeacher`).
+  Nothing about it is visible to the student — no timer, no countdown, no idle warning.
+- **Activity data is NOT shared with parents.** `ParentSummaryVM` remains a strict allowlist
+  (enforced by `tests/unit/parent-summary/fields-allowlist.test.ts`); time-on-task and session
+  history are excluded pending an owner/district policy decision against spec §23.
 
 ## 3. Data subject rights / retention
 
 - **Export.** Per-student, per-class, and EOC-readiness CSV exports (`/teacher/reports`,
   student profile) plus admin audit export. PDF via browser print (ADR 0008).
-- **Retention.** Configurable purge of aged audit logs and voided attempts — see
-  `docs/data-retention.md`. Default retains everything (conservative).
+- **Retention.** Configurable purge of aged audit logs, voided attempts, and activity-session
+  monitoring rows — see `docs/data-retention.md`. Default retains everything (conservative).
+  Activity sessions are monitoring data rather than academic records, so a district may set a
+  shorter window (`ACTIVITY_SESSION_RETENTION_DAYS`) without affecting any student work.
 - **Deletion.** Account deletion cascades from `User` (Prisma `onDelete: Cascade` on
   Student/Teacher/Parent). District-initiated bulk deletion is operational — see runbook.
 
