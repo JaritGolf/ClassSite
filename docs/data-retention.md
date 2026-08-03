@@ -26,6 +26,25 @@ work, scores, mastery state, or spaced-review state is touched, and the rows hav
 Districts may reasonably want a *shorter* window here than for academic records: behavioral
 observation of a minor has less justification for long-term storage than the coursework itself.
 
+### Not yet covered: suggestions (ADR 0021) — OWNER DECISION PENDING
+
+The `suggestions` table (nav-bar suggestion box) stores **student- and teacher-authored free
+text** and is **not** currently covered by any retention window. Rows are retained indefinitely.
+
+This is recorded rather than silently shipped because it is the first student-authored prose in
+the database, and free text is a different privacy class from the structured progression data
+this policy was written for. Two mitigations are already in place:
+
+- the suggestion body is **never** copied into `AuditLog.metadataJson`, so it is not reachable
+  through `/api/admin/audit/export` (the audit metadata carries `bodyChars`, not the body);
+- there is **no** suggestions CSV export, deliberately — see ADR 0021 §7.
+
+**Owner decision needed:** either
+(a) retain indefinitely, and say so explicitly in the district privacy packet; or
+(b) add `SUGGESTION_RETENTION_DAYS` to `resolveRetentionConfig` plus a purge branch in
+`purgeExpiredData` (~20 lines, mirroring the existing data classes) — a natural window would be
+one school year, since a suggestion's value is almost entirely in the term it was written.
+
 ## How it works
 
 - Pure policy resolution: `src/lib/retention/policy.ts` (`resolveRetentionConfig`, `cutoffDate`).

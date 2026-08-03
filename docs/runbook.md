@@ -94,6 +94,7 @@ Copy `.env.example` to `.env.local` for local development. Full inventory:
 | `VOIDED_ATTEMPT_RETENTION_DAYS` | No | Retention threshold for voided attempts; `0`/unset = keep forever (Phase 17) |
 | `ACTIVITY_SESSION_RETENTION_DAYS` | No | Retention threshold for student activity/session monitoring rows; `0`/unset = keep forever (ADR 0019) |
 | `MOCK_AUTH` | Dev only | Enables mock auth; **never** in production |
+| `DEMO_OPEN_LOGIN` | Demo deploy only | Forces the one-click role panel on even when `NODE_ENV=production`. Owner-directed override of rule #8 for the public demo site; safe only while the DB holds demo/seed data. Delete the variable and redeploy to close the site. Do **not** set in `.env.local` |
 
 See `.env.example` for descriptions and defaults, and `docs/data-retention.md` for the
 retention variables.
@@ -195,10 +196,15 @@ Students must use Clever — Google login is for staff only.
 
 ---
 
-## Mock Auth (Dev Only)
+## Mock Auth (Dev, and the public demo)
 
-With `MOCK_AUTH=true` in `.env.local`, the login page shows a dev panel with
-one-click sign-in buttons for STUDENT, TEACHER, PARENT, ADMIN roles.
+With `MOCK_AUTH=true` in `.env.local`, the login page shows a panel with one-click
+sign-in buttons for STUDENT, TEACHER, PARENT, ADMIN roles.
 
-Mock auth is **unconditionally disabled** in `NODE_ENV=production` regardless
-of the `MOCK_AUTH` env var value. Never set `MOCK_AUTH=true` in staging or production.
+`MOCK_AUTH` alone is **unconditionally disabled** in `NODE_ENV=production` regardless
+of its value. Never set `MOCK_AUTH=true` in staging or production.
+
+The one exception is `DEMO_OPEN_LOGIN=true`, the public-demo escape hatch — see
+`docs/deployment-vercel.md` § Public demo mode. Both paths funnel through the single
+predicate `isMockAuthEnabled()` in `src/lib/auth/demo-mode.ts`, which is the only place
+the rule is expressed.

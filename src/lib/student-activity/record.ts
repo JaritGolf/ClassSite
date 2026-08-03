@@ -11,15 +11,22 @@
 import { prisma } from '@/lib/db'
 import type { StudentActivityType } from '@prisma/client'
 
+/**
+ * @param occurredAt Overrides the timestamp. Live callers omit it — "now" is
+ *   correct for them. Backfills and seeds pass the activity's REAL historical
+ *   time, so the dashboard's relative-time caption ("Yesterday", "3 days ago")
+ *   stays truthful instead of claiming everything happened just now.
+ */
 export async function recordLastActivity(
   studentId: string,
   activityType: StudentActivityType,
-  referenceId: string | null = null
+  referenceId: string | null = null,
+  occurredAt: Date = new Date()
 ): Promise<void> {
   await prisma.studentLastActivity.upsert({
     where: { studentId },
-    create: { studentId, activityType, referenceId },
+    create: { studentId, activityType, referenceId, occurredAt },
     // occurredAt only defaults on create — stamp it explicitly on update.
-    update: { activityType, referenceId, occurredAt: new Date() },
+    update: { activityType, referenceId, occurredAt },
   })
 }

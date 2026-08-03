@@ -22,6 +22,7 @@
     "db:studio": "prisma studio",
     "retention:purge": "tsx --env-file .env.local scripts/retention-purge.ts",
     "admin:bootstrap": "node --env-file-if-exists=.env.local node_modules/.bin/tsx scripts/bootstrap-admin.ts",
+    "backfill:last-activity": "node --env-file-if-exists=.env.local node_modules/.bin/tsx scripts/backfill-last-activity.ts",
     "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {

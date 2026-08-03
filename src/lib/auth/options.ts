@@ -2,7 +2,8 @@
  * next-auth v4 configuration for My Civics Class.
  *
  * Providers (in priority order):
- *   1. mock-credentials — dev only (MOCK_AUTH=true, NODE_ENV !== production)
+ *   1. mock-credentials — gated by isMockAuthEnabled() (see ./demo-mode):
+ *                         dev (MOCK_AUTH=true) or public demo (DEMO_OPEN_LOGIN=true)
  *   2. clever           — primary SSO (Clever district OAuth)
  *   3. google           — fallback (staff/teacher Google Workspace accounts)
  *
@@ -24,8 +25,9 @@ import { prisma } from '@/lib/db'
 import { cleverProvider } from './providers/clever'
 import { recordParentLoginEvent } from '@/lib/parent-portal/login'
 import { recordStudentLoginEvent } from '@/lib/activity-sessions/login'
+import { isMockAuthEnabled } from './demo-mode'
 
-// ── Mock Auth (dev only) ──────────────────────────────────────────────────────
+// ── Mock Auth (dev + public demo) ─────────────────────────────────────────────
 
 interface MockUser {
   cleverId: string
@@ -47,11 +49,8 @@ const MOCK_USERS: Record<UserRole, MockUser> = {
 export async function mockAuthorize(
   credentials: Record<string, string> | undefined
 ): Promise<User | null> {
-  // Double guard: runtime check AND build-time conditional provider inclusion
-  if (
-    process.env.MOCK_AUTH !== 'true' ||
-    process.env.NODE_ENV === 'production'
-  ) {
+  // Double guard: runtime check AND conditional provider inclusion below
+  if (!isMockAuthEnabled()) {
     return null
   }
 
@@ -148,7 +147,22 @@ export const authOptions: NextAuthOptions = {
   // Use SESSION_SECRET per spec — not NEXTAUTH_SECRET
   secret: process.env.SESSION_SECRET,
 
-  session: { strategy: 'jwt' },
+  session: {
+    strategy: 'jwt',
+    // Eight hours — one school day. Long enough that a student is never asked to
+    // re-authenticate in the middle of a class period (7th graders on shared
+    // district Chromebooks, and a mid-assessment sign-out would be its own
+    // problem), but short enough that a Chromebook left signed in at dismissal is
+    // stale by the next morning. next-auth's default is 30 days, which is far too
+    // long for a device a whole class period touches.
+    //
+    // Note the honest limit of a stateless JWT session (ADR 0002): this is the
+    // token's own lifetime, not a server-side revocation. Signing out clears the
+    // cookie, but a token exfiltrated from a device remains valid until it expires.
+    // Shortening this window is the mitigation available without adding a DB
+    // session adapter.
+    maxAge: 8 * 60 * 60,
+  },
 
   pages: {
     signIn: '/login',
@@ -156,12 +170,13 @@ export const authOptions: NextAuthOptions = {
   },
 
   providers: [
-    // 1. Mock credentials — dev only; excluded from production build entirely
-    ...(process.env.MOCK_AUTH === 'true' && process.env.NODE_ENV !== 'production'
+    // 1. Mock credentials — omitted entirely unless dev mock auth or the
+    //    public demo flag is on (see ./demo-mode)
+    ...(isMockAuthEnabled()
       ? [
           CredentialsProvider({
             id: 'mock-credentials',
-            name: 'Mock (Dev Only)',
+            name: 'Demo Role',
             credentials: {
               role: { label: 'Role', type: 'text' },
             },

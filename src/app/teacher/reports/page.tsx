@@ -7,12 +7,16 @@ import {
 } from '@/lib/class-analytics'
 import { buildDailyClassReport } from '@/lib/daily-report'
 import { getClassSessionActivity } from '@/lib/activity-sessions'
+import { listSuggestionsForTeacher } from '@/lib/suggestions'
+import type { SuggestionKind, SuggestionStatus } from '@prisma/client'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
 import { StatCard } from '@/components/teacher/dashboard/StatCard'
 import { ReportActions } from '@/components/teacher/reports/ReportActions'
 import { ClassPicker } from '@/components/teacher/reports/ClassPicker'
 import { DailyActionPlan } from '@/components/teacher/reports/DailyActionPlan'
 import { DailyRosterTable } from '@/components/teacher/reports/DailyRosterTable'
+import { SuggestionFilters } from '@/components/teacher/reports/SuggestionFilters'
+import { SuggestionsTable } from '@/components/ui/SuggestionsTable'
 import {
   DateRangePicker,
   type RangeValue,
@@ -24,10 +28,19 @@ import {
   SessionLegend,
 } from '@/components/teacher/reports/SessionDetailList'
 
-type Tab = 'daily' | 'mastery' | 'activity'
+type Tab = 'daily' | 'mastery' | 'activity' | 'suggestions' | 'questions'
+
+const STATUS_VALUES: SuggestionStatus[] = ['NEW', 'IN_REVIEW', 'RESOLVED', 'DISMISSED']
 
 interface ReportsPageProps {
-  searchParams: { tab?: string; classId?: string; range?: string }
+  searchParams: {
+    tab?: string
+    classId?: string
+    range?: string
+    status?: string
+    routePattern?: string
+    since?: string
+  }
 }
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
@@ -41,7 +54,15 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
       ? 'mastery'
       : searchParams.tab === 'activity'
         ? 'activity'
-        : 'daily'
+        : searchParams.tab === 'suggestions'
+          ? 'suggestions'
+          : searchParams.tab === 'questions'
+            ? 'questions'
+            : 'daily'
+
+  // NEW counts per kind drive both tab badges, and are needed even when the roster
+  // is empty (see the hasStudents note below), so this runs before the tab branch.
+  const suggestionSummary = await listSuggestionsForTeacher(userId, { limit: 1 })
 
   // Resolve the selected class (default: first class the teacher owns).
   const classes = roster.classes
@@ -74,9 +95,32 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           active={tab === 'activity'}
           label="Activity"
         />
+        <TabLink
+          href="/teacher/reports?tab=suggestions"
+          active={tab === 'suggestions'}
+          label="Suggestions"
+          badge={suggestionSummary.newCountsByKind.COMMENT}
+        />
+        <TabLink
+          href="/teacher/reports?tab=questions"
+          active={tab === 'questions'}
+          label="Questions"
+          badge={suggestionSummary.newCountsByKind.QUESTION}
+        />
       </div>
 
-      {!hasStudents ? (
+      {/* The suggestion branches are evaluated BEFORE the hasStudents guard on
+          purpose: a teacher with no current students can still have suggestions,
+          because a student-authored row keeps its snapshotted teacherId through
+          roster churn (ADR 0021). Guarding first would silently hide them. */}
+      {tab === 'suggestions' || tab === 'questions' ? (
+        <SuggestionsTab
+          userId={userId}
+          classes={classes}
+          searchParams={searchParams}
+          kind={tab === 'questions' ? 'QUESTION' : 'COMMENT'}
+        />
+      ) : !hasStudents ? (
         <EmptyState
           title="No students enrolled"
           body="Enroll students in your classes to generate reports."
@@ -105,10 +149,12 @@ function TabLink({
   href,
   active,
   label,
+  badge,
 }: {
   href: string
   active: boolean
   label: string
+  badge?: number
 }) {
   return (
     <Link
@@ -120,7 +166,75 @@ function TabLink({
       }
     >
       {label}
+      {badge !== undefined && badge > 0 && (
+        <span className="ml-2 rounded-full bg-indigo-600 px-2 py-0.5 text-xs font-semibold text-white">
+          {badge}
+        </span>
+      )}
     </Link>
+  )
+}
+
+// ── Suggestions / Questions tabs ───────────────────────────────────────────
+
+async function SuggestionsTab({
+  userId,
+  classes,
+  searchParams,
+  kind,
+}: {
+  userId: string
+  classes: Array<{ id: string; name: string; period: string | null }>
+  searchParams: { status?: string; classId?: string; routePattern?: string; since?: string }
+  kind: SuggestionKind
+}) {
+  const status = STATUS_VALUES.find((s) => s === searchParams.status)
+  const since = searchParams.since ? new Date(searchParams.since) : undefined
+
+  const result = await listSuggestionsForTeacher(userId, {
+    kind,
+    status,
+    classId: searchParams.classId || undefined,
+    routePattern: searchParams.routePattern || undefined,
+    since: since && !Number.isNaN(since.getTime()) ? since : undefined,
+  })
+
+  const { countsByStatus } = result
+  const isQuestions = kind === 'QUESTION'
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gray-600">
+          {isQuestions
+            ? 'Questions your students asked from the suggestion box in their nav bar. Each one records the page they were on when they asked.'
+            : 'Comments and suggestions your students sent from the box in their nav bar. Each one records the page they were on.'}
+        </p>
+        <p className="text-xs text-gray-500">
+          {countsByStatus.NEW} new · {countsByStatus.IN_REVIEW} in review ·{' '}
+          {countsByStatus.RESOLVED} resolved · {countsByStatus.DISMISSED} dismissed
+        </p>
+      </div>
+
+      <SuggestionFilters
+        tab={isQuestions ? 'questions' : 'suggestions'}
+        classes={classes}
+        status={searchParams.status ?? ''}
+        classId={searchParams.classId ?? ''}
+        routePattern={searchParams.routePattern ?? ''}
+        since={searchParams.since ?? ''}
+      />
+
+      <SuggestionsTable
+        items={result.items}
+        bodyColumnLabel={isQuestions ? 'Question' : 'Suggestion'}
+        emptyMessage={
+          isQuestions
+            ? 'No questions yet. When a student switches the box to Question and sends one, it lands here.'
+            : 'No comments yet. When a student sends one from their nav bar, it lands here.'
+        }
+      />
+    </div>
   )
 }
 

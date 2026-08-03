@@ -7,17 +7,11 @@
  */
 
 import { getSession } from '@/lib/auth'
+import { isMockAuthEnabled } from '@/lib/auth/demo-mode'
+import { ROLE_HOME } from '@/lib/auth/role-home'
 import { redirect } from 'next/navigation'
 import { LoginButtons } from './LoginButtons'
 import { Mascot } from '@/components/ui/Mascot'
-import type { UserRole } from '@prisma/client'
-
-const ROLE_HOME: Record<UserRole, string> = {
-  STUDENT: '/student/dashboard',
-  TEACHER: '/teacher/dashboard',
-  PARENT:  '/parent/dashboard',
-  ADMIN:   '/admin/users',
-}
 
 interface LoginPageProps {
   searchParams: { callbackUrl?: string; error?: string }
@@ -31,8 +25,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   const callbackUrl = searchParams.callbackUrl ?? '/'
-  const showMockPanel =
-    process.env.MOCK_AUTH === 'true' && process.env.NODE_ENV !== 'production'
+  const showMockPanel = isMockAuthEnabled()
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-indigo-50 bg-dots bg-[length:26px_26px] px-4 py-10">
@@ -44,7 +37,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </h1>
           <p className="font-display text-base font-semibold text-indigo-600">Build the Republic</p>
           <p className="mt-3 text-sm text-gray-600">
-            Sign in to continue to your mission.
+            {showMockPanel
+              ? 'Choose how you want to explore.'
+              : 'Sign in to continue to your mission.'}
           </p>
         </div>
 

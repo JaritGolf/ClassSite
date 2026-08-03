@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
+import { SuggestionBox } from '@/components/ui/SuggestionBox'
 
 const NAV_ITEMS: { href: string; label: string; icon: TrackIconName; explain: string }[] = [
   {
@@ -96,6 +97,9 @@ export function StudentNav() {
       </div>
 
       <div className="ml-auto flex items-center gap-3 flex-shrink-0">
+        {/* Students get the Comment / Question toggle: the two land on separate tabs
+            of the teacher report page. `mr-2` keeps the icon off the Settings link. */}
+        <SuggestionBox allowKindToggle recipient="teacher" className="mr-2" />
         <Link
           href="/student/settings"
           className="rounded-xl px-3 py-2 text-sm font-display font-semibold text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"

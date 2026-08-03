@@ -215,6 +215,29 @@ enum EnrollmentStatus {
   DROPPED
 }
 
+/// Where a suggestion is routed for review. Derived from the author's role at
+/// submit time and then STORED — never recomputed from User.role at read time,
+/// so a role change can't silently relocate old suggestions.
+enum SuggestionAudience {
+  TEACHER
+  ADMIN
+}
+
+enum SuggestionStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+/// What the author meant this to be. Chosen in the box via a toggle; drives which
+/// tab it lands on in the teacher report page. Defaults to COMMENT so the column is
+/// additive over rows written before the toggle existed.
+enum SuggestionKind {
+  COMMENT
+  QUESTION
+}
+
 enum ParentVerifiedStatus {
   PENDING
   VERIFIED
@@ -241,6 +264,9 @@ model User {
   teacher   Teacher?
   parent    Parent?
   auditLogs AuditLog[]
+
+  suggestionsAuthored Suggestion[] @relation("SuggestionAuthor")
+  suggestionsReviewed Suggestion[] @relation("SuggestionReviewer")
 
   @@map("users")
 }
@@ -278,6 +304,7 @@ model Student {
   uiSettings            StudentUiSettings?
   activitySessions      StudentActivitySession[]
   lastActivity          StudentLastActivity?
+  suggestions           Suggestion[]
 
   @@map("students")
 }
@@ -288,9 +315,10 @@ model Teacher {
   schoolId String? @map("school_id")
   active   Boolean @default(true)
 
-  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes   Class[]
-  overrides TeacherOverride[]
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes     Class[]
+  overrides   TeacherOverride[]
+  suggestions Suggestion[]
 
   @@map("teachers")
 }
@@ -357,6 +385,7 @@ model Class {
   assignments        Assignment[]
   readinessSnapshots ClassReadinessSnapshot[]
   stepVisibility     ClassLessonStepVisibility[]
+  suggestions        Suggestion[]
 
   @@map("classes")
 }
@@ -1337,4 +1366,74 @@ model StudentUiSettings {
   student Student @relation(fields: [studentId], references: [id])
 
   @@map("student_ui_settings")
+}
+// SUGGESTION BOX (ADR 0021)
+// ============================================================
+
+/// A free-text suggestion filed from the nav-bar suggestion box, carrying a
+/// snapshot of which page the author was on. Students' suggestions route to
+/// their teacher; teachers' and admins' route to the site admin.
+model Suggestion {
+  id       String             @id @default(cuid())
+  audience SuggestionAudience
+  status   SuggestionStatus   @default(NEW)
+  /// Comment vs. question, chosen by the author. Routes to separate tabs on the
+  /// teacher report page.
+  kind     SuggestionKind     @default(COMMENT)
+
+  authorUserId String @map("author_user_id")
+  /// Role snapshot at submit time. `audience` is derived from THIS at creation,
+  /// never from User.role at read time.
+  authorRole   UserRole @map("author_role")
+  /// Set when a student filed it. Powers the roster-union read that surfaces
+  /// suggestions filed before the student was enrolled anywhere.
+  authorStudentId String? @map("author_student_id")
+
+  /// "The teacher in the loop" — NOT a pure recipient FK. For a student-authored
+  /// suggestion this is the recipient teacher, resolved at submit time from the
+  /// student's earliest active enrollment. For a teacher-authored one it is the
+  /// author themselves. Null when a student had no active enrollment at submit
+  /// time (the roster-union read recovers those once they enroll).
+  teacherId String? @map("teacher_id")
+  /// The class that resolved `teacherId`. Null for teacher/admin authors and for
+  /// unenrolled students.
+  classId   String? @map("class_id")
+
+  /// Plain text, exactly as typed. Never parsed, never rendered as HTML — read
+  /// surfaces render it as text inside `whitespace-pre-wrap`.
+  body String @db.Text
+  /// The concrete pathname the author was on, e.g. /student/mission/SS.7.CG.1.1.
+  pathname String
+  /// Server-derived parameterized route, e.g. /student/mission/[benchmarkCode].
+  /// The groupable, PII-free dimension — safe to put in a query string.
+  routePattern String @map("route_pattern")
+  /// Server-derived human label for `routePattern`, e.g. "Mission page".
+  pageLabel    String @map("page_label")
+  /// Non-identifying triage context only: { viewportWidth, params }.
+  /// Deliberately NO user-agent and NO IP — rule #9 (these are minors).
+  contextJson Json? @map("context_json")
+
+  reviewedByUserId String?   @map("reviewed_by_user_id")
+  reviewedAt       DateTime? @map("reviewed_at")
+  /// Private note from the reviewer. Never shown to the author.
+  reviewerNote     String?   @db.Text @map("reviewer_note")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  authorUser    User     @relation("SuggestionAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  reviewedBy    User?    @relation("SuggestionReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  authorStudent Student? @relation(fields: [authorStudentId], references: [id])
+  teacher       Teacher? @relation(fields: [teacherId], references: [id])
+  class         Class?   @relation(fields: [classId], references: [id])
+
+  @@index([audience, status, createdAt])
+  @@index([teacherId, status, createdAt])
+  @@index([authorStudentId, createdAt])
+  @@index([routePattern])
+  // The queues are always read kind-filtered (comments tab vs questions tab), and
+  // the teacher read is an OR across two branches, which no single index covers
+  // cleanly — this carries the kind for the audience-scoped admin path.
+  @@index([audience, kind, status, createdAt])
+  @@map("suggestions")
 }

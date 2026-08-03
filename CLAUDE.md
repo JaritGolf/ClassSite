@@ -150,6 +150,128 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**DISTRICT APPROVAL PACKET + APP-LAYER SECURITY HARDENING (2026-08-03) — Tier 1 `tsc` GREEN
++ Tier 2 jest GREEN (1,646 passed + 2 intentional skips, 153/153 suites, sharded ×4, all
+shards exit 0) + live in-browser CSP verification.** Owner is submitting the app to PBCSD for
+approval and asked for a document highlighting the security and student-safety features.
+Scoped via AskUserQuestion: **Word .docx**, cover all three review tracks (instructional /
+data-privacy / IT-security), **include a candid limitations section**, name the owner as
+teacher-developer, and — the decision that shaped the whole document — ask for **pilot
+approval in the owner's own classroom**, not district-wide, because the content library is
+one unit deep.
+**Two real security gaps were found during research and FIXED before the doc was written, so
+it describes the stronger posture:**
+(1) **`next.config.mjs` had no security headers at all** — still the 4-line Phase 0 stub. Now
+sends CSP, HSTS (2y, includeSubDomains), `X-Frame-Options: DENY`, `nosniff`,
+`Referrer-Policy: strict-origin-when-cross-origin`, and a `Permissions-Policy` denying
+camera/mic/geolocation/USB/payment/motion (a one-curl-verifiable claim that matters on a
+platform for 12–13-year-olds). CSP is scoped to what the app actually loads — verified first
+that the ONLY external subresource in `src/` is the click-to-load `youtube-nocookie` iframe.
+**`connect-src 'self'` is the substantive win: rule #9 is now enforced by the browser, not
+just by discipline + the audit17/04 source scan.** Proven live with an A/B probe in a real
+session: sanctioned youtube-nocookie iframe **allowed**; `example.com` iframe **blocked by
+frame-src**; external CDN script **blocked by script-src-elem**; outbound `fetch` to an
+external host **blocked by connect-src**. `'unsafe-inline'` on script/style is a deliberate,
+disclosed weakness (Next injects inline bootstrap + `next/font` styles; nonce plumbing is
+scheduled) — the packet says so rather than calling the CSP strict.
+(2) **No session `maxAge`** — sessions inherited next-auth's 30-day default, far too long for
+a shared district Chromebook. Now **8 hours** (one school day), with the rationale in a code
+comment and the honest limit stated: a JWT session has no server-side revocation (ADR 0002).
+**Shipped:** `docs/district-approval-packet.md` (the maintainable source) and
+`docs/My-Civics-Class-District-Approval-Packet.docx` (the deliverable — cover page, field-driven
+TOC, 17 tables, 66 headings, page-numbered footer; rendered by a scratchpad docx-js script,
+NOT a new project dependency — the 6-runtime-dep policy is intact).
+**Every number in the packet was queried from the live DB rather than copied from this file —
+and that caught two errors in this file's own claims:** the bank status here says
+"1.1–1.6 + 1.8 complete at 30 APPROVED each", but **1.8 has ZERO approved questions**; the
+real state is 1.1–1.6 at 30, **1.7 at 48**, 1.10 at 12 → **8 of 36 benchmarks have any
+approved items, 7 meet the 30-item standard**. Also corrected a draft claim of "eleven domain
+modules" enforcing the roster guard; the verified count is **14** (8 student-roster + 6
+class-ownership).
+**Also fixed two stale annex docs so a reviewer reading them alongside the packet finds no
+mismatch:** `privacy-review.md` said only "`MOCK_AUTH` hard-disabled in production" and
+**understated `DEMO_OPEN_LOGIN`**, which is the flag that actually can open production — now
+documents both paths, the ADMIN-for-everyone consequence, and the must-delete-before-real-data
+gate; `architecture.md` claimed ADRs "0001–0012" when 21 exist, and now carries a note that it
+is behind and the ADRs are authoritative.
+**The packet's §9 is a deliberate 13-item disclosure** (open demo login; 8-of-36 content
+coverage; ALL manual a11y outstanding; the ADR 0016 hover-only AA deviation; axe not covering
+the assessment player — including that the test *named* for the assessment player actually
+scans the dashboard; **7 of 15 accommodation codes with no enforcement code, of which
+ACC-EXT-TIME and ACC-REDUCED-CHOICES are unimplemented behavior behind IEP-style labels**;
+Spanish glosses owner-approved not reviewer-approved; tagging enforcing 8 of 10 tags with
+`misconceptionId` never validated and the seed check scoped to strand 1; suggestion text under
+no retention window + no purge scheduler; the CSP `'unsafe-inline'`; no server-side session
+revocation; no executed DPAs). §10 turns spec §37 into 9 explicit questions for the district,
+each paired with the doc it unblocks.
+**Rebrand + TOC fix (same session, after owner review):** owner reported (a) the product is
+now **"My Civics Class"**, not "Civics Quest", and (b) the contents page was **empty in Google
+Docs**. Both fixed. The TOC cause is worth remembering: a Word `TOC` field is only a
+placeholder plus an instruction for the word processor to build the list itself — **Word does
+it on field update, Google Docs does not**, so it renders blank. Replaced it with a **static
+64-entry outline**: every H2/H3 heading is wrapped in a `Bookmark` and the contents page emits
+real text inside an `InternalHyperlink` to that anchor. Verified 64 anchors ↔ 64 bookmarks with
+zero dangling either direction, and the rendered text confirmed present after "Contents". No
+page numbers — they can't be known without laying the document out, and a guessed page number
+in a submission document is worse than none. Deliverable renamed
+`docs/My-Civics-Class-District-Approval-Packet.docx`; the old-brand file was deleted so the
+owner cannot attach the wrong one.
+**FULL REBRAND then done at owner request (same session) — `tsc` GREEN + jest GREEN (1,646
+passed + 2 skips, 153/153, byte-identical counts to the pre-rebrand run) + seed + live walk on
+all four roles.** 37 prose/UI occurrences across 31 files in `src/`/`seed/`/`prisma/`/`docs/`,
+plus `README.md`, `.env.example`, `civics_quest_v3_build_spec.md`, `public/stimuli/attributions.json`,
+and this file's title.
+**The key insight that made this safe:** every identifier that must NOT move uses
+`civics-quest` / `civics_quest` (hyphen or underscore), while every piece of display copy uses
+the spaced `Civics Quest` — so a global swap of the spaced form could not touch infrastructure.
+**Deliberately NOT renamed, each for a reason:**
+- **`'civics-quest:sentence-chunking'`** (`StimulusDisplay.tsx`) — a **localStorage key**.
+  Renaming it silently resets the sentence-chunking preference for every student who already
+  set one, and chunking is an **accessibility support**, so the reset would land hardest on the
+  students who depend on it. Guarded with a comment so it isn't "helpfully" renamed later;
+  `docs/audits/audit-12-checklist.md` still cites the same key, correctly.
+- **`civics_quest_dev`** (runbook) — the real local Postgres database name.
+- **`civics-quest`** + `prj_LlvEE…` (deployment docs) — the real Vercel project name/id.
+- **`civics_quest_v3_build_spec.md`** — an actual filename referenced from three places;
+  renaming the file is a separate structural change.
+**Renamed as safe identifiers:** `package.json` name + both `package-lock.json` root entries
+(`my-civics-class`), and the health endpoint's `service` field (no consumer — only the route
+itself and a middleware test that asserts on the path, not the value).
+**Copy that needed rewriting, not substitution:** `"Civics Quest's eagle mascot"` →
+`"the My Civics Class eagle mascot"` (×2 + the Mascot comment), and StreakWidget's "doing a
+little Civics Quest every day" → **"a little civics every day"** — "a little My Civics Class
+every day" doesn't parse, and the sentence is about the habit, not the brand.
+**Re-seed was required**, not optional: three `Stimulus.source` attributions and two lesson
+image credits are **stored in the DB**, so the code change alone would have left the old brand
+live. Verified post-seed: 3 and 2 rows on the new brand, 0 on the old.
+**Live verification:** browser title, landing `<h1>`, tagline, and mascot alt text all correct;
+**zero** old-brand strings and correct new-brand counts on student dashboard/map/badges, teacher
+dashboard, parent dashboard, admin audit, and the **parent-facing print summary** (header +
+footer); the preserved chunking key still resolves; security headers still present.
+**Honest verification gap:** the .docx could **not** be visually rendered — neither
+LibreOffice nor pandoc is installed on this machine. It was validated structurally instead
+(valid ZIP with all expected parts, every XML part well-formed, 17 tables / 142 rows / 66
+headings matching the source exactly, TOC field present, zero PERCENTAGE widths, zero SOLID
+shading, zero literal bullets, zero unresolved markdown, full text extracted and spot-checked
+for all 13 disclosures). The contents page is a **static bookmarked outline, not a Word `TOC`
+field** — see the rebrand note above for why the field version rendered blank in Google Docs.
+**Committed as `91b88ac` and opened as a PR from
+`claude/explainer-hovers-teacher-admin-parent-d02095`.**
+**⚠ THE REBRAND IN THIS ENTRY LARGELY DUPLICATES WORK ALREADY ON `main`.** While this session
+ran, a parallel session landed **`e682df2` "rebrand Civics Quest → My Civics Class + site
+identity"** via **PR #7**, which is the fuller version — it also adds `src/app/icon.svg`,
+`src/app/opengraph-image.tsx`, and `src/app/robots.ts`, and a mobile fix hiding the StudentNav
+wordmark below `sm` (the wordmark got long enough to collapse the scrollable nav row to 0px on
+a 375px phone). `origin/main` was merged into this branch and **every rebrand conflict was
+resolved in favour of `main`**; the only hand-merge was `StudentNav.tsx`, where taking `main`
+wholesale would have deleted the `SuggestionBox` integration that commit `0429428` added on
+this branch. Both sessions independently decided to preserve
+`'civics-quest:sentence-chunking'` and both left a comment saying why — reassuring, but the
+duplicated effort is the cost of two sessions on one tree. **Genuinely unique to this branch:
+the security headers, the session `maxAge`, and the approval packet.**
+
+---
+
 **REBRAND — "CIVICS QUEST" → "MY CIVICS CLASS" + SITE IDENTITY FOR mycivicsclass.com
 (2026-08-03) — Tier 1 `tsc` GREEN (0 errors) + Tier 2 jest GREEN (144/144 suites, 1442
 passed + 2 intentional skips, run in 4 shards) + in-browser verification on all four roles.**
@@ -1483,6 +1605,49 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-08-03 (District approval packet + security hardening):** Owner: "I need to
+submit the app to the district for approval — find all the features that would help
+facilitate that process and put them into a document I can submit along with the app itself,
+highlighting the security and student safety features." Ran two parallel Explore agents (one
+over `src/` security/privacy, one over `docs/` + accessibility) rather than writing from
+`CLAUDE.md`, then **verified every citable number against the live DB** — which is what caught
+that this file's own bank-status claim was wrong about SS.7.CG.1.8 (see Current Build Phase).
+**The most important thing I found was not a feature.** `curl`-ing the live site's
+`/api/auth/providers` showed `mock-credentials` is an **active provider in production** —
+`DEMO_OPEN_LOGIN=true` is set on mycivicsclass.com, so any visitor can enter as ADMIN. Raised
+it before writing anything, since a reviewer finds that in about 30 seconds and it would
+discredit the whole security section. Owner chose to **disclose it and document the close
+procedure** rather than quietly closing it, which keeps the site browsable for reviewers.
+Also surfaced, and owner chose to fix: no HTTP security headers and no session `maxAge`.
+Wrote both fixes first so the document describes the real posture. Full inventory in Current
+Build Phase.
+**Verification:** `tsc` 0 errors; jest **1,646 passed + 2 intentional skips, 153/153 suites**
+(sharded ×4, every shard exit 0) — ran concurrently with the dev server, which the sharding
+memory says is fine and was; headers confirmed by `curl -I`; **CSP verified by A/B probe in a
+live browser session** (allowed the sanctioned youtube-nocookie iframe, blocked an
+`example.com` iframe, an external CDN script, and an outbound `fetch` — three
+`securitypolicyviolation` events with the expected directives); 9 student pages 200 with zero
+external hosts; assessment player renders and serves options (correct answer landed on **D**,
+incidentally re-confirming the option shuffle); both Clever and Google authorize URLs still
+build correctly, so `form-action` did not break SSO; Fast Refresh still connects, so the dev
+websocket allowance is right; no console errors anywhere.
+**Judgment calls worth remembering:** installed `docx` into the **scratchpad**, not the
+project — rendering a Word file is a one-off build tool, and adding it to `package.json` would
+have broken the 6-runtime-dependency posture the packet itself cites as a control. Did **not**
+publish the packet as a web Artifact for visual review: it documents that production currently
+has an open admin login, and that is not something to put on a URL without the owner asking.
+**Reported honestly rather than papered over:** the .docx was never visually rendered (no
+LibreOffice, no pandoc on this machine) — structural validation only; owner must press F9 in
+Word to populate the TOC.
+**Flagged to the owner as a live equity issue independent of the submission:**
+`ACC-EXT-TIME` and `ACC-REDUCED-CHOICES` are grantable, audit-logged, IEP-style labels with
+**no implementing code**, so a teacher can grant extended time to a student whose IEP requires
+it and reasonably believe it took effect.
+**Env note:** `node_modules 2` and a `tsconfig 2.tsbuildinfo` are still sitting in the repo
+root as cloud-sync duplicates (already excluded from tsc/jest, but they are disk cruft).
+
+---
 
 **Session of 2026-08-03 (Rebrand → My Civics Class, mycivicsclass.com):** Owner: "the new
 domain is mycivicsclass.com and the entire site needs to be rebranded." Explored first with 2

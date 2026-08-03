@@ -2,8 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { SuggestionBox } from '@/components/ui/SuggestionBox'
 
 const NAV_ITEMS = [
+  // Reports leads: there is no /admin index, so this is the de facto landing page.
+  { href: '/admin/reports', label: 'Reports' },
   { href: '/admin/users', label: 'Users' },
   { href: '/admin/lessons', label: 'Lessons' },
   { href: '/admin/eoc-scores', label: 'EOC Scores' },
@@ -35,6 +38,7 @@ export function AdminNav() {
         ))}
       </div>
       <div className="ml-4 flex items-center gap-4 shrink-0">
+        <SuggestionBox className="mr-3" />
         <form action="/api/auth/signout" method="POST">
           <button type="submit" className="text-sm text-gray-600 hover:text-gray-900">
             Sign out

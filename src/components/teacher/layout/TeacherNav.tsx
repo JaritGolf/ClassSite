@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
+import { SuggestionBox } from '@/components/ui/SuggestionBox'
 
 const NAV_ITEMS = [
   {
@@ -100,7 +101,13 @@ export function TeacherNav() {
           </Link>
         ))}
       </div>
-      <div className="ml-4 flex items-center gap-4 shrink-0">
+      {/* Tightened from ml-4/gap-4 to pay back the width the suggestion box takes:
+          the 14-item row needs 1334px and this group's spacing is the only slack
+          available at 1600px. */}
+      <div className="ml-1 flex items-center gap-3 shrink-0">
+        {/* mr-3 keeps the icon clear of Sign out — an accidental sign-out while
+            reaching for the suggestion box is a bad trade. */}
+        <SuggestionBox className="mr-3" />
         <form action="/api/auth/signout" method="POST">
           <button type="submit" className="text-sm text-gray-600 hover:text-gray-900">
             Sign out
