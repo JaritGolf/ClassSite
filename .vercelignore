@@ -1,0 +1,35 @@
+# Vercel upload exclusions.
+#
+# This exists because .gitignore is NOT enough here: `node_modules` in this repo
+# is a SYMLINK to `node_modules.nosync` (the iCloud-sync workaround — see the
+# 2026-07-13 build decision in CLAUDE.md). The CLI's default node_modules
+# exclusion does not follow that symlink, so `vercel deploy` tried to pack the
+# full 1.5 GB tree instead of the ~14 MB of tracked source and hung while
+# packing — burning CPU with no upload socket ever opening.
+#
+# Keep this list explicit. Vercel installs dependencies itself from
+# package-lock.json; nothing below is needed to build.
+
+node_modules
+node_modules.nosync
+node_modules */
+node_modules 2
+.next
+.next.nosync
+out
+
+.git
+.claude
+.vercel
+
+# tests + local artifacts
+tests
+test-results
+playwright-report
+coverage
+*.tsbuildinfo
+
+# local env (Vercel supplies its own)
+.env
+.env.local
+.env.*.local

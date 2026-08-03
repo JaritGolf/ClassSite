@@ -10,6 +10,7 @@ interface Settings {
   rcStaminaOverride: number | null
   featureEocReviewEnabled: boolean
   strategyUsesRequired: number
+  secureAssessmentMode: boolean
 }
 
 interface Props {
@@ -165,6 +166,34 @@ export function RcClassSettingsForm({ classId, className, initial }: Props) {
           }
           className="rounded border border-gray-300 px-3 py-1.5 w-32"
         />
+      </Field>
+
+      <div className="border-t border-gray-100 pt-4">
+        <h3 className="text-sm font-bold text-gray-800">
+          <ExplainerHover
+            theme="admin"
+            variant="underline"
+            title="Focus Mode"
+            text="What the app itself can do during a graded assessment: open it full screen, block copy/paste and right-click, and record when a student leaves the page. It CANNOT lock the Chromebook — only your district's device management (GoGuardian, or a ChromeOS kiosk) can do that. See docs/chromebook-lockdown.md for that setup."
+          >
+            Focus Mode
+          </ExplainerHover>
+        </h3>
+      </div>
+
+      <Field
+        label="Focus Mode on secure assessments"
+        hint="Applies to Mastery Challenges, Readiness Checks, Republic Challenge, and the Final Trial. Students see a note that leaving the page was recorded; you see a flag on the attempt. Nothing is ever deducted automatically — you decide. Breaks taken with the in-app button are never counted."
+      >
+        <label className="flex items-center gap-2 text-sm text-gray-800">
+          <input
+            type="checkbox"
+            checked={settings.secureAssessmentMode}
+            onChange={(e) => update('secureAssessmentMode', e.target.checked)}
+            className="h-4 w-4"
+          />
+          Turn on Focus Mode for this class
+        </label>
       </Field>
 
       <div className="flex items-center gap-4 pt-2">

@@ -9,6 +9,11 @@ import { prisma } from '@/lib/db'
 import { assertStudentInTeacherClass } from '@/lib/teacher-roster'
 import { getDecayingBenchmarks } from '@/lib/spaced-retrieval/decay'
 import { getStrategyProgress } from '@/lib/strategy-track'
+import {
+  getIntegrityEventsByAttempt,
+  summarizeIntegrityEvents,
+  type IntegritySummary,
+} from '@/lib/assessment-integrity'
 import type {
   StudentProgressStatus,
   TeacherOverrideAction,
@@ -58,6 +63,13 @@ export interface StudentProfileVM {
     passed: boolean | null
     submittedAt: Date | null
     voided: boolean
+    /**
+     * Focus Mode record for this attempt, or null when nothing was recorded
+     * (the overwhelmingly common case — Focus Mode is opt-in per class, and a
+     * clean attempt produces no rows). Teacher-visible context only: it never
+     * feeds grading, mastery, or analytics.
+     */
+    integrity: IntegritySummary | null
   }>
   calibration: {
     trend: CalibrationTrendPoint[]
@@ -428,6 +440,12 @@ export async function getStudentProfileForTeacher(
       })),
   }
 
+  // Focus Mode records for the attempts above — one query for all of them, not
+  // one per row. Empty for every class that hasn't opted into Focus Mode.
+  const integrityByAttempt = await getIntegrityEventsByAttempt(
+    attempts.map((a) => a.id)
+  )
+
   return {
     student: {
       id: student.id,
@@ -446,6 +464,11 @@ export async function getStudentProfileForTeacher(
       passed: a.passed,
       submittedAt: a.submittedAt,
       voided: a.voided,
+      integrity: (() => {
+        const events = integrityByAttempt.get(a.id)
+        if (!events || events.length === 0) return null
+        return summarizeIntegrityEvents(events)
+      })(),
     })),
     calibration: { trend, overallGap },
     remediationHistory: remediations.map((r) => ({

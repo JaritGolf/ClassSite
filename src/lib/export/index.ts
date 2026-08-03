@@ -10,6 +10,7 @@ export { toCsv, escapeCsvField, csvResponse } from './csv'
 export type { CsvColumn } from './csv'
 
 export {
+  buildActivityReportCsv,
   buildClassReportCsv,
   buildEocReadinessReportCsv,
   buildStudentReportCsv,

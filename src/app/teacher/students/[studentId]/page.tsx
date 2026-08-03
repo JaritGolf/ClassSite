@@ -5,6 +5,7 @@
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getStudentProfileForTeacher } from '@/lib/student-profile'
+import { describeIntegritySummary } from '@/lib/assessment-integrity'
 import { StudentProfileHeader } from '@/components/teacher/student/StudentProfileHeader'
 import { CalibrationTrendChart } from '@/components/teacher/student/CalibrationTrendChart'
 import { SpacedRetrievalStatus } from '@/components/teacher/student/SpacedRetrievalStatus'
@@ -14,6 +15,8 @@ import { AccommodationEditor } from '@/components/teacher/student/AccommodationE
 import { VoidAttemptButton } from '@/components/teacher/student/VoidAttemptButton'
 import { OverrideControl } from '@/components/teacher/student/OverrideControl'
 import { StrategyOverridePanel } from '@/components/teacher/student/StrategyOverridePanel'
+import { SessionHistoryCard } from '@/components/teacher/student/SessionHistoryCard'
+import { getStudentSessionHistory } from '@/lib/activity-sessions'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
@@ -47,6 +50,12 @@ export default async function StudentProfilePage({ params }: PageProps) {
     code: b.code,
     title: b.title,
   }))
+
+  // Recent work sessions. Authorization already enforced above by
+  // getStudentProfileForTeacher's roster guard.
+  const sessionHistory = await getStudentSessionHistory(params.studentId, {
+    limit: 20,
+  })
 
   return (
     <div className="space-y-6">
@@ -133,6 +142,15 @@ export default async function StudentProfilePage({ params }: PageProps) {
                   <th className="pb-2 text-right font-medium text-gray-400">#</th>
                   <th className="pb-2 text-right font-medium text-gray-400">Score</th>
                   <th className="pb-2 text-left font-medium text-gray-400">Result</th>
+                  <th className="pb-2 text-left font-medium text-gray-400">
+                    <ExplainerHover
+                      title="Focus"
+                      text="Only appears for classes with Focus Mode on. It records when a student left the assessment page (tab switch, window switch, exiting full screen) or tried to copy/paste. It is context, not proof — a student may have been interrupted, and it cannot see a phone or a second device. Nothing is deducted automatically; use Void if you decide the attempt shouldn't count."
+                      theme="admin"
+                    >
+                      Focus
+                    </ExplainerHover>
+                  </th>
                   <th className="pb-2 text-left font-medium text-gray-400">Submitted</th>
                   <th className="pb-2 text-right font-medium text-gray-400">Actions</th>
                 </tr>
@@ -162,6 +180,27 @@ export default async function StudentProfilePage({ params }: PageProps) {
                         <span className="font-medium text-red-600">Failed</span>
                       )}
                     </td>
+                    <td className="py-2 pr-2">
+                      {a.integrity == null || a.integrity.level === 'none' ? (
+                        <span className="text-gray-300">—</span>
+                      ) : (
+                        <ExplainerHover
+                          title="What was recorded"
+                          text={describeIntegritySummary(a.integrity)}
+                          theme="admin"
+                        >
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                              a.integrity.level === 'notable'
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {a.integrity.level === 'notable' ? 'Review' : 'Minor'}
+                          </span>
+                        </ExplainerHover>
+                      )}
+                    </td>
                     <td className="py-2 text-gray-400">
                       {a.submittedAt
                         ? new Date(a.submittedAt).toLocaleDateString()
@@ -181,6 +220,9 @@ export default async function StudentProfilePage({ params }: PageProps) {
           </div>
         )}
       </div>
+
+      {/* When this student was on the platform and what they got done */}
+      <SessionHistoryCard sessions={sessionHistory} />
 
       {/* Apply a new override */}
       <OverrideControl studentId={params.studentId} benchmarks={overrideBenchmarks} />

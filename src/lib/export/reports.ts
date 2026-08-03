@@ -18,6 +18,10 @@ import {
   getClassMasteryByBenchmark,
   getClassMasteryByReportingCategory,
 } from '@/lib/class-analytics'
+import {
+  getClassSessionActivity,
+  type DateRange,
+} from '@/lib/activity-sessions'
 import { toCsv, type CsvColumn } from './csv'
 
 export interface BuiltReport {
@@ -167,6 +171,107 @@ export async function buildEocReadinessReportCsv(classId: string): Promise<Built
 
   return {
     filename: `eoc-readiness-${classId}-${stamp()}.csv`,
+    csv: toCsv(rows, columns),
+  }
+}
+
+// ── Session activity report ──────────────────────────────────────────────────
+
+interface ActivityReportRow {
+  student: string
+  sessionStart: string
+  sessionEnd: string
+  activeMinutes: number
+  spanMinutes: number
+  startedBySignIn: string
+  questionsAnswered: number
+  assessmentsSubmitted: number
+  assessmentScores: string
+  benchmarksMastered: string
+  drillReviews: number
+  remediationsCompleted: number
+  badgesEarned: number
+  timeByArea: string
+}
+
+/**
+ * One row per work session for a class over a date range, plus a per-student
+ * total row. Answers "when was each student on, for how long, and what did they
+ * get done" in a form a teacher can hand to an administrator.
+ *
+ * Authorization is enforced inside getClassSessionActivity.
+ */
+export async function buildActivityReportCsv(
+  teacherUserId: string,
+  classId: string,
+  range: DateRange
+): Promise<BuiltReport> {
+  const report = await getClassSessionActivity(teacherUserId, classId, range)
+
+  const iso = (d: Date | null): string => (d ? d.toISOString() : '')
+
+  const rows: ActivityReportRow[] = []
+  for (const summary of report.summaries) {
+    const sessions = report.sessionsByStudent[summary.studentId] ?? []
+    for (const s of sessions) {
+      rows.push({
+        student: summary.displayName,
+        sessionStart: iso(s.startedAt),
+        sessionEnd: iso(s.endedAt ?? s.lastActiveAt),
+        activeMinutes: s.activeMinutes,
+        spanMinutes: s.spanMinutes,
+        startedBySignIn: s.startedByLogin ? 'yes' : 'no',
+        questionsAnswered: s.progress.questionsAnswered,
+        assessmentsSubmitted: s.progress.assessmentsSubmitted,
+        assessmentScores: s.progress.assessmentScores
+          .map((n) => `${n}%`)
+          .join(' '),
+        benchmarksMastered: s.progress.benchmarksMastered.join(' '),
+        drillReviews: s.progress.drillReviews,
+        remediationsCompleted: s.progress.remediationsCompleted,
+        badgesEarned: s.progress.badgesEarned,
+        timeByArea: s.areas.map((a) => `${a.label}:${a.minutes}m`).join(' '),
+      })
+    }
+
+    // Per-student total, so a reader who only wants the headline can skim.
+    rows.push({
+      student: summary.displayName,
+      sessionStart: 'TOTAL',
+      sessionEnd: '',
+      activeMinutes: summary.totalActiveMinutes,
+      spanMinutes: 0,
+      startedBySignIn: '',
+      questionsAnswered: summary.progress.questionsAnswered,
+      assessmentsSubmitted: summary.progress.assessmentsSubmitted,
+      assessmentScores: '',
+      benchmarksMastered: summary.progress.benchmarksMastered.join(' '),
+      drillReviews: summary.progress.drillReviews,
+      remediationsCompleted: summary.progress.remediationsCompleted,
+      badgesEarned: summary.progress.badgesEarned,
+      timeByArea: `${summary.sessionCount} sessions`,
+    })
+  }
+
+  const columns: CsvColumn<ActivityReportRow>[] = [
+    { key: 'student', header: 'Student' },
+    { key: 'sessionStart', header: 'Session Start' },
+    { key: 'sessionEnd', header: 'Session End' },
+    { key: 'activeMinutes', header: 'Active Minutes' },
+    { key: 'spanMinutes', header: 'Span Minutes' },
+    { key: 'startedBySignIn', header: 'Started By Sign-In' },
+    { key: 'questionsAnswered', header: 'Questions Answered' },
+    { key: 'assessmentsSubmitted', header: 'Assessments Submitted' },
+    { key: 'assessmentScores', header: 'Assessment Scores' },
+    { key: 'benchmarksMastered', header: 'Benchmarks Mastered' },
+    { key: 'drillReviews', header: 'Drill Reviews' },
+    { key: 'remediationsCompleted', header: 'Review Activities Completed' },
+    { key: 'badgesEarned', header: 'Badges Earned' },
+    { key: 'timeByArea', header: 'Time By Area' },
+  ]
+
+  return {
+    filename: `activity-report-${classId}-${stamp()}.csv`,
     csv: toCsv(rows, columns),
   }
 }

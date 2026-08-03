@@ -13,6 +13,7 @@ import type { NextRequest } from 'next/server'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { fetchAssessmentForStudent } from '@/lib/assessment'
+import { resolveSecureMode } from '@/lib/assessment-integrity'
 
 interface RouteParams {
   params: { assessmentId: string }
@@ -43,6 +44,11 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     )
   }
 
+  // Focus Mode is a SERVER decision (env flag × per-class opt-in × assessment
+  // type). The client is told whether it is under integrity enforcement; it
+  // never decides for itself.
+  const secureMode = await resolveSecureMode(student?.id, result.meta.assessmentType)
+
   // Map the lib shape to the player's wire contract: the client keys answers
   // by `questionId` (and the submit schema validates those ids), so the field
   // name here is load-bearing — passing the lib's `id` through silently broke
@@ -52,6 +58,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     title: result.meta.title,
     assessmentType: result.meta.assessmentType,
     masteryThreshold: result.meta.masteryThreshold,
+    secureMode,
     questions: result.questions.map((q) => ({
       questionId: q.id,
       prompt: q.prompt,

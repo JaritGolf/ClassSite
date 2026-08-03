@@ -88,8 +88,11 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await prisma.studentProgress.deleteMany({ where: { studentId: { in: [studentId1, studentId2] } } })
-  await prisma.classEnrollment.deleteMany({ where: { classId } })
-  await prisma.class.deleteMany({ where: { id: classId } })
+  // Delete every class this test's teacher owns, not just this run's — the
+  // class is created (not upserted), so a run whose teardown was interrupted
+  // leaves an orphan that FK-blocks the teacher delete on every later run.
+  await prisma.classEnrollment.deleteMany({ where: { class: { teacherId } } })
+  await prisma.class.deleteMany({ where: { teacherId } })
   await prisma.student.deleteMany({ where: { id: { in: [studentId1, studentId2] } } })
   await prisma.user.deleteMany({ where: { cleverId: { in: [T_CLEVERID, S1_CLEVERID, S2_CLEVERID] } } })
   await prisma.$disconnect()

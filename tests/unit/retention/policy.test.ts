@@ -33,12 +33,24 @@ describe('resolveRetentionConfig', () => {
     expect(resolveRetentionConfig({})).toEqual(DEFAULT_RETENTION_CONFIG)
   })
 
-  it('reads both thresholds from the env record', () => {
+  it('reads every threshold from the env record', () => {
     const cfg = resolveRetentionConfig({
       AUDIT_LOG_RETENTION_DAYS: '365',
       VOIDED_ATTEMPT_RETENTION_DAYS: '180',
+      ACTIVITY_SESSION_RETENTION_DAYS: '90',
     })
-    expect(cfg).toEqual({ auditLogRetentionDays: 365, voidedAttemptRetentionDays: 180 })
+    expect(cfg).toEqual({
+      auditLogRetentionDays: 365,
+      voidedAttemptRetentionDays: 180,
+      activitySessionRetentionDays: 90,
+    })
+  })
+
+  it('leaves unset thresholds at retain-forever', () => {
+    // Adding a data class must not silently start purging an unconfigured one.
+    const cfg = resolveRetentionConfig({ AUDIT_LOG_RETENTION_DAYS: '365' })
+    expect(cfg.activitySessionRetentionDays).toBe(0)
+    expect(cfg.voidedAttemptRetentionDays).toBe(0)
   })
 })
 

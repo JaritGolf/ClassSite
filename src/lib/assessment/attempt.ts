@@ -14,6 +14,7 @@ import {
   fetchOptionFeedback,
 } from './question-fetcher'
 import { gradeResponses, computeScore } from './grader'
+import { SECURE_ASSESSMENT_TYPES } from './wire'
 import type { SubmitInput } from './index'
 import {
   computeCalibrationBreakdown,
@@ -74,15 +75,8 @@ export interface SubmitResult {
 }
 
 // ── Secure assessment types — feedback is never returned ──────────────────────
-
-const SECURE_ASSESSMENT_TYPES = new Set([
-  'MASTERY_CHALLENGE',
-  'REASSESSMENT',
-  'REPUBLIC_CHALLENGE',
-  'FINAL_TRIAL',
-  'READINESS_CHECK',
-  'DIAGNOSTIC',
-])
+// The set itself now lives in ./wire (client-safe) so the player and the server
+// share one definition; it is imported above.
 
 const PRACTICE_ASSESSMENT_TYPES = new Set([
   'PRACTICE',

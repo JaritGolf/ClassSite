@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * ClassPicker — selects which class the Daily Plan is scoped to.
+ * ClassPicker — selects which class the current class-scoped report is for.
  *
- * Navigates by updating the `classId` search param (keeping `tab=daily`), so
- * the RSC page re-runs the report builder server-side for the chosen class.
+ * Navigates by updating the `classId` search param (keeping the caller's tab),
+ * so the RSC page re-runs the report builder server-side for the chosen class.
  */
 
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -19,15 +19,21 @@ interface ClassOption {
 interface ClassPickerProps {
   classes: ClassOption[]
   selectedClassId: string
+  /** Which tab to stay on when the class changes. */
+  tab?: 'daily' | 'activity'
 }
 
-export function ClassPicker({ classes, selectedClassId }: ClassPickerProps) {
+export function ClassPicker({
+  classes,
+  selectedClassId,
+  tab = 'daily',
+}: ClassPickerProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const params = new URLSearchParams(searchParams.toString())
-    params.set('tab', 'daily')
+    params.set('tab', tab)
     params.set('classId', e.target.value)
     router.push(`?${params.toString()}`)
   }
