@@ -20,6 +20,7 @@ import { DrillReviewSchema } from '@/lib/assessment/wire'
 import { recordActivity } from '@/lib/streak'
 import { evaluateAndAwardBadges } from '@/lib/badges'
 import { touchActivitySafe } from '@/lib/activity-sessions'
+import { recordLastActivity } from '@/lib/student-activity'
 import { prisma } from '@/lib/db'
 
 export async function POST(
@@ -92,6 +93,7 @@ export async function POST(
     try {
       await recordActivity(student.id, new Date())
       await evaluateAndAwardBadges(student.id)
+      await recordLastActivity(student.id, 'DAILY_DRILL', benchmarkId)
     } catch (hookErr) {
       console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
     }

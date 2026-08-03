@@ -13,6 +13,7 @@ import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { submitStrategyRound, StrategyTrackError } from '@/lib/strategy-track'
 import { evaluateAndAwardBadges } from '@/lib/badges/award'
+import { recordLastActivity } from '@/lib/student-activity'
 
 const BodySchema = z.object({
   answers: z
@@ -71,6 +72,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       } catch (e) {
         console.error('[strategy/attempt] badge eval', e instanceof Error ? e.message : e)
       }
+    }
+
+    // Dashboard "pick up where you left off" — non-fatal, display-only.
+    try {
+      await recordLastActivity(student.id, 'STRATEGY_TRACK', params.missionCode)
+    } catch (e) {
+      console.error('[student-activity]', e instanceof Error ? e.message : e)
     }
 
     return NextResponse.json(result)

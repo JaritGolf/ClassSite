@@ -389,6 +389,67 @@ documented git-hang issue — verify state before retrying.
 
 ---
 
+**DASHBOARD "PICK UP WHERE YOU LEFT OFF" (2026-07-25) — Tier 1 `tsc` GREEN + Tier 2 jest
+GREEN (23 new tests: 8 unit + 15 integration; full suite 1348/1348 passed + 2 intentional
+skips — pre-existing scattered failures on ~28 unrelated suites reproduced byte-identically
+via `git stash`, confirmed cross-session DB contention from the concurrent
+`lesson-video-playback-control-f7afc8` worktree's dev server, not a regression) + in-browser
+verification.** Owner: as soon as a student signs in, there needs to be a frictionless way
+to pick their work back up. Scoped via AskUserQuestion: **two distinct elements** — a new
+"pick up where you left off" element with a shorthand description of whatever the student
+genuinely last did anywhere in the app, PLUS the existing "Continue Mission" button kept as
+its own always-present mission-specific control (not merged into one); and **true recency
+via a new timestamp** (not a fixed priority-order guess), since research (3 Explore agents)
+confirmed no existing field anywhere records "what did this student last touch, and when" —
+`StudentProgress` has no `updatedAt`, `Student` has no `lastActiveAt`, and per-feature
+progress rows (`StrategyTrackProgress`/`SourceDecoderProgress`) only record first-completion.
+What shipped:
+(1) **Schema** (migration `20260724120000_add_student_last_activity`, additive): new
+`StudentActivityType` enum (MISSION_TRAINING/ASSESSMENT/DAILY_DRILL/STRATEGY_TRACK/
+SOURCE_DECODER/REMEDIATION) + `StudentLastActivity` (one upserted row per student —
+`activityType` + a single generic `referenceId` string, no DB-level FK on the polymorphic
+reference, same trade-off `AuditLog.metadataJson` already makes elsewhere).
+(2) **`src/lib/student-activity/`** (new, mirrors `src/lib/streak/`'s shape):
+`recordLastActivity` (upsert, always called non-fatally) and `getLastActivityForStudent`
+(resolves the row into a label/subLabel/href/icon by joining Benchmark/Assessment/
+StudentRemediation or looking up `getStrategyMission`; gracefully returns `null` on any
+stale/missing reference, never throws). Labels/icons deliberately reuse existing
+student-facing terminology — `StepIndicator.tsx`'s step labels for mission phases,
+`Hub.tsx`'s mode titles for Republic Challenge — rather than inventing new copy. The
+Republic-Challenge/Assessment-type branch is a pure, independently-unit-tested
+`resolveAssessmentActivity` helper (extracted so all `AssessmentType`×`RepublicChallengeMode`
+combinations are covered without a DB round-trip).
+(3) **7 write-site call sites instrumented**, all non-fatal (try/catch, log-and-continue),
+each riding the SAME pattern already used for `recordActivity`(streak)+`evaluateAndAwardBadges`
+where that pattern already existed: `api/mission/progress` (new hook — this route previously
+had none), `api/assessment/[id]/submit` (fixed a latent unused-`params` destructure in
+passing), `api/drill/[benchmarkId]/review`, `api/practice/[attemptId]/answer` (resolves
+`assessmentId` via the attempt), `api/strategy/[missionCode]/attempt`, `api/source-decoder/
+[level]/complete`, `api/remediation/[studentRemediationId]/complete`.
+(4) **Dashboard**: `getLastActivityForStudent` added to the page's existing `Promise.all`;
+new `ContinueLastActivity` component rendered as the very first thing on the page (above
+`DashboardHero`) — sky-toned card, eyebrow "Pick up where you left off", activity
+label+context, a relative-time caption ("Earlier today"/"Yesterday"/"N days ago"), single
+CTA. Renders nothing when no activity row exists yet (new student) — same
+don't-render-a-false-claim pattern the page's `activeRemediation` card already uses.
+`DashboardHero`'s existing "Continue Mission →" is untouched — it already is the dedicated
+mission-resume control the owner asked to keep separate.
+**Verification:** `tsc` 0 errors; new tests 23/23 (`tests/unit/student-activity/resolve.test.ts`
+covers every AssessmentType/RepublicChallengeMode combination + benchmark-less RC/Final-Trial
+hub-routing; `tests/integration/student-activity.test.ts` covers all 6 activity types against
+the real DB, upsert-overwrites-across-types, null-for-fresh-student, and graceful-null for a
+stale/cross-student reference); browser-verified live as demo student Alex — signed in via a
+direct `fetch` POST to `/api/auth/callback/mock-credentials` (mock-auth UI click kept losing
+the race to Next.js hot-reloads while I was still editing files); before any activity, no card
+rendered; answered a Daily Drill item → card appeared with the correct benchmark title,
+"Earlier today", and a working link that navigated to the very next queued drill item; drill
+due-count correctly dropped 4→3; no console errors; `DashboardHero`'s existing "View Mission
+Map"/"Continue Mission" behavior confirmed unaffected. NOT committed — awaiting owner review.
+Commit message when ready: `feat(phase-9): dashboard "pick up where you left off" —
+cross-surface last-activity tracking + resume card`.
+
+---
+
 **EXPLAINER HOVERS — TEACHER SURFACES FULL SWEEP (2026-07-19, extends ADR 0016) — Tier 1
 `tsc` GREEN + in-browser verification (jest not re-run — additive JSX-only, see note
 below).** Owner asked to extend the explainer-hover rollout to "the teacher page."
@@ -1470,6 +1531,40 @@ probes (403/403/400/403/401 + area-injection fallback). All verification rows de
 `--shard=i/4` — 145 suites in one process exhaust Postgres connections. NOT committed — awaiting
 owner review. Commit message when ready: `feat(phase-9): student activity sessions — time on
 platform, live presence, per-session progress (ADR 0019)`.
+
+---
+
+**Session of 2026-07-25 (Dashboard "pick up where you left off"):** Owner: as soon as a
+student signs in, there needs to be a frictionless way to pick their work back up. Used
+plan mode: 3 Explore agents (dashboard/current-mission-derivation logic, the existing
+mission-level resume mechanism, and every other activity surface's in-progress signal)
+found that "current mission" logic is duplicated with subtly different definitions across
+4 places (dashboard, student-profile, parent-summary, daily-report) and, more importantly,
+that **no field anywhere tracks true recency** across mission/drill/remediation/republic-
+challenge/strategy/source-decoder — the closest things are `AssessmentAttempt.startedAt`
+(assessment-scoped only) and completion-only timestamps on the parallel tracks. Owner chose
+(AskUserQuestion): two distinct dashboard elements, not one merged widget, and a genuine new
+recency timestamp over inferring priority from existing status fields. Built the full
+inventory — see Current Build Phase: additive `StudentLastActivity` migration, new
+`src/lib/student-activity/` domain module, 7 non-fatal write-site hooks, new
+`ContinueLastActivity` dashboard component. **Verification:** `tsc` 0 errors; 23 new tests
+(unit + integration) all green; full suite 1348/1348 + 2 intentional skips — confirmed via
+`git stash` that the ~28 unrelated suite failures seen on the first full run reproduce
+identically with this session's changes fully reverted (cross-session Postgres connection
+contention from the concurrent `lesson-video-playback-control-f7afc8` worktree's dev server,
+the same documented [[concurrent-session-hazards]] pattern, not a regression). Browser-
+verified live as demo student Alex: no card before any activity; answered a Daily Drill item
+→ card appeared with correct benchmark title, "Earlier today", working link to the next
+queued drill item, due-count correctly dropped 4→3; `DashboardHero`'s existing "Continue
+Mission"/"View Mission Map" behavior unaffected; no console errors. **Env note:** the mock-
+auth sign-in button's UI click kept losing the race against Next.js hot-reloads while I was
+still actively editing files in this same tree — used a direct `fetch` POST to
+`/api/auth/callback/mock-credentials` instead (same workaround documented in a prior
+session). NOT committed — awaiting owner review. Commit message when ready:
+`feat(phase-9): dashboard "pick up where you left off" — cross-surface last-activity
+tracking + resume card`.
+
+---
 
 **Session of 2026-07-19 (Explainer hovers — teacher surfaces full sweep):** Owner said
 "we need to add hover explainers to the teacher page." Since the teacher side has ~20

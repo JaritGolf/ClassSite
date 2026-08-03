@@ -23,12 +23,13 @@ import { updateProgressAfterAttempt } from '@/lib/mastery'
 import { recordActivity } from '@/lib/streak'
 import { evaluateAndAwardBadges } from '@/lib/badges'
 import { touchActivitySafe } from '@/lib/activity-sessions'
+import { recordLastActivity } from '@/lib/student-activity'
 
 interface RouteParams {
   params: { assessmentId: string }
 }
 
-export async function POST(req: NextRequest, { params: _params }: RouteParams) {
+export async function POST(req: NextRequest, { params }: RouteParams) {
   const session = await getSession()
   if (!session) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -86,6 +87,7 @@ export async function POST(req: NextRequest, { params: _params }: RouteParams) {
     try {
       await recordActivity(student.id, new Date())
       await evaluateAndAwardBadges(student.id)
+      await recordLastActivity(student.id, 'ASSESSMENT', params.assessmentId)
     } catch (hookErr) {
       console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
     }

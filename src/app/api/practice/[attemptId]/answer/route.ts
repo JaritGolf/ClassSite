@@ -33,6 +33,7 @@ import { submitPracticeAnswer, AdaptiveError } from '@/lib/adaptive-difficulty'
 import { recordActivity } from '@/lib/streak'
 import { evaluateAndAwardBadges } from '@/lib/badges'
 import { touchActivitySafe } from '@/lib/activity-sessions'
+import { recordLastActivity } from '@/lib/student-activity'
 
 interface RouteParams {
   params: { attemptId: string }
@@ -95,6 +96,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     try {
       await recordActivity(student.id, new Date())
       await evaluateAndAwardBadges(student.id)
+      const attempt = await prisma.assessmentAttempt.findUnique({
+        where: { id: params.attemptId },
+        select: { assessmentId: true },
+      })
+      if (attempt) {
+        await recordLastActivity(student.id, 'ASSESSMENT', attempt.assessmentId)
+      }
     } catch (hookErr) {
       console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
     }

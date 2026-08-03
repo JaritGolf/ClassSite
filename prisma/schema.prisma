@@ -114,6 +114,15 @@ enum RemediationType {
   GUIDED_REASONING
 }
 
+enum StudentActivityType {
+  MISSION_TRAINING
+  ASSESSMENT
+  DAILY_DRILL
+  STRATEGY_TRACK
+  SOURCE_DECODER
+  REMEDIATION
+}
+
 /// Student benchmark progress statuses per spec Section 12.2.
 enum StudentProgressStatus {
   NOT_STARTED
@@ -268,6 +277,7 @@ model Student {
   narrativeProgress     NarrativeProgress[]
   uiSettings            StudentUiSettings?
   activitySessions      StudentActivitySession[]
+  lastActivity          StudentLastActivity?
 
   @@map("students")
 }
@@ -797,6 +807,23 @@ model StudentProgress {
   @@unique([studentId, benchmarkId])
   @@index([studentId, benchmarkId])
   @@map("student_progress")
+}
+
+/// Dashboard "pick up where you left off": one row per student, upserted on
+/// every meaningful action across mission/drill/republic-challenge/strategy/
+/// source-decoder/remediation surfaces. referenceId's meaning depends on
+/// activityType (see src/lib/student-activity for the read-side resolver) —
+/// deliberately untyped/no FK so one column covers every activity type.
+model StudentLastActivity {
+  id           String              @id @default(cuid())
+  studentId    String              @unique @map("student_id")
+  activityType StudentActivityType @map("activity_type")
+  referenceId  String?             @map("reference_id")
+  occurredAt   DateTime            @default(now()) @map("occurred_at")
+
+  student Student @relation(fields: [studentId], references: [id])
+
+  @@map("student_last_activity")
 }
 
 model AssessmentAttempt {

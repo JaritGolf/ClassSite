@@ -16,6 +16,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { recordLastActivity } from '@/lib/student-activity'
 
 const BodySchema = z.object({
   benchmarkCode: z.string().min(1).max(32),
@@ -82,6 +83,13 @@ export async function POST(req: NextRequest) {
     },
     update: { currentStepId },
   })
+
+  // Dashboard "pick up where you left off" — non-fatal, display-only.
+  try {
+    await recordLastActivity(student.id, 'MISSION_TRAINING', benchmark.id)
+  } catch (err) {
+    console.error('[student-activity]', err instanceof Error ? err.message : err)
+  }
 
   return NextResponse.json({ ok: true })
 }
