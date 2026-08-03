@@ -6,17 +6,28 @@ import {
   getClassMasteryByReportingCategory,
 } from '@/lib/class-analytics'
 import { buildDailyClassReport } from '@/lib/daily-report'
+import { getClassSessionActivity } from '@/lib/activity-sessions'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
 import { StatCard } from '@/components/teacher/dashboard/StatCard'
 import { ReportActions } from '@/components/teacher/reports/ReportActions'
 import { ClassPicker } from '@/components/teacher/reports/ClassPicker'
 import { DailyActionPlan } from '@/components/teacher/reports/DailyActionPlan'
 import { DailyRosterTable } from '@/components/teacher/reports/DailyRosterTable'
+import {
+  DateRangePicker,
+  type RangeValue,
+} from '@/components/teacher/reports/DateRangePicker'
+import { LivePresencePanel } from '@/components/teacher/reports/LivePresencePanel'
+import { SessionActivityTable } from '@/components/teacher/reports/SessionActivityTable'
+import {
+  SessionDetailList,
+  SessionLegend,
+} from '@/components/teacher/reports/SessionDetailList'
 
-type Tab = 'daily' | 'mastery'
+type Tab = 'daily' | 'mastery' | 'activity'
 
 interface ReportsPageProps {
-  searchParams: { tab?: string; classId?: string }
+  searchParams: { tab?: string; classId?: string; range?: string }
 }
 
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
@@ -25,7 +36,12 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const roster = await getTeacherRoster(userId)
 
   const hasStudents = roster.allStudentIds.length > 0
-  const tab: Tab = searchParams.tab === 'mastery' ? 'mastery' : 'daily'
+  const tab: Tab =
+    searchParams.tab === 'mastery'
+      ? 'mastery'
+      : searchParams.tab === 'activity'
+        ? 'activity'
+        : 'daily'
 
   // Resolve the selected class (default: first class the teacher owns).
   const classes = roster.classes
@@ -53,6 +69,11 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           active={tab === 'mastery'}
           label="Mastery Reports"
         />
+        <TabLink
+          href={`/teacher/reports?tab=activity${selectedClassId ? `&classId=${selectedClassId}` : ''}`}
+          active={tab === 'activity'}
+          label="Activity"
+        />
       </div>
 
       {!hasStudents ? (
@@ -65,6 +86,13 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
           userId={userId}
           classes={classes}
           selectedClassId={selectedClassId}
+        />
+      ) : tab === 'activity' ? (
+        <ActivityTab
+          userId={userId}
+          classes={classes}
+          selectedClassId={selectedClassId}
+          range={resolveRangeValue(searchParams.range)}
         />
       ) : (
         <MasteryTab userId={userId} />
@@ -201,6 +229,154 @@ async function DailyTab({
           Every student
         </h2>
         <DailyRosterTable roster={report.roster} />
+      </section>
+    </div>
+  )
+}
+
+// ── Activity tab (session monitoring, class-scoped) ────────────────────────
+
+function resolveRangeValue(raw: string | undefined): RangeValue {
+  return raw === 'today' || raw === '30d' ? raw : '7d'
+}
+
+/** Resolve a range token to concrete bounds. Days start at local midnight. */
+function resolveRangeBounds(range: RangeValue): { from: Date; to: Date } {
+  const to = new Date()
+  const from = new Date(to)
+  from.setHours(0, 0, 0, 0)
+  if (range === '7d') from.setDate(from.getDate() - 6)
+  if (range === '30d') from.setDate(from.getDate() - 29)
+  return { from, to }
+}
+
+function formatMinutesTotal(minutes: number): string {
+  if (minutes <= 0) return '0m'
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  const rest = minutes % 60
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`
+}
+
+async function ActivityTab({
+  userId,
+  classes,
+  selectedClassId,
+  range,
+}: {
+  userId: string
+  classes: Array<{
+    id: string
+    name: string
+    period: string | null
+    studentIds: string[]
+  }>
+  selectedClassId: string
+  range: RangeValue
+}) {
+  if (!selectedClassId) {
+    return (
+      <EmptyState
+        title="No classes yet"
+        body="Create a class and enroll students to see session activity."
+      />
+    )
+  }
+
+  const bounds = resolveRangeBounds(range)
+  const report = await getClassSessionActivity(userId, selectedClassId, bounds)
+  const { totals, summaries } = report
+
+  const pickerClasses = classes.map((c) => ({
+    id: c.id,
+    name: c.name,
+    period: c.period,
+    studentCount: c.studentIds.length,
+  }))
+
+  const detailStudents = summaries
+    .filter((s) => s.sessionCount > 0)
+    .map((s) => ({
+      studentId: s.studentId,
+      displayName: s.displayName,
+      sessions: report.sessionsByStudent[s.studentId] ?? [],
+    }))
+
+  const rangeLabel =
+    range === 'today'
+      ? 'today'
+      : range === '30d'
+        ? 'the last 30 days'
+        : 'the last 7 days'
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <ClassPicker
+            classes={pickerClasses}
+            selectedClassId={selectedClassId}
+            tab="activity"
+          />
+          <DateRangePicker selected={range} />
+        </div>
+        <a
+          href={`/api/teacher/reports/export?type=activity&classId=${selectedClassId}&range=${range}`}
+          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+        >
+          Download CSV
+        </a>
+      </div>
+
+      {/* Live, for mid-class monitoring */}
+      <LivePresencePanel classId={selectedClassId} />
+
+      {/* At-a-glance for the range */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard
+          label="Students active"
+          value={`${totals.studentsWithActivity} of ${report.classInfo.studentCount}`}
+          subtext={rangeLabel}
+          explain="How many students in this class did any work on the platform during the selected range."
+        />
+        <StatCard
+          label="No activity"
+          value={totals.studentsWithNoActivity}
+          alert={totals.studentsWithNoActivity > 0 ? 'warn' : undefined}
+          subtext="students never logged on"
+          explain="Students with zero recorded activity in this range. Worth checking whether they can sign in at all."
+        />
+        <StatCard
+          label="Total active time"
+          value={formatMinutesTotal(totals.totalActiveMinutes)}
+          subtext={`${totals.sessionCount} sessions`}
+          explain="Engaged minutes summed across the whole class. Idle time and time with the tab in the background are excluded."
+        />
+        <StatCard
+          label="Median session"
+          value={formatMinutesTotal(totals.medianSessionMinutes)}
+          explain="The midpoint session length across the class — a better sense of a typical work session than the average, which one long session can distort."
+        />
+      </div>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Every student</h2>
+          <p className="text-sm text-gray-500">
+            Time on the platform and work completed during {rangeLabel}.
+          </p>
+        </div>
+        <SessionActivityTable summaries={summaries} />
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Session by session
+          </h2>
+          <SessionLegend />
+        </div>
+        <SessionDetailList students={detailStudents} />
       </section>
     </div>
   )

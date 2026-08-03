@@ -20,7 +20,9 @@ export default async function RetentionPage() {
   const config = resolveRetentionConfig()
   const preview = await purgeExpiredData({ dryRun: true, config })
   const anyConfigured =
-    config.auditLogRetentionDays > 0 || config.voidedAttemptRetentionDays > 0
+    config.auditLogRetentionDays > 0 ||
+    config.voidedAttemptRetentionDays > 0 ||
+    config.activitySessionRetentionDays > 0
 
   return (
     <div className="space-y-6">
@@ -51,6 +53,22 @@ export default async function RetentionPage() {
               {describeDays(config.voidedAttemptRetentionDays)}
             </dd>
           </div>
+          <div>
+            <dt className="text-xs font-medium uppercase text-gray-500">
+              <ExplainerHover
+                theme="admin"
+                variant="underline"
+                title="Activity sessions"
+                text="Records of when students were on the platform and for how long. Purging these removes the monitoring history only — no student work, scores, or mastery data is affected."
+              >
+                Activity sessions
+              </ExplainerHover>{' '}
+              (ACTIVITY_SESSION_RETENTION_DAYS)
+            </dt>
+            <dd className="mt-1 text-sm font-medium text-gray-900">
+              {describeDays(config.activitySessionRetentionDays)}
+            </dd>
+          </div>
         </dl>
       </section>
 
@@ -76,6 +94,12 @@ export default async function RetentionPage() {
               Voided attempts eligible:{' '}
               <span className="font-semibold">{preview.voidedAttemptsDeleted}</span>{' '}
               ({preview.attemptResponsesDeleted} responses)
+            </li>
+            <li>
+              Activity sessions eligible:{' '}
+              <span className="font-semibold">
+                {preview.activitySessionsDeleted}
+              </span>
             </li>
           </ul>
         ) : (

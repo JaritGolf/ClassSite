@@ -54,8 +54,12 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma.eocReadinessSnapshot.deleteMany({ where: { studentId } })
   await prisma.classReadinessSnapshot.deleteMany({ where: { classId } })
-  await prisma.classEnrollment.deleteMany({ where: { classId } })
-  await prisma.class.deleteMany({ where: { id: classId } })
+  // Delete every class this teacher owns, not just `classId` — one test body
+  // creates a second class ("EocTrend Empty") that was never cleaned up, so
+  // each run left an orphan that FK-blocked the teacher delete on the next run.
+  await prisma.classReadinessSnapshot.deleteMany({ where: { class: { teacherId } } })
+  await prisma.classEnrollment.deleteMany({ where: { class: { teacherId } } })
+  await prisma.class.deleteMany({ where: { teacherId } })
   await prisma.student.deleteMany({ where: { id: studentId } })
   await prisma.user.deleteMany({ where: { cleverId: { in: [T_CLEVERID, S_CLEVERID] } } })
   await prisma.$disconnect()

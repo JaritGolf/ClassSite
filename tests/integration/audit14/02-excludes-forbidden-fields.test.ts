@@ -38,6 +38,10 @@ const FORBIDDEN_TOKENS = [
   'isCorrect',
   'distractor',
   'accommodation',
+  // Focus Mode records must never reach a parent (ADR 0020).
+  'integrity',
+  'focusLoss',
+  'fullscreenExit',
 ]
 
 beforeAll(async () => {

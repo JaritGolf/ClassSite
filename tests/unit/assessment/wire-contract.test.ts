@@ -17,8 +17,14 @@ import { SubmitSchema } from '@/lib/assessment'
 import {
   buildAssessmentSubmitBody,
   buildDrillReviewBody,
+  buildIntegrityReportBody,
   DrillReviewSchema,
+  IntegrityReportSchema,
   CONFIDENCE_LEVELS,
+  MAX_EVENTS_PER_REPORT,
+  MAX_REPORTED_DURATION_MS,
+  SECURE_ASSESSMENT_TYPES,
+  isSecureAssessmentType,
   type ConfidenceValue,
 } from '@/lib/assessment/wire'
 
@@ -125,6 +131,98 @@ describe('drill review wire contract', () => {
     }
     const body = buildDrillReviewBody(withExtra)
     expect('isCorrect' in body).toBe(false)
+  })
+})
+
+describe('integrity report wire contract', () => {
+  it("the builder's exact output parses, and the events SURVIVE parsing", () => {
+    const body = buildIntegrityReportBody(ATTEMPT_ID, [
+      { eventType: 'VISIBILITY_HIDDEN', durationMs: 4200 },
+      { eventType: 'COPY_BLOCKED' },
+    ])
+    const parsed = IntegrityReportSchema.safeParse(body)
+    expect(parsed.success).toBe(true)
+    if (!parsed.success) return
+    expect(parsed.data.attemptId).toBe(ATTEMPT_ID)
+    expect(parsed.data.events).toHaveLength(2)
+    expect(parsed.data.events[0]).toEqual({
+      eventType: 'VISIBILITY_HIDDEN',
+      durationMs: 4200,
+    })
+    // Instantaneous events carry no duration and must not gain a bogus 0.
+    expect(parsed.data.events[1].durationMs).toBeUndefined()
+  })
+
+  it('carries NO timestamp field — the server clock is the only clock', () => {
+    const body = buildIntegrityReportBody(ATTEMPT_ID, [{ eventType: 'BLUR' }])
+    expect(JSON.stringify(body)).not.toMatch(/recordedAt|timestamp|occurredAt/i)
+    // And the schema would strip one anyway.
+    const withTimestamp = {
+      ...body,
+      events: [{ eventType: 'BLUR', recordedAt: '1999-01-01T00:00:00.000Z' }],
+    }
+    const parsed = IntegrityReportSchema.safeParse(withTimestamp)
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect('recordedAt' in parsed.data.events[0]).toBe(false)
+    }
+  })
+
+  it('clamps an absurd client-reported duration instead of storing it', () => {
+    const body = buildIntegrityReportBody(ATTEMPT_ID, [
+      { eventType: 'BLUR', durationMs: MAX_REPORTED_DURATION_MS * 100 },
+    ])
+    expect(body.events[0].durationMs).toBe(MAX_REPORTED_DURATION_MS)
+    expect(IntegrityReportSchema.safeParse(body).success).toBe(true)
+  })
+
+  it('drops a non-positive duration rather than sending it', () => {
+    const body = buildIntegrityReportBody(ATTEMPT_ID, [
+      { eventType: 'BLUR', durationMs: -1 },
+    ])
+    expect(body.events[0].durationMs).toBeUndefined()
+    expect(IntegrityReportSchema.safeParse(body).success).toBe(true)
+  })
+
+  it('truncates an over-long batch to what the schema accepts', () => {
+    const many = Array.from({ length: MAX_EVENTS_PER_REPORT + 25 }, () => ({
+      eventType: 'BLUR' as const,
+    }))
+    const body = buildIntegrityReportBody(ATTEMPT_ID, many)
+    expect(body.events).toHaveLength(MAX_EVENTS_PER_REPORT)
+    expect(IntegrityReportSchema.safeParse(body).success).toBe(true)
+  })
+
+  it('rejects an unknown event type', () => {
+    const parsed = IntegrityReportSchema.safeParse({
+      attemptId: ATTEMPT_ID,
+      events: [{ eventType: 'SCREENSHOT_TAKEN' }],
+    })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('rejects an empty batch', () => {
+    expect(
+      IntegrityReportSchema.safeParse({ attemptId: ATTEMPT_ID, events: [] }).success
+    ).toBe(false)
+  })
+})
+
+describe('SECURE_ASSESSMENT_TYPES single source of truth', () => {
+  it('covers exactly the six types whose feedback is withheld', () => {
+    expect([...SECURE_ASSESSMENT_TYPES].sort()).toEqual([
+      'DIAGNOSTIC',
+      'FINAL_TRIAL',
+      'MASTERY_CHALLENGE',
+      'READINESS_CHECK',
+      'REASSESSMENT',
+      'REPUBLIC_CHALLENGE',
+    ])
+  })
+
+  it('does NOT include PRACTICE — practice returns feedback by design', () => {
+    expect(isSecureAssessmentType('PRACTICE')).toBe(false)
+    expect(isSecureAssessmentType('MASTERY_CHALLENGE')).toBe(true)
   })
 })
 

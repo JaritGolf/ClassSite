@@ -138,3 +138,23 @@
   outline: 3px solid #000000 !important;
   outline-offset: 2px !important;
 }
+
+/* ============================================================
+   FOCUS MODE (assessment integrity)
+   docs/adrs/0020-assessment-integrity-and-device-lockdown.md
+   ============================================================ */
+
+/* The UA stylesheet paints a fullscreen element's backdrop black, which would
+   leave the assessment card floating on black. Restore the page surface and let
+   long assessments scroll. Only :fullscreen is styled — outside fullscreen this
+   class is inert, so embedded (non-fullscreen) Focus Mode is unaffected. */
+.cq-secure-surface:fullscreen {
+  background-color: #ffffff;
+  overflow-y: auto;
+  padding: 2rem 1.25rem;
+}
+
+/* Deliberately NOT setting `user-select: none` anywhere in Focus Mode: it
+   breaks select-to-speak, screen-reader text navigation, and the glossary
+   popovers, which is a real accommodation regression for a marginal deterrent.
+   Copying is blocked at the `copy` event instead (see useSecureMode). */

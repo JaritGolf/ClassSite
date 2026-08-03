@@ -32,6 +32,7 @@ import { prisma } from '@/lib/db'
 import { submitPracticeAnswer, AdaptiveError } from '@/lib/adaptive-difficulty'
 import { recordActivity } from '@/lib/streak'
 import { evaluateAndAwardBadges } from '@/lib/badges'
+import { touchActivitySafe } from '@/lib/activity-sessions'
 import { recordLastActivity } from '@/lib/student-activity'
 
 interface RouteParams {
@@ -105,6 +106,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     } catch (hookErr) {
       console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
     }
+
+    await touchActivitySafe(student.id, { area: 'practice' })
 
     return NextResponse.json(result)
   } catch (err) {

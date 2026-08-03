@@ -6,17 +6,25 @@
 
 ## Policy model
 
-Two data classes can be aged out:
+Three data classes can be aged out:
 
 | Data class | Env variable | Default | What is removed |
 |---|---|---|---|
 | Audit logs | `AUDIT_LOG_RETENTION_DAYS` | `0` (keep forever) | `AuditLog` rows with `createdAt` older than the threshold |
 | Voided assessment attempts | `VOIDED_ATTEMPT_RETENTION_DAYS` | `0` (keep forever) | `AssessmentAttempt` rows where `voided = true` and `submittedAt` older than the threshold, plus their `AttemptResponse` / `AdaptiveSessionState` children |
+| Student activity sessions | `ACTIVITY_SESSION_RETENTION_DAYS` | `0` (keep forever) | `StudentActivitySession` rows with `startedAt` older than the threshold (ADR 0019) |
+| Assessment focus events | _(none — follows the attempt)_ | n/a | `AttemptIntegrityEvent` rows are deleted with their voided attempt under `VOIDED_ATTEMPT_RETENTION_DAYS` (ADR 0020) |
 
 `0`, unset, negative, or non-numeric values all mean **retain forever**. Fractions are floored.
 
 **Only voided attempts are eligible** — active mastery/progression data is never purged by this
 policy. Content is archived (not deleted) via the content-approval flow.
+
+**Activity sessions are monitoring data, not academic records.** They record when a student was
+on the platform and for how long. Purging them removes only that monitoring history — no student
+work, scores, mastery state, or spaced-review state is touched, and the rows have no children.
+Districts may reasonably want a *shorter* window here than for academic records: behavioral
+observation of a minor has less justification for long-term storage than the coursework itself.
 
 ## How it works
 

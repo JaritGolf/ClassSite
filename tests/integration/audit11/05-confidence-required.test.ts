@@ -59,6 +59,16 @@ afterAll(async () => {
   })
   if (ephemeral.length > 0) {
     const ids = ephemeral.map((a) => a.id)
+    // Global query — may match assessments other students have attempts on.
+    // Clear the dependents or the delete is FK-blocked and this teardown aborts,
+    // leaking the ephemeral assessments into the next run (see audit11/01).
+    await prisma.attemptResponse.deleteMany({
+      where: { attempt: { assessmentId: { in: ids } } },
+    })
+    await prisma.adaptiveSessionState.deleteMany({
+      where: { attempt: { assessmentId: { in: ids } } },
+    })
+    await prisma.assessmentAttempt.deleteMany({ where: { assessmentId: { in: ids } } })
     await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: { in: ids } } })
     await prisma.assessment.deleteMany({ where: { id: { in: ids } } })
   }

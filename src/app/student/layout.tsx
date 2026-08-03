@@ -2,6 +2,7 @@ import { requireAuth, getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { StudentNav } from '@/components/student/layout/StudentNav'
 import { PauseBanner } from '@/components/student/layout/PauseBanner'
+import { ActivityHeartbeat } from '@/components/student/layout/ActivityHeartbeat'
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   await requireAuth(['STUDENT'])
@@ -64,6 +65,8 @@ export default async function StudentLayout({ children }: { children: React.Reac
       <StudentNav />
       <main className="min-h-screen bg-indigo-50 bg-dots bg-[length:26px_26px]">{children}</main>
       <PauseBanner pausePointMinutes={pausePointMinutes} />
+      {/* Invisible — records session start/duration. Renders nothing. */}
+      <ActivityHeartbeat />
     </div>
   )
 }

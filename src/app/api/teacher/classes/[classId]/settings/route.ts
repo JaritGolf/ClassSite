@@ -8,6 +8,7 @@
  *   - rcReviewWindow ('immediate' | 'after_submit' | 'after_class_window')
  *   - rcStaminaOverride (nullable; null = use ladder)
  *   - featureEocReviewEnabled
+ *   - secureAssessmentMode (Focus Mode on secure assessments)
  *
  * POST writes an AuditLog row with action=RC_CLASS_CONFIG_UPDATED.
  */
@@ -27,6 +28,7 @@ const SettingsSchema = z.object({
   rcStaminaOverride: z.number().int().min(1).max(100).nullable(),
   featureEocReviewEnabled: z.boolean(),
   strategyUsesRequired: z.number().int().min(0).max(20),
+  secureAssessmentMode: z.boolean(),
 })
 
 export async function GET(
@@ -58,6 +60,7 @@ export async function GET(
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
       strategyUsesRequired: true,
+      secureAssessmentMode: true,
     },
   })
 
@@ -114,6 +117,7 @@ export async function POST(
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
       strategyUsesRequired: true,
+      secureAssessmentMode: true,
     },
   })
 

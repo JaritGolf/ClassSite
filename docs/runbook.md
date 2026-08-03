@@ -2,6 +2,12 @@
 
 Operational reference for local development and deployment.
 
+> **Deploying to mycivicsclass.com?** Step-by-step in
+> [`deployment-vercel.md`](./deployment-vercel.md). Read its
+> "the one thing that will lock you out" section first — mock auth is disabled in
+> production and `/admin/users` has no activation UI, so the first Google sign-in
+> locks itself out without `npm run admin:bootstrap`.
+
 ---
 
 ## Environment Versions
@@ -82,9 +88,11 @@ Copy `.env.example` to `.env.local` for local development. Full inventory:
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Prod fallback | Google OAuth (staff). Production redirect: `https://mycivicsclass.com/api/auth/callback/google` |
 | `FEATURE_L1_GLOSSES` | No | Enables L1 glosses (Phase 16); `"true"` to opt in. Spanish glosses are owner-approved (ADR 0013); Haitian Creole remains a NEEDS_REVIEW sample |
 | `FEATURE_PARENT_PORTAL` | No | Enables parent login (Phase 18); `"true"` only after district identity-policy sign-off (`docs/parent-identity-policy.md`) |
+| `FEATURE_SECURE_ASSESSMENT` | No | Enables Focus Mode on secure assessments (ADR 0020); `"true"` to opt in. Also requires per-class `secureAssessmentMode`. Does **not** lock the device — see `docs/chromebook-lockdown.md` |
 | `FEATURE_EOC_REVIEW` / `FEATURE_LEADERBOARDS` / `FEATURE_AI_DRAFTING` | No | Reserved flags (not yet wired) |
 | `AUDIT_LOG_RETENTION_DAYS` | No | Retention threshold for audit logs; `0`/unset = keep forever (Phase 17) |
 | `VOIDED_ATTEMPT_RETENTION_DAYS` | No | Retention threshold for voided attempts; `0`/unset = keep forever (Phase 17) |
+| `ACTIVITY_SESSION_RETENTION_DAYS` | No | Retention threshold for student activity/session monitoring rows; `0`/unset = keep forever (ADR 0019) |
 | `MOCK_AUTH` | Dev only | Enables mock auth; **never** in production |
 
 See `.env.example` for descriptions and defaults, and `docs/data-retention.md` for the

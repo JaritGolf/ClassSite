@@ -23,6 +23,7 @@ import { UserRole as UserRoleEnum } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { cleverProvider } from './providers/clever'
 import { recordParentLoginEvent } from '@/lib/parent-portal/login'
+import { recordStudentLoginEvent } from '@/lib/activity-sessions/login'
 
 // ── Mock Auth (dev only) ──────────────────────────────────────────────────────
 
@@ -229,13 +230,27 @@ export const authOptions: NextAuthOptions = {
   },
 
   events: {
-    // Audit parent login events (audit §36.19 item 4). Non-fatal.
     async signIn({ user }) {
+      const userId = (user as User).userId
+
+      // Audit parent login events (audit §36.19 item 4). Non-fatal.
       try {
-        await recordParentLoginEvent((user as User).userId)
+        await recordParentLoginEvent(userId)
       } catch (err) {
         console.error(
           '[auth] PARENT_LOGIN audit error:',
+          err instanceof Error ? err.message : String(err)
+        )
+      }
+
+      // Audit student logins and open their activity session. Non-fatal, and
+      // deliberately in its own try/catch so neither audit can suppress the
+      // other — a sign-in must never fail because of activity bookkeeping.
+      try {
+        await recordStudentLoginEvent(userId)
+      } catch (err) {
+        console.error(
+          '[auth] STUDENT_LOGIN audit error:',
           err instanceof Error ? err.message : String(err)
         )
       }

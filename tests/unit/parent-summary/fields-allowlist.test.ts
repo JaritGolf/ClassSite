@@ -21,6 +21,13 @@ const FORBIDDEN_TOKENS = [
   'option',
   'questionbank',
   'itembank',
+  // Focus Mode records (ADR 0020). Whether behavioural monitoring is
+  // parent-appropriate is a district policy call, not a default — and a
+  // "your child left the page 4 times" line in a progress summary is exactly
+  // the kind of context that misleads without a teacher present to frame it.
+  'integrity',
+  'focusloss',
+  'securemode',
 ]
 
 describe('Parent Summary — field allowlist (spec §23)', () => {

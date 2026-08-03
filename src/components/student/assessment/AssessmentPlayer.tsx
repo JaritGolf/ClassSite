@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { buildAssessmentSubmitBody, type ConfidenceValue } from '@/lib/assessment/wire'
 import { ConfidenceSelector } from './ConfidenceSelector'
+import { useSecureMode } from './useSecureMode'
+import { SecureModeGate, SecureModeBreak, SecureModeNotice } from './SecureModeGate'
 import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
 import { Mascot } from '@/components/ui/Mascot'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
@@ -38,6 +40,11 @@ interface AssessmentMeta {
   title: string
   assessmentType: string
   masteryThreshold: number
+  /**
+   * Server-resolved Focus Mode decision (env flag × per-class opt-in ×
+   * assessment type). Absent on older responses / non-secure assessments.
+   */
+  secureMode?: boolean
   questions: Question[]
 }
 
@@ -107,6 +114,22 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Focus Mode. Hooks must run unconditionally, so this sits above the early
+  // returns; `enabled` is what actually arms it.
+  const containerRef = useRef<HTMLDivElement>(null)
+  const secureMode = meta?.secureMode === true && !submitted
+  // Embedded in the mission flow (pre-check / readiness): record and block, but
+  // do not seize the screen mid-mission. Standalone high-stakes assessments get
+  // the full fullscreen treatment.
+  const isEmbedded = !!onComplete
+  const integrity = useSecureMode({
+    assessmentId,
+    attemptId,
+    enabled: secureMode,
+    containerRef,
+    requireFullscreen: secureMode && !isEmbedded,
+  })
 
   useEffect(() => {
     async function load() {
@@ -242,6 +265,11 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
     if (!meta || !attemptId) return
     setLoading(true)
     try {
+      // Flush integrity events BEFORE submitting: submitting sets submittedAt,
+      // after which the server (correctly) refuses late events — anything still
+      // sitting on the debounce would be lost.
+      if (secureMode) await integrity.flush()
+
       const res = await fetch(`/api/assessment/${assessmentId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -268,8 +296,25 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
     }
   }
 
+  // Focus Mode gate — fullscreen needs a user gesture, so a click is required
+  // before the questions render. Embedded assessments skip the gate entirely.
+  if (secureMode && !isEmbedded && !integrity.started) {
+    return <SecureModeGate title={meta.title} onBegin={() => void integrity.begin()} />
+  }
+
+  // Sanctioned break: hide the questions completely and record nothing.
+  if (secureMode && integrity.onBreak) {
+    return <SecureModeBreak onResume={() => void integrity.endBreak()} />
+  }
+
   return (
-    <div className="space-y-5">
+    <div ref={containerRef} className="space-y-5 cq-secure-surface">
+      {secureMode && (
+        <SecureModeNotice
+          eventCount={integrity.eventCount}
+          onTakeBreak={integrity.startBreak}
+        />
+      )}
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-bold text-gray-900">{meta.title}</h2>
         <ExplainerHover
