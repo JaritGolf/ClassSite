@@ -2,6 +2,12 @@
 
 Operational reference for local development and deployment.
 
+> **Deploying to mycivicsclass.com?** Step-by-step in
+> [`deployment-vercel.md`](./deployment-vercel.md). Read its
+> "the one thing that will lock you out" section first — mock auth is disabled in
+> production and `/admin/users` has no activation UI, so the first Google sign-in
+> locks itself out without `npm run admin:bootstrap`.
+
 ---
 
 ## Environment Versions

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -19,7 +20,9 @@
     "db:seed": "tsx --env-file .env.local seed/index.ts",
     "db:seed:demo": "tsx --env-file .env.local seed/demo/index.ts",
     "db:studio": "prisma studio",
-    "retention:purge": "tsx --env-file .env.local scripts/retention-purge.ts"
+    "retention:purge": "tsx --env-file .env.local scripts/retention-purge.ts",
+    "admin:bootstrap": "node --env-file-if-exists=.env.local node_modules/.bin/tsx scripts/bootstrap-admin.ts",
+    "deploy": "bash scripts/deploy.sh"
   },
   "dependencies": {
     "@prisma/client": "^5",
