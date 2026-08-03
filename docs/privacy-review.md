@@ -1,4 +1,4 @@
-# Civics Quest — Privacy Review (Phase 17)
+# My Civics Class — Privacy Review (Phase 17)
 
 > Audit §36.18 item 3. Maps spec §25 (Data, Privacy, and District Readiness) to the
 > implementation. This document is the basis for district privacy sign-off before any

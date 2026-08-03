@@ -1,5 +1,5 @@
 /**
- * Civics Quest — Demo Data Seed (dev/test only)
+ * My Civics Class — Demo Data Seed (dev/test only)
  *
  * Populates a realistic classroom tied to the existing mock-auth identities
  * (mock-student-001 / mock-teacher-001 / mock-parent-001) so the STUDENT /

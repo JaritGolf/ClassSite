@@ -1,5 +1,5 @@
 /**
- * Auth utilities for Civics Quest — Server Components and API Routes.
+ * Auth utilities for My Civics Class — Server Components and API Routes.
  *
  * Usage in a Server Component:
  *   import { requireAuth } from '@/lib/auth'

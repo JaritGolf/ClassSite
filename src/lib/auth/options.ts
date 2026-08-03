@@ -1,5 +1,5 @@
 /**
- * next-auth v4 configuration for Civics Quest.
+ * next-auth v4 configuration for My Civics Class.
  *
  * Providers (in priority order):
  *   1. mock-credentials — dev only (MOCK_AUTH=true, NODE_ENV !== production)

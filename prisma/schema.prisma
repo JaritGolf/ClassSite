@@ -1,4 +1,4 @@
-// Civics Quest — Full Database Schema
+// My Civics Class — Full Database Schema
 // Phase 1: All tables from spec Section 27, adapted for Prisma.
 // Table names use snake_case (@@map). Model fields use camelCase.
 

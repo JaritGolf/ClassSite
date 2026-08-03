@@ -1,4 +1,4 @@
-# Civics Quest: Build the Republic — v3 Build Specification
+# My Civics Class: Build the Republic — v3 Build Specification
 
 **Florida 7th Grade Civics Mastery Learning Platform**
 **Document type:** Product Requirements Document and autonomous build specification
@@ -95,7 +95,7 @@ Read this section before any code is touched.
 
 ### 2.1 How to Execute This Document
 
-This document is the single source of truth for the Civics Quest build. The expectation is that you will:
+This document is the single source of truth for the My Civics Class build. The expectation is that you will:
 
 1. Read this document end-to-end before beginning. Do not skim.
 2. Inspect the existing repository at the project root to understand current code, package manager, framework choices, and any prior `CLAUDE.md` or seed data.
@@ -147,10 +147,10 @@ Create or update `CLAUDE.md` at repo root with the following content. This is wh
 ### 3.1 CLAUDE.md Template
 
 ```
-# Civics Quest — Standing Instructions for Claude Code
+# My Civics Class — Standing Instructions for Claude Code
 
 ## What this project is
-Civics Quest is a Florida 7th Grade Civics mastery-learning platform with an EOC-readiness focus. Students experience it as a game ("Build the Republic"). Teachers experience it as an LMS with deep analytics.
+My Civics Class is a Florida 7th Grade Civics mastery-learning platform with an EOC-readiness focus. Students experience it as a game ("Build the Republic"). Teachers experience it as an LMS with deep analytics.
 
 ## Source of truth
 The build specification is `civics_quest_v3_build_spec.md` at repo root. When in doubt, that document wins.
@@ -223,7 +223,7 @@ The build specification is `civics_quest_v3_build_spec.md` at repo root. When in
 
 ## 4. Executive Summary
 
-Civics Quest: Build the Republic is a mastery-based, game-themed learning platform for Florida 7th Grade Civics. It serves as the primary classroom hub for instruction, practice, assessment, remediation, review, progress tracking, teacher decision-making, and Florida Civics EOC preparation.
+My Civics Class: Build the Republic is a mastery-based, game-themed learning platform for Florida 7th Grade Civics. It serves as the primary classroom hub for instruction, practice, assessment, remediation, review, progress tracking, teacher decision-making, and Florida Civics EOC preparation.
 
 The student-facing experience is a civics adventure game. Students complete benchmark missions, receive briefings, train with practice activities, fight mastery challenges, earn badges, build regions of a digital republic, and unlock new content only after demonstrating mastery.
 

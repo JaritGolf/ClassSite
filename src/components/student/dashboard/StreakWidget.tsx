@@ -22,7 +22,7 @@ export function StreakWidget({ currentLength, longestLength, freezeTokens }: Str
       <div>
         <ExplainerHover
           title="Streak"
-          text="How many days in a row you've done at least one mission, drill, or practice item. Keep it going by doing a little Civics Quest every day."
+          text="How many days in a row you've done at least one mission, drill, or practice item. Keep it going by doing a little civics every day."
         >
           <p className="font-display text-3xl font-bold leading-none text-gray-900">
             {currentLength}

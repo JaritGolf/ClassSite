@@ -20,8 +20,29 @@ const body = Atkinson_Hyperlegible({
 })
 
 export const metadata: Metadata = {
-  title: 'Civics Quest: Build the Republic',
+  // Canonical origin for the app. Icon, Open Graph, and any relative metadata
+  // URLs resolve against this.
+  metadataBase: new URL('https://mycivicsclass.com'),
+  title: {
+    default: 'My Civics Class — Build the Republic',
+    // Every page that sets its own `title` gets the brand appended, so per-page
+    // metadata only needs the page name.
+    template: '%s — My Civics Class',
+  },
   description: 'Florida 7th Grade Civics Mastery Learning Platform',
+  applicationName: 'My Civics Class',
+  openGraph: {
+    type: 'website',
+    siteName: 'My Civics Class',
+    url: '/',
+    title: 'My Civics Class — Build the Republic',
+    description: 'Florida 7th Grade Civics Mastery Learning Platform',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'My Civics Class — Build the Republic',
+    description: 'Florida 7th Grade Civics Mastery Learning Platform',
+  },
 }
 
 export default function RootLayout({
