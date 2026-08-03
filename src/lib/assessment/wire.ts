@@ -37,6 +37,104 @@ export const CONFIDENCE_LEVELS: readonly {
 
 export const ConfidenceValueSchema = z.union([z.literal(0), z.literal(1), z.literal(2)])
 
+// ── Secure assessment types ───────────────────────────────────────────────────
+
+/**
+ * Assessment types whose feedback is never returned to the student, and which
+ * therefore also run in Focus Mode when assessment integrity is enabled.
+ *
+ * This lives in the WIRE module, not in attempt.ts, because both sides need it:
+ * the server decides whether to withhold feedback and whether to arm Focus
+ * Mode, and the client needs the same list to render consistently. Two copies
+ * of this set is exactly the drift this file exists to prevent.
+ */
+export const SECURE_ASSESSMENT_TYPES: ReadonlySet<string> = new Set([
+  'MASTERY_CHALLENGE',
+  'REASSESSMENT',
+  'REPUBLIC_CHALLENGE',
+  'FINAL_TRIAL',
+  'READINESS_CHECK',
+  'DIAGNOSTIC',
+])
+
+export function isSecureAssessmentType(assessmentType: string): boolean {
+  return SECURE_ASSESSMENT_TYPES.has(assessmentType)
+}
+
+// ── Assessment integrity ──────────────────────────────────────────────────────
+
+/**
+ * Integrity event types the client may report. Departure events (BLUR /
+ * VISIBILITY_HIDDEN) are emitted ONCE per away episode — a single tab switch
+ * fires both a blur and a visibilitychange, and the client collapses them so
+ * the server never has to de-duplicate.
+ */
+export const INTEGRITY_EVENT_TYPES = [
+  'BLUR',
+  'VISIBILITY_HIDDEN',
+  'FULLSCREEN_EXIT',
+  'COPY_BLOCKED',
+  'CUT_BLOCKED',
+  'PASTE_BLOCKED',
+  'CONTEXT_MENU_BLOCKED',
+  'PRINT_BLOCKED',
+] as const
+
+export type IntegrityEventType = (typeof INTEGRITY_EVENT_TYPES)[number]
+
+/** Upper bound on a single reported away-duration (1 hour). Anything longer is
+ *  meaningless for a class period and is almost certainly a bad clock. */
+export const MAX_REPORTED_DURATION_MS = 60 * 60 * 1000
+
+/** Max events accepted in one report call — the client batches on a debounce. */
+export const MAX_EVENTS_PER_REPORT = 50
+
+export interface IntegrityEventEntry {
+  eventType: IntegrityEventType
+  /** Time away in ms; omitted for instantaneous events. Advisory only. */
+  durationMs?: number
+}
+
+export interface IntegrityReportBody {
+  attemptId: string
+  events: IntegrityEventEntry[]
+}
+
+/**
+ * Build the POST /api/assessment/[id]/integrity body. Note there is no
+ * timestamp field by design — the server stamps recordedAt from its own clock,
+ * so a client cannot backdate or postdate an event.
+ */
+export function buildIntegrityReportBody(
+  attemptId: string,
+  events: readonly IntegrityEventEntry[]
+): IntegrityReportBody {
+  return {
+    attemptId,
+    events: events.slice(0, MAX_EVENTS_PER_REPORT).map((e) => ({
+      eventType: e.eventType,
+      ...(typeof e.durationMs === 'number' && e.durationMs > 0
+        ? { durationMs: Math.min(Math.round(e.durationMs), MAX_REPORTED_DURATION_MS) }
+        : {}),
+    })),
+  }
+}
+
+/** Server-side request schema for the integrity route (lives here so the
+ *  contract test can import it — route files can only export handlers). */
+export const IntegrityReportSchema = z.object({
+  attemptId: z.string().min(1),
+  events: z
+    .array(
+      z.object({
+        eventType: z.enum(INTEGRITY_EVENT_TYPES),
+        durationMs: z.number().int().min(0).max(MAX_REPORTED_DURATION_MS).optional(),
+      })
+    )
+    .min(1)
+    .max(MAX_EVENTS_PER_REPORT),
+})
+
 // ── Assessment submit ─────────────────────────────────────────────────────────
 
 export interface AssessmentSubmitResponseEntry {

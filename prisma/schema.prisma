@@ -336,6 +336,12 @@ model Class {
   // StudentStrategyOverride.
   strategyUsesRequired Int @default(0) @map("strategy_uses_required")
 
+  // Assessment integrity — when true, secure assessments run in Focus Mode
+  // (fullscreen, blocked copy/paste, focus-loss events recorded for the
+  // teacher). Off by default; also requires FEATURE_SECURE_ASSESSMENT.
+  // See docs/adrs/0020-assessment-integrity-and-device-lockdown.md.
+  secureAssessmentMode Boolean @default(false) @map("secure_assessment_mode")
+
   teacher            Teacher                     @relation(fields: [teacherId], references: [id])
   enrollments        ClassEnrollment[]
   assignments        Assignment[]
@@ -804,10 +810,11 @@ model AssessmentAttempt {
   submittedAt   DateTime? @map("submitted_at")
   voided        Boolean   @default(false)
 
-  assessment     Assessment           @relation(fields: [assessmentId], references: [id])
-  student        Student              @relation(fields: [studentId], references: [id])
-  responses      AttemptResponse[]
-  adaptiveState  AdaptiveSessionState?
+  assessment      Assessment              @relation(fields: [assessmentId], references: [id])
+  student         Student                 @relation(fields: [studentId], references: [id])
+  responses       AttemptResponse[]
+  adaptiveState   AdaptiveSessionState?
+  integrityEvents AttemptIntegrityEvent[]
 
   @@index([assessmentId, studentId])
   @@index([studentId, voided])
@@ -834,6 +841,41 @@ model AttemptResponse {
   selectedOption QuestionOption?   @relation(fields: [selectedOptionId], references: [id])
 
   @@map("attempt_responses")
+}
+
+// ============================================================
+// ASSESSMENT INTEGRITY
+// Records that a student left a secure assessment (tab switch, window blur,
+// fullscreen exit) or attempted a blocked input (copy/paste/print/right-click).
+// See docs/adrs/0020-assessment-integrity-and-device-lockdown.md.
+//
+// A web app CANNOT lock down a Chromebook — that belongs to the device
+// management layer (see docs/chromebook-lockdown.md). These rows are the app's
+// honest fallback: they make leaving VISIBLE to the teacher without ever
+// auto-punishing the student. Nothing here feeds grading, mastery, SM-2, or
+// analytics; a teacher reviews the flag and decides (the existing void control
+// on the student profile is the remedy).
+//
+// `recordedAt` is the SERVER clock only — the client never supplies a
+// timestamp. `durationMs` is client-reported (it is the only party that can
+// observe how long the tab was hidden) and is therefore advisory, never
+// authoritative. Accommodation-sanctioned breaks generate no rows at all.
+// ============================================================
+
+model AttemptIntegrityEvent {
+  id        String @id @default(cuid())
+  attemptId String @map("attempt_id")
+  /// BLUR | VISIBILITY_HIDDEN | FULLSCREEN_EXIT | COPY_BLOCKED
+  /// | CUT_BLOCKED | PASTE_BLOCKED | CONTEXT_MENU_BLOCKED | PRINT_BLOCKED
+  eventType String @map("event_type")
+  /// Client-reported time away in ms; null for instantaneous events.
+  durationMs Int?     @map("duration_ms")
+  recordedAt DateTime @default(now()) @map("recorded_at")
+
+  attempt AssessmentAttempt @relation(fields: [attemptId], references: [id])
+
+  @@index([attemptId])
+  @@map("attempt_integrity_events")
 }
 
 // ============================================================

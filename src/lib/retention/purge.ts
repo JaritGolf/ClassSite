@@ -107,6 +107,14 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
         where: { attemptId: { in: eligibleAttemptIds } },
       })
 
+      // Focus Mode records for the attempt. Not counted in PurgeResult: they
+      // are incidental context attached to the attempt, not a data category a
+      // teacher or admin reasons about separately, and an attempt cannot be
+      // deleted while they exist (FK is RESTRICT).
+      await tx.attemptIntegrityEvent.deleteMany({
+        where: { attemptId: { in: eligibleAttemptIds } },
+      })
+
       const att = await tx.assessmentAttempt.deleteMany({
         where: { id: { in: eligibleAttemptIds } },
       })
