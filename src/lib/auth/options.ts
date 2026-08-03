@@ -2,7 +2,8 @@
  * next-auth v4 configuration for Civics Quest.
  *
  * Providers (in priority order):
- *   1. mock-credentials — dev only (MOCK_AUTH=true, NODE_ENV !== production)
+ *   1. mock-credentials — gated by isMockAuthEnabled() (see ./demo-mode):
+ *                         dev (MOCK_AUTH=true) or public demo (DEMO_OPEN_LOGIN=true)
  *   2. clever           — primary SSO (Clever district OAuth)
  *   3. google           — fallback (staff/teacher Google Workspace accounts)
  *
@@ -24,8 +25,9 @@ import { prisma } from '@/lib/db'
 import { cleverProvider } from './providers/clever'
 import { recordParentLoginEvent } from '@/lib/parent-portal/login'
 import { recordStudentLoginEvent } from '@/lib/activity-sessions/login'
+import { isMockAuthEnabled } from './demo-mode'
 
-// ── Mock Auth (dev only) ──────────────────────────────────────────────────────
+// ── Mock Auth (dev + public demo) ─────────────────────────────────────────────
 
 interface MockUser {
   cleverId: string
@@ -47,11 +49,8 @@ const MOCK_USERS: Record<UserRole, MockUser> = {
 export async function mockAuthorize(
   credentials: Record<string, string> | undefined
 ): Promise<User | null> {
-  // Double guard: runtime check AND build-time conditional provider inclusion
-  if (
-    process.env.MOCK_AUTH !== 'true' ||
-    process.env.NODE_ENV === 'production'
-  ) {
+  // Double guard: runtime check AND conditional provider inclusion below
+  if (!isMockAuthEnabled()) {
     return null
   }
 
@@ -156,12 +155,13 @@ export const authOptions: NextAuthOptions = {
   },
 
   providers: [
-    // 1. Mock credentials — dev only; excluded from production build entirely
-    ...(process.env.MOCK_AUTH === 'true' && process.env.NODE_ENV !== 'production'
+    // 1. Mock credentials — omitted entirely unless dev mock auth or the
+    //    public demo flag is on (see ./demo-mode)
+    ...(isMockAuthEnabled()
       ? [
           CredentialsProvider({
             id: 'mock-credentials',
-            name: 'Mock (Dev Only)',
+            name: 'Demo Role',
             credentials: {
               role: { label: 'Role', type: 'text' },
             },

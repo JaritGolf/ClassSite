@@ -23,15 +23,21 @@ passing tests. Cloudflare still earns its keep here as registrar, DNS, and CDN.
 
 ## The one thing that will lock you out if you skip it
 
-In production **mock auth is hard-disabled** — twice, deliberately
-(`src/lib/auth/options.ts`, non-negotiable rule #8):
+> **If `DEMO_OPEN_LOGIN=true` is set, this whole section does not apply** — the one-click
+> role buttons are back and anyone can get in. See § Public demo mode below. The rest of
+> this section describes the default, closed posture.
 
-- the `mock-credentials` provider is excluded from the provider array when
-  `NODE_ENV === 'production'`, and
-- `mockAuthorize()` returns `null` on the same condition.
+In production **mock auth is hard-disabled** — twice, deliberately
+(`src/lib/auth/options.ts`, non-negotiable rule #8), unless the demo flag overrides it:
+
+- the `mock-credentials` provider is excluded from the provider array, and
+- `mockAuthorize()` returns `null`.
+
+Both now read the single predicate `isMockAuthEnabled()`
+(`src/lib/auth/demo-mode.ts`), which is false in production unless `DEMO_OPEN_LOGIN=true`.
 
 Vercel sets `NODE_ENV=production` on **every** deployment, previews included. So on
-the deployed site:
+the deployed site (with the demo flag unset):
 
 - **Mock sign-in:** gone. You cannot log in as Alex Student or Ms Teacher.
 - **Clever:** needs a district OAuth app. `CLEVER_CLIENT_ID` is empty.
@@ -160,7 +166,8 @@ Set in Vercel → Project → Settings → Environment Variables, scope **Produc
 | `GOOGLE_CLIENT_ID` | from Step 5 | |
 | `GOOGLE_CLIENT_SECRET` | from Step 5 | |
 | `MOCK_AUTH` | **unset, or `false`** | Never `true` in production (rule #8) |
-| `FEATURE_PARENT_PORTAL` | `false` | Blocked on `parent-identity-policy.md` |
+| `DEMO_OPEN_LOGIN` | `true` **while demoing**, otherwise unset | Public demo mode — see § Public demo mode. Delete to close the site |
+| `FEATURE_PARENT_PORTAL` | `true` **while demoing**, else `false` | Otherwise blocked on `parent-identity-policy.md`. Required for the Parent perspective to render anything |
 | `FEATURE_L1_GLOSSES` | `true` | Spanish glosses are owner-approved (ADR 0013) |
 | `FEATURE_SECURE_ASSESSMENT` | `false` | Also needs per-class teacher opt-in |
 | `FEATURE_EOC_REVIEW` | `true` | Republic Challenge |
@@ -251,6 +258,65 @@ Same constraint: `Alex Student` has no email. Adopt him onto a third Google acco
 walkthrough at `/teacher/lessons/[code]/walkthrough` shows the full student mission
 flow without needing a student login.
 
+---
+
+## Public demo mode
+
+A way to hand anyone the URL and let them browse all four perspectives with **no account
+and no sign-in** — the one-click role buttons that existed throughout local testing, put
+back on the live login page.
+
+**This is a deliberate, owner-directed override of non-negotiable rule #8.** With it on,
+every visitor can enter as STUDENT, TEACHER, PARENT, or ADMIN. It supersedes the entire
+Step 6 lockout problem: nobody needs a bootstrapped Google account while it is on.
+
+### Turning it on
+
+Vercel → Project → Settings → Environment Variables, scope **Production**:
+
+| Variable | Value | Why |
+|---|---|---|
+| `DEMO_OPEN_LOGIN` | `true` | Shows the role panel and re-enables the `mock-credentials` provider |
+| `FEATURE_PARENT_PORTAL` | `true` | Without it, `/parent/dashboard` renders "The family portal isn't available yet" and the Parent perspective is dead |
+
+Then redeploy — env changes do not apply to the running deployment:
+
+```bash
+VERCEL_TOKEN=… npm run deploy
+```
+
+Verify with one request; `mock-credentials` must now appear:
+
+```bash
+curl -s https://mycivicsclass.com/api/auth/providers
+```
+
+### Turning it off
+
+Delete `DEMO_OPEN_LOGIN`, set `FEATURE_PARENT_PORTAL=false`, redeploy. The code stays in
+place and goes inert — there is no revert commit to make.
+
+### Only safe with demo data
+
+Anyone reaching the site gets ADMIN, which can run a retention purge (deletes audit logs
+and voided attempts), approve or archive content, and import EOC scores. That is
+acceptable **only** because the database holds demo/seed rows exclusively. Both seeders
+are idempotent, so re-running Step 4 restores anything a visitor breaks.
+
+**Before any real student data lands in this database, turn demo mode off.** It is
+listed again in § Before real student data below.
+
+### How the gate works
+
+One predicate, `isMockAuthEnabled()` in `src/lib/auth/demo-mode.ts`, read by all three
+call sites (the provider array, `mockAuthorize`, and the login page's `showMockPanel`).
+
+`DEMO_OPEN_LOGIN` is checked **first and on its own**, never ANDed with a `NODE_ENV`
+comparison. This matters: webpack substitutes `process.env.NODE_ENV` at build time, so
+in the deployed bundle `NODE_ENV !== 'production'` is a hard-coded `false` and anything
+ANDed with it compiles to dead code. `DEMO_OPEN_LOGIN` is not inlined and is read from
+the real environment at runtime.
+
 ## Step 7 — Cloudflare DNS
 
 In the Cloudflare dashboard for `mycivicsclass.com` → DNS → Records:
@@ -285,6 +351,8 @@ Vercel you may turn the proxy on — if you do, set SSL/TLS mode to
 
 Non-negotiable rule #9 and `hosting-plan.md` both apply. Required first:
 
+- [ ] **`DEMO_OPEN_LOGIN` deleted and redeployed** — while it is set, anyone on the
+      internet can sign in as ADMIN (see § Public demo mode)
 - [ ] PBCSD sign-off on hosting location — student PII would sit on Vercel (app)
       and Neon (database), **outside the district perimeter**
 - [ ] Signed DPA with Vercel and with Neon
