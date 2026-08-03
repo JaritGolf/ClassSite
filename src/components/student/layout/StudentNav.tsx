@@ -59,7 +59,14 @@ export function StudentNav() {
     <nav className="bg-white border-b-2 border-indigo-100 px-4 py-2 flex items-center gap-4">
       <Link href="/student/dashboard" className="flex items-center gap-2 mr-1 flex-shrink-0">
         <Mascot pose="happy" className="h-9 w-9" />
-        <span className="font-display font-bold text-indigo-700 text-lg leading-none">
+        {/*
+          Wordmark is hidden below `sm` so the nav-item row keeps usable width on
+          a 375px phone — the mascot alone carries the home link there. Without
+          this, brand + sign-out/settings consume the whole bar and the scrollable
+          item row collapses to 0px, leaving Dashboard/Mission Map/etc.
+          unreachable (measured: 2px with the old shorter wordmark, 0px now).
+        */}
+        <span className="hidden font-display text-lg font-bold leading-none text-indigo-700 sm:inline">
           My Civics Class
         </span>
       </Link>

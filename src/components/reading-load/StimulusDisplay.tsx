@@ -44,11 +44,9 @@ const LEVEL_LABELS: Record<number, string> = {
   3: 'Original Source',
 }
 
-// NOT renamed with the "My Civics Class" rebrand, deliberately: this is a
-// localStorage key, not display copy. Renaming it would silently reset the
-// sentence-chunking preference for every student who has already set one — and
-// chunking is an accessibility support, so the reset would land hardest on the
-// students who depend on it. The old brand name is invisible to users here.
+// Keeps the pre-rebrand prefix ON PURPOSE: this key holds a saved student
+// accessibility preference, so renaming it would silently reset sentence
+// chunking for every existing student. Do not "fix" the brand name here.
 const CHUNKING_KEY = 'civics-quest:sentence-chunking'
 
 export function StimulusDisplay({

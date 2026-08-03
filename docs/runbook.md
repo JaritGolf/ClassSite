@@ -79,13 +79,13 @@ Copy `.env.example` to `.env.local` for local development. Full inventory:
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `DATABASE_URL` | Yes | PostgreSQL connection string (production: managed Neon) |
 | `SESSION_SECRET` | Yes (prod) | Signs JWT session cookies (`openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | Yes (dev) | NextAuth base URL |
-| `APP_BASE_URL` | Yes | App base URL |
+| `NEXTAUTH_URL` | Yes (dev) | NextAuth base URL. Production: `https://mycivicsclass.com` — every OAuth callback URL is derived from it |
+| `APP_BASE_URL` | Yes | App base URL. Production: `https://mycivicsclass.com` |
 | `NODE_ENV` | Yes | `development` / `production` |
-| `CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET` / `CLEVER_REDIRECT_URI` | Prod SSO | Clever OAuth (primary) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Prod fallback | Google OAuth (staff) |
+| `CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET` / `CLEVER_REDIRECT_URI` | Prod SSO | Clever OAuth (primary). Production redirect: `https://mycivicsclass.com/api/auth/callback/clever` |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Prod fallback | Google OAuth (staff). Production redirect: `https://mycivicsclass.com/api/auth/callback/google` |
 | `FEATURE_L1_GLOSSES` | No | Enables L1 glosses (Phase 16); `"true"` to opt in. Spanish glosses are owner-approved (ADR 0013); Haitian Creole remains a NEEDS_REVIEW sample |
 | `FEATURE_PARENT_PORTAL` | No | Enables parent login (Phase 18); `"true"` only after district identity-policy sign-off (`docs/parent-identity-policy.md`) |
 | `FEATURE_SECURE_ASSESSMENT` | No | Enables Focus Mode on secure assessments (ADR 0020); `"true"` to opt in. Also requires per-class `secureAssessmentMode`. Does **not** lock the device — see `docs/chromebook-lockdown.md` |

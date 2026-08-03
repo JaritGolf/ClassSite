@@ -23,7 +23,7 @@ Florida 7th Grade Civics Mastery Learning Platform — EOC-readiness focus.
 ```bash
 # 1. Clone
 git clone <repo-url>
-cd civics-quest
+cd ClassSite
 
 # 2. Install dependencies
 npm install

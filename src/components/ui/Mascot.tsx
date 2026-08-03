@@ -1,5 +1,5 @@
 /**
- * The Founder — the My Civics Class mascot: a friendly bald eagle in a tricorn hat.
+ * The Founder — My Civics Class's mascot: a friendly bald eagle in a tricorn hat.
  * Pure inline SVG (no assets), safe in server and client components.
  *
  * Decorative by default (aria-hidden). Pass `title` when the mascot is the

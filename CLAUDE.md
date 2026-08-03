@@ -6,7 +6,9 @@
 
 ## What This Project Is
 
-My Civics Class: Build the Republic is a Florida 7th Grade Civics mastery-learning platform with an EOC-readiness focus. Students experience it as a game ("Build the Republic"). Teachers experience it as an LMS with deep analytics. The owner is a classroom teacher building this independently for use in his own classroom and eventually his district.
+My Civics Class is a Florida 7th Grade Civics mastery-learning platform with an EOC-readiness focus, live at **https://mycivicsclass.com** (Vercel + Neon Postgres, Cloudflare DNS). Students experience it as a game ("Build the Republic"). Teachers experience it as an LMS with deep analytics. The owner is a classroom teacher building this independently for use in their own classroom and eventually their district.
+
+The product was renamed from "Civics Quest" to "My Civics Class" on 2026-08-03. The game framing ("Build the Republic", Republic Challenge, Mission Map, the Founder mascot) was deliberately KEPT. Some internal identifiers still carry the old name on purpose — the `.cq-*` accessibility CSS classes, the `cq_sub_mode` cookie, the `civics-quest:sentence-chunking` and `cq:mission:*` localStorage keys, the local `civics_quest_dev` database, and the `civics_quest_v3_build_spec.md` filename. Do not "fix" these: renaming them resets saved student state or breaks local dev for no user-visible gain.
 
 Target users: 7th grade students, classroom teachers, parents/guardians, district admins.
 
@@ -251,10 +253,107 @@ LibreOffice nor pandoc is installed on this machine. It was validated structural
 (valid ZIP with all expected parts, every XML part well-formed, 17 tables / 142 rows / 66
 headings matching the source exactly, TOC field present, zero PERCENTAGE widths, zero SOLID
 shading, zero literal bullets, zero unresolved markdown, full text extracted and spot-checked
-for all 13 disclosures). Owner should open it in Word and press **F9 / "update fields"** to
-populate the TOC — a programmatic TOC is empty until Word updates it.
-**NOT committed — awaiting owner review.** Commit message when ready: `docs(district):
-approval packet + app-layer security headers and 8h session lifetime`.
+for all 13 disclosures). The contents page is a **static bookmarked outline, not a Word `TOC`
+field** — see the rebrand note above for why the field version rendered blank in Google Docs.
+**Committed as `91b88ac` and opened as a PR from
+`claude/explainer-hovers-teacher-admin-parent-d02095`.**
+**⚠ THE REBRAND IN THIS ENTRY LARGELY DUPLICATES WORK ALREADY ON `main`.** While this session
+ran, a parallel session landed **`e682df2` "rebrand Civics Quest → My Civics Class + site
+identity"** via **PR #7**, which is the fuller version — it also adds `src/app/icon.svg`,
+`src/app/opengraph-image.tsx`, and `src/app/robots.ts`, and a mobile fix hiding the StudentNav
+wordmark below `sm` (the wordmark got long enough to collapse the scrollable nav row to 0px on
+a 375px phone). `origin/main` was merged into this branch and **every rebrand conflict was
+resolved in favour of `main`**; the only hand-merge was `StudentNav.tsx`, where taking `main`
+wholesale would have deleted the `SuggestionBox` integration that commit `0429428` added on
+this branch. Both sessions independently decided to preserve
+`'civics-quest:sentence-chunking'` and both left a comment saying why — reassuring, but the
+duplicated effort is the cost of two sessions on one tree. **Genuinely unique to this branch:
+the security headers, the session `maxAge`, and the approval packet.**
+
+---
+
+**REBRAND — "CIVICS QUEST" → "MY CIVICS CLASS" + SITE IDENTITY FOR mycivicsclass.com
+(2026-08-03) — Tier 1 `tsc` GREEN (0 errors) + Tier 2 jest GREEN (144/144 suites, 1442
+passed + 2 intentional skips, run in 4 shards) + in-browser verification on all four roles.**
+Owner: the new domain is mycivicsclass.com and the whole site needed rebranding. **The domain
+was already live and correctly wired before this session** — verified directly:
+`https://mycivicsclass.com` serves the app (Vercel project `civics-quest`, Neon Postgres,
+Cloudflare DNS), and `GET /api/auth/providers` in production already returned
+`https://mycivicsclass.com/api/auth/callback/{clever,google}`, proving `NEXTAUTH_URL` is
+correct in Vercel and `MOCK_AUTH` is off there. So the work was the in-app branding, which
+still read "Civics Quest" everywhere. Scoped via AskUserQuestion:
+**(a) name only — the game framing STAYS** ("Build the Republic" tagline, Republic Challenge,
+Mission Map, the Founder mascot; zero route/migration/test changes);
+**(b) cosmetic identifiers only** — renamed `package.json`/lockfile name, `.claude/launch.json`,
+the health endpoint's `service` string, comments, and doc titles, but deliberately KEPT the
+`.cq-*` a11y CSS classes, the `cq_sub_mode` cookie, the `civics-quest:sentence-chunking` and
+`cq:mission:*` localStorage keys, the local `civics_quest_dev` DB, and the
+`civics_quest_v3_build_spec.md` filename (renaming those resets saved student state or breaks
+local dev for no user-visible gain — now documented in "What This Project Is" AND as
+do-not-fix comments at both live-state sites);
+**(c) add the site-identity assets that never existed;** **(d) document the production domain
+rather than switching committed dev defaults.**
+What shipped:
+(1) **UI copy** (10 files): landing + login `<h1>` and mascot `title`, all four nav wordmarks
+(`StudentNav`, `TeacherNav`, `AdminNav` "— Admin", `parent/layout` "— Family"),
+`ParentSummaryView` print header + footer disclaimer, parent dashboard body copy, and
+`StreakWidget`'s explainer (reworded to "a little civics every day" — a literal swap would
+have read "doing a little My Civics Class every day").
+(2) **Metadata** (`src/app/layout.tsx`): added `metadataBase: https://mycivicsclass.com`,
+a **title template** (`'%s — My Civics Class'`, default `'My Civics Class — Build the
+Republic'`), `applicationName`, and `openGraph`/`twitter` cards. The template is why
+`student/map` and `student/badges` now set bare `title: 'Mission Map'` / `'Badges'` — every
+other route inherits the default (there was no template before, so every page shipped the
+same raw title).
+(3) **New site-identity files:** `src/app/icon.svg` (static app icon — the Founder's head +
+tricorn, geometry lifted from `Mascot.tsx`, detail reduced for 16–32px),
+`src/app/opengraph-image.tsx` (1200×630 via `next/og` `ImageResponse` — **built into Next 14,
+no new dependency**; the eagle is an inline data-URI SVG so the card renders with **zero
+network requests**, rule #9), and `src/app/robots.ts` (crawl the landing page only; the role
+surfaces + `/api` are `Disallow`ed — courtesy signal, not access control, since they're all
+auth-gated).
+(4) **Config/docs:** `.env.example` now documents the production origin per-variable
+(including that the Clever/Google redirect URIs must be registered in those consoles);
+`docs/runbook.md` env table, `docs/oauth-scopes.md` production redirect URIs; H1 retitles
+across README + 6 docs + the spec; **`docs/hosting-plan.md` gained a new §2 recording the
+ACTUAL deployed stack** (Vercel + Neon + Cloudflare) as fact — it previously presented Vercel
+as a hypothetical option — while keeping the still-outstanding district sign-off checklist
+unchanged (sections renumbered 3–6).
+(5) **Seed attribution credits** (`seed/stimuli_visuals.ts`, `seed/lessons/unit1.ts`,
+`public/stimuli/attributions.json`) renamed — same owner, same assets. ⚠️ **These live in
+already-seeded DB rows, so production credits only change on the next `npm run db:seed`
+against Neon — owner's call, not done here.**
+**Bug found and fixed in passing (pre-existing, NOT caused by the rename):** the student
+nav's item row measured **2px wide at 375px** before this session and **0px** after (the
+wordmark is 21px wider) — i.e. Dashboard/Mission Map/etc. were already unreachable on a
+phone. Measured both states live in the DOM to confirm the rename didn't cause it, then fixed
+it the way the plan pre-approved: the wordmark is now `hidden sm:inline`, so on mobile the
+mascot alone carries the home link and the item row gets **109px of usable scroll width**.
+Desktop is unchanged.
+**Verification:** `tsc` 0 errors (twice — once after the late `StudentNav` edit); `npm test`
+unsharded showed 9 suites / 15 tests failing **all** with `FATAL: sorry, too many clients
+already`, so re-ran as 4 shards per [[jest-shard-to-beat-connection-exhaustion]] → **144/144
+suites, 1442 passed + 2 skips, zero failures**, confirming pure cross-session DB contention.
+Browser walk on localhost: landing/login/dashboard render the new wordmark; titles confirmed
+`My Civics Class — Build the Republic` (default), `Mission Map — My Civics Class`, `Badges —
+My Civics Class` (template working); `/icon.svg` 200 `image/svg+xml`, `/opengraph-image` 200
+a real 1200×630 PNG, `/robots.txt` 200 with the expected rules — **all three inspected
+visually, and the OG card was fixed after the first render clipped the eagle's chin: satori
+ignores a viewBox's min-x/min-y, so the card's copy of the mark uses pre-translated
+zero-offset coordinates (documented in the file)**; signed in as all four roles (Alex Student,
+Ms Teacher, Pat Parent, plus a pre-existing ADMIN session) and confirmed every wordmark plus
+the parent-summary header/footer and parent dashboard copy; `/student/dashboard` HTML contains
+**no** "Civics Quest"; 375px + desktop nav measured; **zero external request origins**; no
+console errors. Signed out afterward — no probe rows created (mock sign-in only upserts
+pre-existing mock users). NOT committed — awaiting owner review; **note that pushing triggers
+a Vercel deploy.** Commit message when ready: `feat(phase-9): rebrand Civics Quest → My Civics
+Class + site identity for mycivicsclass.com`.
+**Owner actions (outside the repo, cannot be done from here):** confirm
+`https://mycivicsclass.com/api/auth/callback/{clever,google}` are registered in the Clever app
+settings and on the Google OAuth client (with `mycivicsclass.com` as an authorized domain);
+add a 301 from any older domain / the `*.vercel.app` URL so there's one canonical origin;
+optionally rename the Vercel project `civics-quest` → `my-civics-class` (affects preview URLs
+only); decide whether to reseed Neon for the credit strings above.
 
 ---
 
@@ -1548,6 +1647,48 @@ it and reasonably believe it took effect.
 **Env note:** `node_modules 2` and a `tsconfig 2.tsbuildinfo` are still sitting in the repo
 root as cloud-sync duplicates (already excluded from tsc/jest, but they are disk cruft).
 
+---
+
+**Session of 2026-08-03 (Rebrand → My Civics Class, mycivicsclass.com):** Owner: "the new
+domain is mycivicsclass.com and the entire site needs to be rebranded." Explored first with 2
+parallel Explore agents (an exhaustive brand-string sweep bucketed by risk; a map of app
+identity/domain config) — that inventory is what made the scope decisions cheap, and it
+surfaced two things worth knowing: **no favicon/icon/manifest/robots/OG image existed anywhere
+in the repo**, and `APP_BASE_URL`/`NEXTAUTH_URL` are declared but never read by app code (only
+next-auth reads the latter, implicitly). Then checked production directly and found the domain
+**already live and correctly configured** (see Current Build Phase), which shrank the domain
+work to documentation. Owner chose via AskUserQuestion: name-only rebrand (game framing stays),
+cosmetic identifiers only, add the site-identity assets, document the production domain. Built
+the full inventory — see Current Build Phase. **Two findings worth remembering:**
+(1) satori (behind `next/og` `ImageResponse`) **ignores an SVG viewBox's min-x/min-y**, so the
+first OG card render clipped the eagle's chin; fixed with pre-translated zero-offset
+coordinates, and both the icon and the card were then inspected visually rather than trusted on
+a 200.
+(2) The student nav's mobile overflow row was **already broken before the rename** (2px wide at
+375px, 0px after) — measured both states live in the DOM before concluding, then fixed by
+hiding the wordmark below `sm`.
+**Verification:** `tsc` 0 errors; `npm test` unsharded failed 9 suites purely on
+`FATAL: sorry, too many clients already`, and sharding 4× produced **144/144 suites / 1442
+passed + 2 intentional skips, zero failures** — contention, not regression; browser walk across
+student/teacher/parent/admin with per-role wordmark + title-template + no-old-brand assertions;
+`/icon.svg`, `/opengraph-image`, `/robots.txt` all verified by content, not just status code;
+zero external request origins. NOT committed — awaiting owner review (**pushing deploys to
+Vercel**).
+**Env note (new, worth keeping):** mock sign-in returned a bare `401` in this worktree because
+Prisma could not load its query engine — webpack resolves `@prisma/client` through the
+**shared** `node_modules.nosync` but computes the engine search path relative to *this
+worktree* (`<worktree>/node_modules.nosync/.prisma/client`, which does not exist). The `401`
+was next-auth reporting `authorize()` returning null after the Prisma throw — misleading.
+Fixed by adding `PRISMA_QUERY_ENGINE_LIBRARY` (absolute path to the real engine) to this
+worktree's gitignored `.env.local`; the env var is checked before any path search, so it
+sidesteps the whole resolution problem. This is a variant of
+[[worktree-shared-node-modules-prisma-clobber]] that does not require re-generating anything.
+Also re-confirmed: Browser-pane `coordinate` clicks are in the **reported** screenshot space
+(800×450), not the rendered image space — two clicks silently no-opped before I corrected for
+it, per [[browser-pane-click-coordinate-space]].
+
+---
+
 **Session of 2026-08-03 (Chromebook lockdown question → assessment integrity, ADR 0020):**
 Owner asked whether students can be locked out of all other computer functions during
 assessments on district Chromebooks. **Researched before building, and the research
@@ -2523,6 +2664,8 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-07-30] `lastArea` is stored separately from `areaSeconds` (ADR 0019): elapsed time is credited to the area the student was already in, while `lastArea` records where they are now. Needed because the live panel's "what are they working on" cannot be derived from the largest tally — a brand-new session has no tallies, and a student who just switched activities would be misreported. Caught by a failing test during verification.
 - [2026-07-30] Duplicate-session write race accepted rather than locked (ADR 0019): two simultaneous first-requests can each open a session; `mergeAdjacentSessions` collapses them on read. Chosen over a lock/serializable transaction on a per-minute hot path. Reversible if duplicates ever prove more than cosmetic.
 - [2026-07-18] `officialStatement` persisted via migration, not read from seed at request time (teacher benchmark description): chose an additive nullable `Benchmark.officialStatement` column (migration `20260718120000_add_benchmark_official_statement`), written by `seed/benchmarks.ts`'s existing upsert, over importing `seed/official_standards.ts` directly into app code at render time (owner's explicit choice via AskUserQuestion). Keeps `seed/` doing only seeding and the app reading only from Postgres, consistent with the "PostgreSQL only" rule, and mirrors how `lessonSummary` already works. Reversible by dropping the column and switching `getBenchmarkDescription` to a direct import if ever needed.
+- [2026-08-03] Rebrand keeps the old brand inside stateful identifiers (rebrand): `.cq-*` a11y CSS classes, the `cq_sub_mode` cookie, the `civics-quest:sentence-chunking` and `cq:mission:*` localStorage keys, the `civics_quest_dev` local DB, and the `civics_quest_v3_build_spec.md` filename all keep the pre-rebrand name (owner's explicit choice via AskUserQuestion). Each one holds live state or is a declared reference: renaming the keys silently resets saved student accessibility/resume state, the cookie drops sub mode for active sessions (and is asserted by 3 suites + hardcoded in `middleware.ts`), the CSS classes are the WCAG high-contrast compliance surface, and the spec filename is referenced by name in CLAUDE.md + 6 docs. Do-not-fix comments now sit at both localStorage/cookie sites. Reversible only with a migration/compat-read for each — not a find-and-replace.
+- [2026-08-03] Site identity uses static `icon.svg` + `ImageResponse` OG card, no new deps (rebrand): the app icon is a static SVG (zero runtime cost, nothing to fail at build) while the 1200×630 share card is generated by `next/og`'s `ImageResponse`, which ships inside Next 14 — chosen over adding an image library or committing a hand-made PNG. The eagle is an inline data-URI SVG so the card renders with no network requests (rule #9). Gotcha baked into the file as a comment: satori ignores a viewBox's min-x/min-y, so the card's copy of the mark carries pre-translated zero-offset coordinates and must be kept in visual sync with `icon.svg` by hand. Reversible by replacing `opengraph-image.tsx` with a static PNG.
 
 ---
 

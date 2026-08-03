@@ -10,6 +10,9 @@
 
 import { cookies } from 'next/headers'
 
+// `cq_` is the pre-rebrand prefix, kept ON PURPOSE: this is a live cookie name
+// asserted by three test suites and hardcoded in src/middleware.ts. Renaming it
+// would drop sub mode for anyone with an active session. Do not "fix" it.
 export const SUB_MODE_COOKIE = 'cq_sub_mode'
 
 /**

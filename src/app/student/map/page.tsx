@@ -2,7 +2,8 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { MissionMap } from '@/components/student/map/MissionMap'
 
-export const metadata = { title: 'Mission Map — My Civics Class' }
+// The root layout's title template appends " — My Civics Class".
+export const metadata = { title: 'Mission Map' }
 
 export default async function MapPage() {
   const session = await requireAuth(['STUDENT'])

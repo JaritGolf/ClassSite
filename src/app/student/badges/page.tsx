@@ -3,7 +3,8 @@ import { prisma } from '@/lib/db'
 import { BadgeMedal, medalForIconKey } from '@/components/ui/BadgeMedal'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
-export const metadata = { title: 'Badges — My Civics Class' }
+// The root layout's title template appends " — My Civics Class".
+export const metadata = { title: 'Badges' }
 
 export default async function BadgesPage() {
   const session = await requireAuth(['STUDENT'])
