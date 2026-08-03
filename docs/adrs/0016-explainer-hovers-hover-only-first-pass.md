@@ -75,3 +75,18 @@ possible there too.
   hover-only tradeoff is still acceptable for those higher-stakes,
   keyboard-heavy surfaces (e.g. data tables, forms) before extending it
   further.
+## Addendum (2026-07-24) — the hover-only exception does NOT extend to forms
+
+`SuggestionBox` (ADR 0021) is a hover-expanding **form** in the same nav bars, and it
+deliberately does **not** inherit this ADR's hover-only exception: it wires
+`onMouseEnter`, `onFocusCapture`, and click to the same open path.
+
+The reasoning is this ADR's own justification, applied honestly. The hover-only
+tradeoff was accepted here because "every `ExplainerHover` popover is supplementary
+context, not the only path to the information." A form has no other path — hover-only
+would make it unusable for keyboard-only users, every touch user, and every
+screen-reader user, which is a different situation from the one this ADR waived.
+
+So the two components' differing trigger behavior is intentional, not drift. If the
+follow-up above is ever done, `SuggestionBox` already demonstrates the pattern in
+this codebase (as does `GlossaryPopover`).
