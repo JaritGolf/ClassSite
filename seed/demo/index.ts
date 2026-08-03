@@ -22,6 +22,7 @@
  */
 
 import { recordClassReadinessSnapshot } from '@/lib/eoc-analytics'
+import { deriveLastActivityFromHistory, recordLastActivity } from '@/lib/student-activity'
 import { seedDemoPeople } from './people'
 import { seedHeroProgress } from './hero-progress'
 import { seedClassmatesProgress } from './classmates-progress'
@@ -34,22 +35,36 @@ async function main() {
 
   console.log('🌱 Seeding demo data...\n')
 
-  console.log('1/5 People: teacher, class, hero student + 5 classmates, verified parent link')
+  console.log('1/6 People: teacher, class, hero student + 5 classmates, verified parent link')
   const people = await seedDemoPeople()
 
-  console.log('2/5 Hero student progress (Unit 1)')
+  console.log('2/6 Hero student progress (Unit 1)')
   const heroSummary = await seedHeroProgress(people.heroStudentId, people.teacherUserId)
   console.log(`   ${heroSummary}`)
 
-  console.log('3/5 Classmates progress (Unit 1)')
+  console.log('3/6 Classmates progress (Unit 1)')
   const classmateSummaries = await seedClassmatesProgress(people.classmateStudentIds, people.teacherUserId)
   for (const s of classmateSummaries) console.log(`   ${s}`)
 
-  console.log('4/5 Class-level EOC readiness snapshot')
+  console.log('4/6 Class-level EOC readiness snapshot')
   await recordClassReadinessSnapshot(people.classId)
 
-  console.log('5/5 Extras: streak, spaced review, badges, accommodations')
+  console.log('5/6 Extras: streak, spaced review, badges, accommodations')
   await seedExtras({ heroStudentId: people.heroStudentId, teacherUserId: people.teacherUserId })
+
+  // Last — the derive below reads spaced-review history, which step 5 writes.
+  //
+  // Needed because every recordLastActivity hook lives in an API route handler
+  // and this seeder drives the ENGINE layer directly (see engine-helpers.ts), so
+  // no activity row is ever written and the dashboard's "pick up where you left
+  // off" card would silently not render. Same derive the backfill CLI uses.
+  console.log('6/6 Last-activity rows (dashboard "pick up where you left off")')
+  for (const studentId of [people.heroStudentId, ...people.classmateStudentIds]) {
+    const derived = await deriveLastActivityFromHistory(studentId)
+    if (derived) {
+      await recordLastActivity(studentId, derived.activityType, derived.referenceId, derived.occurredAt)
+    }
+  }
 
   console.log(`
 ✅ Demo data seeded.
