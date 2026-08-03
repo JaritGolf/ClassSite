@@ -23,7 +23,8 @@
 | Student login events | Yes | `AuditLog` (`STUDENT_LOGIN`) | Genuine sign-ins only (JWT sessions mean this is not one row per visit) |
 | Health/behavior/sensitive notes | **No** | — | Not modeled |
 | External gradebook data | **No** | — | Internal only |
-| Keystroke / screen / webcam monitoring | **No** | — | Not modeled. Activity tracking records elapsed time and app area only |
+| Assessment focus events | If Focus Mode on | `AttemptIntegrityEvent` | Only during a secure assessment, only for classes that opted in. Records **that** the page lost focus and roughly for how long — **never where the student went**: no URL, no tab title, no screenshot, no keystrokes. Teacher-visible, roster-scoped, deleted with the attempt. See ADR 0020 |
+| Keystroke / screen / webcam monitoring | **No** | — | Not modeled. Activity tracking records elapsed time and app area only; Focus Mode records that focus was lost, never where it went |
 
 ## 2. Privacy & security controls (spec §25.2)
 

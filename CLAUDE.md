@@ -148,6 +148,85 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**ASSESSMENT INTEGRITY — FOCUS MODE + CHROMEBOOK LOCKDOWN RUNBOOK (2026-08-03, ADR 0020)
+— Tier 1 `tsc` GREEN + Tier 2 jest GREEN (1524 passed + 2 intentional skips, 147 suites,
+sharded ×4) + in-browser verification both roles.** Owner asked whether students can be
+locked out of all other computer functions during assessments, on district Chromebooks.
+**The premise cannot be satisfied by this codebase and that is the headline finding:** a
+web page has no API that locks a Chromebook. Google Forms "locked mode" is Forms-only and
+unavailable to third-party apps. The lock belongs to device management — and PBCSD
+**already licenses GoGuardian**, whose Teacher **Scene** (allow list + tab limit 1) does
+exactly what was asked, per class period, with zero code. Documented as a hand-to-IT
+runbook in **`docs/chromebook-lockdown.md`**, including the trap that allowlisting only
+the app domain **breaks lesson video** (`youtube-nocookie.com` / `youtube.com` /
+`i.ytimg.com` must be allowed — or better, scope the Scene to assessments only).
+What shipped in the app (the honest counterpart — enforce what a browser can, record what
+it cannot, **never auto-punish**):
+(1) **Schema** (`20260730140000_assessment_integrity`, additive): `AttemptIntegrityEvent`
+(attemptId/eventType/durationMs/recordedAt + `@@index([attemptId])`, FK RESTRICT) and
+`Class.secureAssessmentMode` (default false).
+(2) **Two gates, both off by default**: `FEATURE_SECURE_ASSESSMENT` env flag **and** the
+per-class teacher opt-in. With the flag unset the player is byte-identical to before —
+verified live.
+(3) **`src/lib/assessment-integrity/`**: `secure-mode` (resolution reusing the
+`resolveStrategyRequirements` first-ACTIVE-enrollment shape), `events`
+(`recordIntegrityEvents` — ownership guard, **post-`submittedAt` rejection** so a finished
+test cannot be re-narrated, 200-row/attempt cap, server-clock `recordedAt`), `summary`
+(pure `summarizeIntegrityEvents` — the notable/minor thresholds live in one unit-tested
+file), `index`.
+(4) **`SECURE_ASSESSMENT_TYPES` moved from the server-only `attempt.ts` into
+`assessment/wire.ts`** — both sides need it, and this codebase has shipped three
+client/server drift bugs. Added `buildIntegrityReportBody` + `IntegrityReportSchema` with
+a contract test parsing the builder's exact output through the route schema. **The wire
+contract has no timestamp field at all**, so a client cannot backdate an event.
+(5) **Client `useSecureMode`**: ONE event per away episode (a tab switch fires *both*
+`blur` and `visibilitychange`; the client collapses them so the server never
+de-duplicates), episodes under `MIN_AWAY_MS` (750ms) discarded as noise, blocked
+copy/cut/paste/right-click/print, 2s debounced `keepalive` flush, **and an awaited flush
+before submit** — submitting sets `submittedAt`, after which the server correctly refuses
+late events.
+(6) **Accommodation exemption is load-bearing**: `ACC-BREAKS` and `PauseBanner` actively
+tell students to step away, so Focus Mode ships a **Take a break** control that hides the
+questions and records **nothing at all**. Verified live: a 1.6s departure plus copy and
+paste attempts during a break produced zero rows.
+(7) **Text selection deliberately NOT disabled** — `user-select: none` breaks
+Select-to-Speak, screen-reader navigation, and glossary popovers, a real accommodation
+regression for a marginal deterrent. Copying is blocked at the `copy` event instead.
+Documented as a comment in `globals.css` so it isn't "helpfully" reintroduced.
+(8) **Teacher surface**: `integrity` summary on each `attempts[]` entry (one grouped
+query, not N), a **Focus** column on the student profile rendering a Minor/Review chip
+with `ExplainerHover theme="admin"`, next to the existing `VoidAttemptButton` which is the
+remedy. Per-class checkbox on `RcClassSettingsForm`; the settings route already audits
+before/after via `RC_CLASS_CONFIG_UPDATED`, so **no new audit action was needed**.
+(9) **Privacy/retention**: events are **excluded from the parent portal** (added
+`integrity`/`focusLoss`/`fullscreenExit` to the forbidden-token guards in both
+`fields-allowlist.test.ts` and `audit14/02`); purged with their voided attempt in
+`retention/purge.ts`; `privacy-review.md` records that the app stores **that** focus was
+lost, **never where the student went** — no URL, no tab title, no screenshot, no
+keystrokes.
+**Verification:** `tsc` 0 errors; jest **1524 passed + 2 skips, 147/147 suites** (was
+1489/145 — +35 tests, +2 suites); `npm run db:seed` clean and idempotent; live browser
+walk — teacher toggled Focus Mode through the real form (audit row `false→true`), student
+GET returned `secureMode: true` with `answerKeyLeaks: false`, Begin gate rendered and
+questions stayed hidden until clicked, departures + blocked copy/right-click landed as 4
+rows with **identical server timestamps** (single batch insert), teacher profile showed
+the `MINOR` chip on the flagged attempt and `—` on clean ones, and the flag-off regression
+showed no gate / no notice / copy unblocked **with the class toggle still on**. All probe
+rows deleted, class toggle reset, `.env.local` restored byte-identical from backup.
+**Honest gap:** the `MIN_AWAY_MS` noise filter was **not** exercised in-browser —
+background tabs throttle `setTimeout` to ≥1s, so the intended sub-750ms episode was
+genuinely ~1005ms of wall time and was correctly recorded. The filter is covered only by
+reading the code, not by a test. **NOT committed — awaiting owner review.** Commit
+message when ready: `feat(phase-3/9): assessment integrity — Focus Mode, teacher-visible
+focus-loss events (ADR 0020)`.
+**Owner follow-ups:** (a) the highest-leverage action is the **GoGuardian Scene**, not
+this code — see `docs/chromebook-lockdown.md`; (b) set `FEATURE_SECURE_ASSESSMENT="true"`
+and opt a class in when ready to pilot; (c) decide whether the deferred force-installed
+Chrome extension (device attestation, the only way the app could *require* a lock) is
+worth the district-IT cost.
+
+---
+
 **DEPLOYED TO PRODUCTION — https://mycivicsclass.com (2026-08-02) — `tsc` GREEN +
 `next build` GREEN + live verification.** The app is publicly reachable for the first
 time. **Demo/seed data only — no real student PII** (owner's explicit choice; the
@@ -1256,6 +1335,63 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-08-03 (Chromebook lockdown question → assessment integrity, ADR 0020):**
+Owner asked whether students can be locked out of all other computer functions during
+assessments on district Chromebooks. **Researched before building, and the research
+changed the answer:** no web app can lock a Chromebook; Google Forms' locked mode is
+Forms-only; but Palm Beach County already licenses **GoGuardian**, whose Scene feature
+(allow list + tab limit 1) solves the owner's actual problem today with zero code. Said
+that plainly rather than quietly building a weaker in-app substitute and letting it look
+like the answer. Scoped the remaining work via AskUserQuestion — owner chose in-app Focus
+Mode + teacher flags (no Chrome extension), log-warn-flag posture (never auto-void), and
+all six secure assessment types. Built it; see Current Build Phase for the full inventory.
+**Codebase find that shaped the runbook:** allowlisting only the app domain would break
+lesson video, because the ADR 0015 media layer embeds `youtube-nocookie.com` — so
+`docs/chromebook-lockdown.md` lists the required hosts and recommends scoping the Scene to
+assessments only rather than the whole period.
+**Design decisions worth remembering:** the client collapses `blur` + `visibilitychange`
+into ONE event per departure (a single tab switch fires both, which would double-count
+every departure); integrity events must flush *before* submit, because submit sets
+`submittedAt` and the server then correctly refuses them; and text selection is
+deliberately left enabled because disabling it would break Select-to-Speak and screen
+readers for a marginal deterrent.
+**Verification:** `tsc` 0 errors; jest **1524 passed + 2 intentional skips, 147/147
+suites** (sharded ×4 per the standing memory — a concurrent dev server was up throughout);
+seed clean and idempotent; live browser walk as both roles including the accommodation
+break recording zero rows, and the flag-off regression with the class toggle still on. All
+probe rows deleted, class toggle reset, `.env.local` restored byte-identical from a
+backup. **Reported honestly:** the `MIN_AWAY_MS` noise filter could not be exercised
+in-browser (background tabs throttle `setTimeout` to ≥1s, so the intended sub-750ms
+episode was really ~1s and was correctly recorded) — it is covered by code review only,
+not by a test.
+**⚠ A COMMIT APPEARED MID-SESSION THAT I DID NOT MAKE.** `78acd26 feat(phase-3/9):
+assessment integrity — Focus Mode, teacher-visible focus-loss events (ADR 0020)`
+(authored + committed `JaritGolf <arthur@jaritgolf.com>`, 2026-08-02 23:19:38 -0400)
+contains **22 of this session's source files** — the migration, schema, domain module,
+API routes, client components, teacher UI, and purge change. I never ran `git commit`;
+the message is verbatim the one written above as "commit message when ready". The other
+session's activity-sessions work was likewise committed as `dc5fac4`. **Still
+uncommitted** and belonging with it: all four test files, `docs/adrs/0020-*.md`,
+`docs/chromebook-lockdown.md`, `docs/runbook.md`, `docs/privacy-review.md`, and this
+`CLAUDE.md`. History was NOT rewritten — that is the owner's call.
+**Bug I introduced and fixed:** an early `python3` edit script succeeded, then after a
+tool-classifier outage I re-applied the same two edits with the Edit tool, leaving
+**duplicated entries** in `.env.example` (the whole `FEATURE_SECURE_ASSESSMENT` block
+twice) and `docs/data-retention.md` (the retention row twice). Caught by diffing HEAD
+against the working tree while reconciling the unexpected commit; both deduped and
+re-verified. Note `78acd26` captured the *single* correct version of `.env.example`, so
+the duplicate existed only in the working tree.
+**Env note — concurrent session:** the tree was clean at session start but a second
+session's large uncommitted **Student Activity Sessions** feature (ADR **0019**, two
+migrations, ~20 modified files) appeared during it, overlapping eight files this work also
+needed. Handled by taking **ADR 0020** (0019 was taken), a **later migration timestamp**
+than theirs, and making every edit to a shared file strictly additive so none of their
+hunks were reverted. Their two migrations were already applied, so `migrate deploy` only
+added mine. **NOT committed — and a commit here must be my-hunks-only**; the other
+session's work is still unreviewed and shares `prisma/schema.prisma`,
+`teacher/students/[studentId]/page.tsx`, `retention/purge.ts`, `data-retention.md`,
+`privacy-review.md`, `runbook.md`, `.env.example`, and `CLAUDE.md` with this change.
 
 **Session of 2026-08-02 (Production deployment — mycivicsclass.com):** Owner bought
 `mycivicsclass.com` at Cloudflare Registrar and asked for the site deployed to it,

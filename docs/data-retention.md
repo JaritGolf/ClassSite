@@ -13,7 +13,7 @@ Three data classes can be aged out:
 | Audit logs | `AUDIT_LOG_RETENTION_DAYS` | `0` (keep forever) | `AuditLog` rows with `createdAt` older than the threshold |
 | Voided assessment attempts | `VOIDED_ATTEMPT_RETENTION_DAYS` | `0` (keep forever) | `AssessmentAttempt` rows where `voided = true` and `submittedAt` older than the threshold, plus their `AttemptResponse` / `AdaptiveSessionState` children |
 | Student activity sessions | `ACTIVITY_SESSION_RETENTION_DAYS` | `0` (keep forever) | `StudentActivitySession` rows with `startedAt` older than the threshold (ADR 0019) |
-| Assessment integrity events | _(none — follows the attempt)_ | n/a | `AttemptIntegrityEvent` rows are deleted with their voided attempt, under `VOIDED_ATTEMPT_RETENTION_DAYS` (ADR 0020) |
+| Assessment focus events | _(none — follows the attempt)_ | n/a | `AttemptIntegrityEvent` rows are deleted with their voided attempt under `VOIDED_ATTEMPT_RETENTION_DAYS` (ADR 0020) |
 
 `0`, unset, negative, or non-numeric values all mean **retain forever**. Fractions are floored.
 
