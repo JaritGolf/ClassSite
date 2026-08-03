@@ -10,7 +10,7 @@ export async function GET() {
     {
       status: 'ok',
       timestamp: new Date().toISOString(),
-      service: 'civics-quest',
+      service: 'my-civics-class',
     },
     { status: 200 }
   )

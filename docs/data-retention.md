@@ -1,4 +1,4 @@
-# Civics Quest — Data Retention Policy (Phase 17)
+# My Civics Class — Data Retention Policy (Phase 17)
 
 > Audit §36.18 item 8. The retention policy is **configurable** via environment variables and
 > **conservative by default** (retain everything). No data is deleted unless an admin sets a

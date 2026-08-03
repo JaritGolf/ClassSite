@@ -33,7 +33,7 @@ export default async function ParentDashboard() {
       <header>
         <h1 className="text-2xl font-bold text-gray-900">Your Students</h1>
         <p className="mt-1 text-sm text-gray-600">
-          View each child's Civics Quest progress.{' '}
+          View each child's My Civics Class progress.{' '}
           <ExplainerHover
             theme="admin"
             variant="underline"

@@ -31,9 +31,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <main className="flex min-h-screen flex-col items-center justify-center bg-indigo-50 bg-dots bg-[length:26px_26px] px-4 py-10">
       <div className="w-full max-w-sm animate-pop-in rounded-3xl border-2 border-indigo-100 bg-white p-8 shadow-card">
         <div className="text-center">
-          <Mascot pose="happy" className="mx-auto h-24 w-24" title="The Founder, Civics Quest's eagle mascot" />
+          <Mascot pose="happy" className="mx-auto h-24 w-24" title="The Founder, the My Civics Class eagle mascot" />
           <h1 className="mt-3 font-display text-3xl font-bold text-indigo-900">
-            Civics Quest
+            My Civics Class
           </h1>
           <p className="font-display text-base font-semibold text-indigo-600">Build the Republic</p>
           <p className="mt-3 text-sm text-gray-600">

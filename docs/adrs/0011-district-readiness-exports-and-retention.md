@@ -6,7 +6,7 @@
 
 ## Context
 
-Phase 17 prepares Civics Quest for district use: audit-log export, CSV/PDF report exports,
+Phase 17 prepares My Civics Class for district use: audit-log export, CSV/PDF report exports,
 and a data-retention policy that must be "documented and configurable" (spec §25, audit
 §36.18). The codebase has held a strict no-new-dependencies posture (Pearson inlined,
 print-to-PDF per ADR 0008, L1 glosses schema-free) and has no background-job infrastructure

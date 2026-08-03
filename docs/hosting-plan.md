@@ -1,4 +1,4 @@
-# Civics Quest — Hosting & Data Storage Plan (Phase 17)
+# My Civics Class — Hosting & Data Storage Plan (Phase 17)
 
 > Audit §36.18 item 4. Documents the deployment/hosting posture for district review.
 > **This is a proposal for owner + district sign-off, not an approved configuration.**

@@ -20,7 +20,7 @@ const body = Atkinson_Hyperlegible({
 })
 
 export const metadata: Metadata = {
-  title: 'Civics Quest: Build the Republic',
+  title: 'My Civics Class: Build the Republic',
   description: 'Florida 7th Grade Civics Mastery Learning Platform',
 }
 

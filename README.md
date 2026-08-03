@@ -1,4 +1,4 @@
-# Civics Quest: Build the Republic
+# My Civics Class: Build the Republic
 
 Florida 7th Grade Civics Mastery Learning Platform — EOC-readiness focus.
 

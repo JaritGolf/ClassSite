@@ -1,4 +1,4 @@
-# Civics Quest — Privacy Review (Phase 17)
+# My Civics Class — Privacy Review (Phase 17)
 
 > Audit §36.18 item 3. Maps spec §25 (Data, Privacy, and District Readiness) to the
 > implementation. This document is the basis for district privacy sign-off before any
@@ -50,8 +50,29 @@
 - **Encryption in transit (TLS 1.2+).** Provided by the hosting/ingress layer — see
   `docs/hosting-plan.md`. **Encryption at rest** is a hosting/database responsibility — see
   hosting plan.
-- **Secure sessions.** JWT cookies signed with `SESSION_SECRET` (ADR 0002); `MOCK_AUTH`
-  hard-disabled when `NODE_ENV=production`.
+- **Secure sessions.** JWT cookies signed with `SESSION_SECRET` (ADR 0002), expiring **8 hours**
+  after issue (one school day — see the rationale comment on `authOptions.session`). Note the
+  honest limit of a stateless session: there is no server-side revocation, so a token copied off
+  a device stays valid until it expires.
+- **Mock auth in production — read this carefully; the earlier one-line version of this bullet
+  understated it.** There are TWO ways the one-click role login can be on, and only the first is
+  closed by `NODE_ENV`:
+  - `MOCK_AUTH=true` is **hard-disabled** when `NODE_ENV=production`.
+  - `DEMO_OPEN_LOGIN=true` is checked **first and alone** and *does* enable one-click
+    Student/Teacher/Parent/Admin login **in production**. It is a deliberate, owner-directed
+    override of non-negotiable rule #8 for the public evaluation site, and is safe **only** while
+    the database holds demo/seed data exclusively, because every visitor can then enter as ADMIN.
+  Single source of truth: `isMockAuthEnabled()` in `src/lib/auth/demo-mode.ts`. **This variable
+  must be deleted (and the app redeployed) before any real student record exists** — item 1 of the
+  go-live checklist in `docs/deployment-vercel.md`, and disclosed to the district in
+  `docs/district-approval-packet.md` §1.3 / §9.1.
+- **HTTP security headers** are set app-side in `next.config.mjs`: CSP, HSTS,
+  `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and a
+  `Permissions-Policy` denying camera, microphone, geolocation, and USB. The CSP's `connect-src
+  'self'` is a browser-enforced backstop for rule #9 — verified live that an outbound fetch to an
+  external host, an external CDN script, and a non-sanctioned iframe are all blocked while the
+  `youtube-nocookie` lesson-video facade still loads. The CSP does permit inline script/style
+  (framework-injected); nonce-based CSP is scheduled — see packet §9.10.
 - **Activity monitoring is bounded and first-party** (ADR 0019). The heartbeat posts to this
   app's own route only — no third-party endpoint is involved (rule #9 intact). It records
   elapsed time and a **bucketed app area** (`mission`, `drill`, …); raw pathnames are never

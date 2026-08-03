@@ -1,4 +1,4 @@
-# Civics Quest — Architecture Notes
+# My Civics Class — Architecture Notes
 
 This document is updated at each phase boundary per spec Section 35.5.
 
@@ -52,7 +52,13 @@ This document is updated at each phase boundary per spec Section 35.5.
 
 ### ADRs
 
-See `docs/adrs/` directory (0001–0012).
+See `docs/adrs/` directory (0001–0021).
+
+> **Note:** the sections above cover Phase 0 plus Phases 17–18 only. Phases 13–16 and the
+> post-Phase-18 work (ADRs 0013–0021 — content approval mode, strategy tracking, rich media,
+> explainer hovers, standards realignment, visual stimuli, activity sessions, assessment
+> integrity, suggestion box) are documented in their ADRs and in `CLAUDE.md`, not here. This
+> file is behind; the ADRs are authoritative.
 
 ---
 

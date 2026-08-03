@@ -1,4 +1,4 @@
-# Civics Quest — OAuth Scopes Inventory (Phase 17)
+# My Civics Class — OAuth Scopes Inventory (Phase 17)
 
 > Audit §36.18 item 5. Inventories the exact OAuth scopes the app requests so the owner can
 > verify them against Palm Beach County School District policy. **Verification against

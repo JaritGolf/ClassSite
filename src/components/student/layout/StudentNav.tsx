@@ -60,7 +60,7 @@ export function StudentNav() {
       <Link href="/student/dashboard" className="flex items-center gap-2 mr-1 flex-shrink-0">
         <Mascot pose="happy" className="h-9 w-9" />
         <span className="font-display font-bold text-indigo-700 text-lg leading-none">
-          Civics Quest
+          My Civics Class
         </span>
       </Link>
 

@@ -1783,7 +1783,7 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           alt: 'Illustration of a chain of links with the center link snapped in two, thirteen stars above it',
           caption:
             'Thirteen states, one broken chain: when Massachusetts couldn\'t put down Shays\' Rebellion alone and Congress couldn\'t help, the weakness stopped being a theory.',
-          credit: 'Civics Quest illustration',
+          credit: 'My Civics Class illustration',
           license: 'Public domain',
           longDescription:
             'An illustration of a heavy chain whose center link has snapped apart, with sparks flying from the break and a row of thirteen stars above — one for each state. A confederation is only as strong as its weakest link: when armed farmers closed courthouses in Massachusetts and the national government had no army and no money to respond, every state could see the chain had already broken.',
@@ -2098,7 +2098,7 @@ export const UNIT1_LESSONS: LessonSeedDef[] = [
           alt: 'Illustration of two rival speech bubbles with arrows converging on a single signed document',
           caption:
             'Compromise, drawn: two rival plans argue, converge, and become one signed agreement. That\'s the whole Convention in one picture.',
-          credit: 'Civics Quest illustration',
+          credit: 'My Civics Class illustration',
           license: 'Public domain',
           longDescription:
             'An illustration shows two speech bubbles facing off — one indigo, one rose — representing the Virginia and New Jersey plans shouting past each other. Arrows curve down from both bubbles and meet at a single parchment document with a green check mark and a red wax seal: the Constitution. Compromise doesn\'t mean one side wins; it means both sides put something real into the final agreement.',

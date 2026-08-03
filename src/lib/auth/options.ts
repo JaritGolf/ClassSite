@@ -1,5 +1,5 @@
 /**
- * next-auth v4 configuration for Civics Quest.
+ * next-auth v4 configuration for My Civics Class.
  *
  * Providers (in priority order):
  *   1. mock-credentials — gated by isMockAuthEnabled() (see ./demo-mode):
@@ -147,7 +147,22 @@ export const authOptions: NextAuthOptions = {
   // Use SESSION_SECRET per spec — not NEXTAUTH_SECRET
   secret: process.env.SESSION_SECRET,
 
-  session: { strategy: 'jwt' },
+  session: {
+    strategy: 'jwt',
+    // Eight hours — one school day. Long enough that a student is never asked to
+    // re-authenticate in the middle of a class period (7th graders on shared
+    // district Chromebooks, and a mid-assessment sign-out would be its own
+    // problem), but short enough that a Chromebook left signed in at dismissal is
+    // stale by the next morning. next-auth's default is 30 days, which is far too
+    // long for a device a whole class period touches.
+    //
+    // Note the honest limit of a stateless JWT session (ADR 0002): this is the
+    // token's own lifetime, not a server-side revocation. Signing out clears the
+    // cookie, but a token exfiltrated from a device remains valid until it expires.
+    // Shortening this window is the mitigation available without adding a DB
+    // session adapter.
+    maxAge: 8 * 60 * 60,
+  },
 
   pages: {
     signIn: '/login',

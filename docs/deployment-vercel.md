@@ -1,4 +1,4 @@
-# Deploying Civics Quest to mycivicsclass.com
+# Deploying My Civics Class to mycivicsclass.com
 
 > Target for the **first** deployment: a demo/preview site running seed data only —
 > Alex Student, Ms Teacher, the fake roster. **No real student PII.**

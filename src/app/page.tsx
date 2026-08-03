@@ -29,11 +29,11 @@ export default function Home() {
 
       <div className="relative flex flex-col items-center text-center">
         <div className="animate-pop-in">
-          <Mascot pose="celebrating" className="h-36 w-36" title="The Founder, Civics Quest's eagle mascot" />
+          <Mascot pose="celebrating" className="h-36 w-36" title="The Founder, the My Civics Class eagle mascot" />
         </div>
 
         <h1 className="mt-4 font-display text-5xl font-bold text-indigo-900 animate-pop-in [animation-delay:100ms] sm:text-6xl">
-          Civics Quest
+          My Civics Class
         </h1>
         <p className="mt-1 font-display text-xl font-semibold text-indigo-600 animate-pop-in [animation-delay:180ms]">
           Build the Republic

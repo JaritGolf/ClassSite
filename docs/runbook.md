@@ -1,4 +1,4 @@
-# Civics Quest — Runbook
+# My Civics Class — Runbook
 
 Operational reference for local development and deployment.
 
