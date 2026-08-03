@@ -18,7 +18,7 @@ export function AdminNav() {
 
   return (
     <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-0 overflow-x-auto">
-      <span className="font-bold text-indigo-700 text-lg mr-4 shrink-0">Civics Quest — Admin</span>
+      <span className="font-bold text-indigo-700 text-lg mr-4 shrink-0">My Civics Class — Admin</span>
       <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto">
         {NAV_ITEMS.map((item) => (
           <Link

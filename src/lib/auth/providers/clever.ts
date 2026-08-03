@@ -1,7 +1,7 @@
 /**
  * Clever OAuth Provider for next-auth v4
  *
- * Clever is the primary SSO provider for Civics Quest.
+ * Clever is the primary SSO provider for My Civics Class.
  * Students and teachers authenticate via their district's Clever portal.
  *
  * Clever OAuth2 Endpoints:

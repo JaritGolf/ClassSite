@@ -6,7 +6,7 @@ to IT as-is.
 **The one thing to understand first:** a website cannot lock a Chromebook. No
 web application can — the capability belongs to the device-management layer
 (Google Admin console and whatever classroom-management tool the district
-licenses). Civics Quest ships an in-app **Focus Mode** (see
+licenses). My Civics Class ships an in-app **Focus Mode** (see
 `docs/adrs/0020-assessment-integrity-and-device-lockdown.md`) that goes
 fullscreen, blocks copy/paste, and records when a student leaves the page — but
 that is a *record*, not a *lock*. If you want students genuinely unable to open

@@ -1,5 +1,5 @@
 /**
- * next-auth v4 type augmentation for Civics Quest.
+ * next-auth v4 type augmentation for My Civics Class.
  *
  * Adds `userId` (DB cuid) and `role` (Prisma UserRole enum) to:
  *   - Session.user   — accessible in Server Components via getServerSession()

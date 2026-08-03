@@ -52,7 +52,7 @@ const VISUAL_STIMULI: VisualStimulusDef[] = [
     stimulusType: 'TIMELINE',
     mediaUrl: '/stimuli/articles-to-constitution-timeline.png',
     source:
-      'Civics Quest classroom graphic, created with Canva (2026). Content reviewed against benchmark SS.7.CG.1.7.',
+      'My Civics Class classroom graphic, created with Canva (2026). Content reviewed against benchmark SS.7.CG.1.7.',
     copyrightNotes:
       'Owner-generated via Canva AI design tools under the Canva Content License; educational classroom use. See public/stimuli/attributions.json.',
     level3:
@@ -71,7 +71,7 @@ const VISUAL_STIMULI: VisualStimulusDef[] = [
     stimulusType: 'CHART',
     mediaUrl: '/stimuli/preamble-six-purposes-chart.png',
     source:
-      'Civics Quest classroom graphic, created with Canva (2026). Preamble text: U.S. Constitution, 1787 (public domain).',
+      'My Civics Class classroom graphic, created with Canva (2026). Preamble text: U.S. Constitution, 1787 (public domain).',
     copyrightNotes:
       'Owner-generated via Canva AI design tools under the Canva Content License; educational classroom use. See public/stimuli/attributions.json.',
     level3:
@@ -90,7 +90,7 @@ const VISUAL_STIMULI: VisualStimulusDef[] = [
     stimulusType: 'FLOWCHART',
     mediaUrl: '/stimuli/ratification-path-flowchart.png',
     source:
-      'Civics Quest classroom graphic, created with Canva (2026). Content reviewed against benchmark SS.7.CG.1.10.',
+      'My Civics Class classroom graphic, created with Canva (2026). Content reviewed against benchmark SS.7.CG.1.10.',
     copyrightNotes:
       'Owner-generated via Canva AI design tools under the Canva Content License; educational classroom use. See public/stimuli/attributions.json.',
     level3:

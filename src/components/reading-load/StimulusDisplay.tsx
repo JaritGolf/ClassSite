@@ -44,6 +44,9 @@ const LEVEL_LABELS: Record<number, string> = {
   3: 'Original Source',
 }
 
+// Keeps the pre-rebrand prefix ON PURPOSE: this key holds a saved student
+// accessibility preference, so renaming it would silently reset sentence
+// chunking for every existing student. Do not "fix" the brand name here.
 const CHUNKING_KEY = 'civics-quest:sentence-chunking'
 
 export function StimulusDisplay({

@@ -1,5 +1,5 @@
 /**
- * Civics Quest — Master Seed Entry Point
+ * My Civics Class — Master Seed Entry Point
  *
  * Dependency order:
  *   1. reporting_categories  (no deps)

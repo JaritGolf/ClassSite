@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 2 84 84" role="img" aria-label="My Civics Class">
+  <!--
+    App icon: The Founder (the My Civics Class eagle) cropped to head + tricorn.
+    Geometry is lifted from src/components/ui/Mascot.tsx so the icon and the
+    in-app mascot stay the same mark. Detail is deliberately reduced (no brows,
+    no eye highlights, no neck fringe) because this renders at 16-32px.
+  -->
+  <rect x="18" y="2" width="84" height="84" rx="18" fill="#4f46e5" />
+
+  <!-- White head — the bald-eagle signature -->
+  <circle cx="60" cy="52" r="24" fill="#ffffff" />
+
+  <!-- Eyes -->
+  <circle cx="52" cy="49.5" r="3.8" fill="#1f2937" />
+  <circle cx="68" cy="49.5" r="3.8" fill="#1f2937" />
+
+  <!-- Hooked raptor beak -->
+  <path d="M52.5 54.5 Q60 52 67.5 54.5 Q66.5 64 60 68.5 Q53.5 64 52.5 54.5 Z" fill="#f59e0b" />
+
+  <!-- Tricorn hat: crown, upswept brim, gold trim, cockade -->
+  <path d="M38 33 Q60 12 82 33 Q60 25 38 33 Z" fill="#1e1b4b" />
+  <path d="M23 28 Q40 37 60 37 Q80 37 97 28 Q90 43 60 43 Q30 43 23 28 Z" fill="#1e1b4b" />
+  <path d="M26 30.5 Q60 40 94 30.5" stroke="#f59e0b" stroke-width="2.6" fill="none" stroke-linecap="round" />
+  <circle cx="82" cy="33.5" r="4.5" fill="#ef4444" />
+  <circle cx="82" cy="33.5" r="2.2" fill="#ffffff" />
+</svg>

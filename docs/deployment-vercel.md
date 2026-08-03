@@ -1,4 +1,4 @@
-# Deploying Civics Quest to mycivicsclass.com
+# Deploying My Civics Class to mycivicsclass.com
 
 > Target for the **first** deployment: a demo/preview site running seed data only —
 > Alex Student, Ms Teacher, the fake roster. **No real student PII.**
@@ -64,7 +64,7 @@ You have to create this account yourself; I can't create accounts or handle cred
 |---|---|
 | Vercel account | `danisoncivics@gmail.com` (`danisoncivics-7161`) — **separate** from `jaritgolf` |
 | Team | `class-site` / `team_i5l3GwbFzvY3mZ2lzgFkd79J` |
-| Project | `civics-quest` / `prj_LlvEEhrq97pe1j7qcK9x1THj7BZp` |
+| Project | `civics-quest` / `prj_LlvEEhrq97pe1j7qcK9x1THj7BZp` — the Vercel project slug still carries the pre-rebrand name on purpose; renaming it changes preview URLs only |
 | Domain | `mycivicsclass.com` + `www`, Cloudflare DNS-only, Vercel cert |
 | Database | Neon `ep-sparkling-sky-aui2yo18`, us-east-1 |
 

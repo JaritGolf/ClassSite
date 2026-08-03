@@ -1,4 +1,4 @@
-# Civics Quest — Architecture Notes
+# My Civics Class — Architecture Notes
 
 This document is updated at each phase boundary per spec Section 35.5.
 

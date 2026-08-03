@@ -24,7 +24,7 @@ export function ParentSummaryView({ summary }: { summary: ParentSummaryVM }) {
       {/* Report header */}
       <header className="border-b border-gray-200 pb-6">
         <p className="text-xs font-semibold uppercase tracking-widest text-indigo-600">
-          Civics Quest · Progress Summary
+          My Civics Class · Progress Summary
         </p>
         <h1 className="mt-2 text-3xl font-bold text-gray-900">{summary.student.displayName}</h1>
         <p className="mt-1 text-sm text-gray-600">
@@ -229,7 +229,7 @@ export function ParentSummaryView({ summary }: { summary: ParentSummaryVM }) {
       )}
 
       <footer className="border-t border-gray-200 pt-4 text-xs text-gray-600">
-        This summary reflects your student's progress in Civics Quest. It does not include test
+        This summary reflects your student's progress in My Civics Class. It does not include test
         questions or answer keys. Questions? Contact your student's teacher.
       </footer>
 
