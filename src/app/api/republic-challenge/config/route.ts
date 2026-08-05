@@ -12,8 +12,10 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import {
   getStaminaLengthForDate,
+  getBlueprintCoverage,
   FINAL_TRIAL_DEFAULT_LENGTH,
 } from '@/lib/republic-challenge'
+import { isFinalTrialWindowOpen } from '@/lib/republic-challenge/final-trial-window'
 import { resolveAuthedStudent } from '@/lib/republic-challenge/route-helpers'
 
 export async function GET() {
@@ -29,15 +31,21 @@ export async function GET() {
     ladder.length ??
     FINAL_TRIAL_DEFAULT_LENGTH
 
-  // Final Trial gating: default opens April 1; teacher can flip the feature flag.
-  const aprilFirstThisYear = new Date(Date.UTC(now.getUTCFullYear(), 3, 1))
+  // Final Trial gating: opens in the April belonging to the student's OWN school
+  // year (see final-trial-window.ts — the old calendar-year gate read OPEN in
+  // August), and the teacher can still close it with the feature flag.
   const finalTrialOpen =
-    (classConfig?.featureEocReviewEnabled ?? true) && now >= aprilFirstThisYear
+    (classConfig?.featureEocReviewEnabled ?? true) &&
+    isFinalTrialWindowOpen(classConfig?.schoolYear, now)
 
-  const categories = await prisma.reportingCategory.findMany({
-    select: { id: true, name: true },
-    orderBy: { name: 'asc' },
-  })
+  const [categories, blueprintCoverage] = await Promise.all([
+    prisma.reportingCategory.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    // Level 2+ is what the Final Trial draws from (see pickFinalRepublicTrial).
+    getBlueprintCoverage(2),
+  ])
 
   return NextResponse.json({
     featureEocReviewEnabled: classConfig?.featureEocReviewEnabled ?? true,
@@ -51,6 +59,13 @@ export async function GET() {
       length: FINAL_TRIAL_DEFAULT_LENGTH,
       attemptsAllowed: classConfig?.rcAttemptsAllowed ?? 1,
       reviewWindow: classConfig?.rcReviewWindow ?? 'after_submit',
+      /**
+       * How much of the EOC blueprint the simulation can actually draw from.
+       * Surfaced because the picker BACKFILLS empty categories silently, so
+       * without this the card would promise a full four-category exam while
+       * quietly serving one category's questions.
+       */
+      blueprintCoverage,
     },
     categories,
   })

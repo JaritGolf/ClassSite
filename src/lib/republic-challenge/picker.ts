@@ -240,6 +240,37 @@ async function pickBlueprintWeighted(
   return picked
 }
 
+/**
+ * How many of the four EOC reporting categories can currently supply questions
+ * at the given reading-load floor.
+ *
+ * Exists because the backfill above is SILENT. When a category has no pool its
+ * share is quietly redrawn from whatever else is approved, so a "full EOC
+ * simulation" can be built entirely from one category and still return a
+ * confident-looking 50-item paper. That is the worst kind of wrong: the student
+ * scores well, the teacher reads it as EOC readiness, and neither has any signal
+ * that three quarters of the blueprint was never on the test.
+ *
+ * Backfilling is still the right behaviour — 422ing a student out of their
+ * year-end simulation would be worse. What was missing is the label. Callers use
+ * this to say plainly what the simulation currently covers.
+ */
+export async function getBlueprintCoverage(
+  levelMin: number = 2
+): Promise<{ covered: number; total: number }> {
+  const categories = await prisma.reportingCategory.findMany({ select: { id: true } })
+  const withPool = await prisma.question.groupBy({
+    by: ['reportingCategoryId'],
+    where: { readingLoadLevel: { gte: levelMin }, ...APPROVED_FILTER },
+    _count: { _all: true },
+  })
+  const covered = new Set(withPool.map((r) => r.reportingCategoryId))
+  return {
+    covered: categories.filter((c) => covered.has(c.id)).length,
+    total: categories.length,
+  }
+}
+
 // ── Mistake Replay ────────────────────────────────────────────────────────────
 
 /**
