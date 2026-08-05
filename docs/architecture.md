@@ -78,11 +78,23 @@ This document is updated at each phase boundary per spec Section 35.5.
   `ParentSummaryView` (parent dashboard + parent student page + teacher printable summary).
   **Two** pinned allowlists gate additions: `PARENT_SUMMARY_FIELDS` and the separate
   `ALLOWED_KEYS` in `tests/integration/audit18/03-forbidden-fields.test.ts`.
-- Audit-log catalog +1: `PROGRESS_TARGETS_UPDATED` (exported as
-  `PROGRESS_CHECKPOINT_AUDIT_ACTIONS`); CSV export reuses `REPORT_EXPORTED`.
+- Audit-log catalog +2: `PROGRESS_TARGETS_UPDATED` (exported as
+  `PROGRESS_CHECKPOINT_AUDIT_ACTIONS`) and `BENCHMARK_READINESS_SET`; CSV export reuses
+  `REPORT_EXPORTED`.
 - **Progression fixes shipped alongside:** cross-unit + content-aware
-  `unlockNextBenchmark`, `lib/mastery/availability.ts` (row-existence-based map locking +
-  first-mission bootstrap), and write-once `masteredAt`.
+  `unlockNextBenchmark`, `lib/mastery/availability.ts`, and write-once `masteredAt`.
+- **`lib/mastery/availability.ts` is the single definition of what a student may open.**
+  It keys on a GRANTED/TERMINAL **status allowlist**, deliberately NOT on whether a
+  `StudentProgress` row exists. `POST /api/mission/progress` upserts a row on any visit,
+  so a row-existence rule is self-widening — visiting a locked mission would permanently
+  unlock it. `IN_PROGRESS` is excluded because it is written only on that upsert's create
+  branch. Playability additionally requires the teacher-controlled
+  `Benchmark.readyForStudents` flag (`/teacher/benchmarks`), an approved Mastery Challenge
+  with questions, and an approved lesson — see `PLAYABLE_BENCHMARK_WHERE`.
+  ⚠ Known, fail-safe divergence: `unlockNextBenchmark`'s own reachability check does not
+  include the ready flag or the lesson requirement, so it can write a grant row for a
+  benchmark the map renders as `COMING_SOON`. The read path is stricter, so the student
+  cannot open it either way.
 
 ### ADRs
 
