@@ -36,6 +36,8 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "^1.60.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
     "@types/jest": "^29",
     "@types/node": "^20",
     "@types/react": "^18",
@@ -44,6 +46,7 @@
     "eslint": "^8",
     "eslint-config-next": "^14",
     "jest": "^29",
+    "jest-environment-jsdom": "^29.7.0",
     "jest-environment-node": "^29",
     "postcss": "^8",
     "prisma": "^5",

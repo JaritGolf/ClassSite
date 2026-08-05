@@ -30,6 +30,9 @@ const ALLOWED_KEYS = [
   'eocReadiness',
   'suggestedReview',
   'positiveIndicators',
+  // Nine-week checkpoint Levels (ADR 0019). Level only — no grade vocabulary, no
+  // per-mission off-ramp detail, no comparison to other students.
+  'progressCheckpoints',
 ]
 
 const FORBIDDEN_TOKENS = [
