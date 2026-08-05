@@ -88,10 +88,13 @@ export async function driveAttempt(
 
 /**
  * Unit 1's 6 benchmark codes, in mission order. Explicit list rather than
- * `code: { startsWith: 'SS.7.CG.1.' }` + sequenceOrder — sequenceOrder is
- * scoped per-unit (see unlockNextBenchmark), and Phase 15 added Unit 2 as
- * SS.7.CG.1.7–.11, so the prefix alone matches both units and a plain
- * sequenceOrder sort would interleave them unpredictably.
+ * `code: { startsWith: 'SS.7.CG.1.' }` — Phase 15 added Unit 2 as
+ * SS.7.CG.1.7–.11, so that prefix matches both units and would pull Unit 2
+ * benchmarks into a Unit-1-only fixture.
+ *
+ * (Note: sequenceOrder is globally sequential 1..36 across all units, pinned by
+ * tests/unit/seed/benchmark-standards-alignment.test.ts. An earlier version of
+ * this comment claimed it was scoped per-unit, which was never true.)
  */
 export const UNIT1_BENCHMARK_CODES = [
   'SS.7.CG.1.1',

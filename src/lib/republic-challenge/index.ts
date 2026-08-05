@@ -24,7 +24,14 @@ export {
   pickSourceSprint,
   pickEnduranceTrial,
   pickFinalRepublicTrial,
+  getBlueprintCoverage,
 } from './picker'
+
+export {
+  isFinalTrialWindowOpen,
+  finalTrialOpensAt,
+  schoolYearEndYear,
+} from './final-trial-window'
 
 export {
   createRepublicChallengeSession,

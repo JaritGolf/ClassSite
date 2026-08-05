@@ -16,6 +16,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { canOpenMission } from '@/lib/mastery'
 import { recordLastActivity } from '@/lib/student-activity'
 
 const BodySchema = z.object({
@@ -73,6 +74,38 @@ export async function POST(req: NextRequest) {
     currentStepId = step.id
   }
 
+  // Permission is checked ONLY when this write would CREATE the row.
+  //
+  // Two reasons it is not checked every time. First, cost: this endpoint fires on
+  // every training step (~17 per mission, no debounce), and it is the hottest
+  // student write path — re-deriving availability on each ping would roughly
+  // double its query load for no added safety, since a row can only exist if a
+  // create was allowed. Second, correctness: an existing row means the student is
+  // already in this mission, and revoking mid-session (say a teacher toggles the
+  // ready flag) should not start rejecting their resume bookmark.
+  //
+  // The create branch is the one that matters. It writes IN_PROGRESS, and before
+  // this gate existed any student could manufacture that row for ANY benchmark
+  // just by typing the mission URL — which is what made "a row exists" unusable
+  // as a definition of access. See src/lib/mastery/availability.ts.
+  const existing = await prisma.studentProgress.findUnique({
+    where: { studentId_benchmarkId: { studentId: student.id, benchmarkId: benchmark.id } },
+    select: { id: true },
+  })
+
+  if (!existing) {
+    const allowed = await canOpenMission(student.id, benchmark.id)
+    if (!allowed) {
+      return NextResponse.json(
+        { error: 'This mission is not open yet' },
+        { status: 403 }
+      )
+    }
+  }
+
+  // Still an upsert, not an update. Between the read above and this write the row
+  // may appear (two tabs, a retried beacon), and an update would then throw P2025
+  // — a 500 on a brand-new student's very first training click.
   await prisma.studentProgress.upsert({
     where: { studentId_benchmarkId: { studentId: student.id, benchmarkId: benchmark.id } },
     create: {

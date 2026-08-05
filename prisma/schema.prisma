@@ -305,6 +305,7 @@ model Student {
   activitySessions      StudentActivitySession[]
   lastActivity          StudentLastActivity?
   suggestions           Suggestion[]
+  checkpointLevels      StudentCheckpointLevel[]
 
   @@map("students")
 }
@@ -315,10 +316,11 @@ model Teacher {
   schoolId String? @map("school_id")
   active   Boolean @default(true)
 
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes     Class[]
-  overrides   TeacherOverride[]
-  suggestions Suggestion[]
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes       Class[]
+  overrides     TeacherOverride[]
+  suggestions   Suggestion[]
+  progressPlans ProgressPlan[]
 
   @@map("teachers")
 }
@@ -380,12 +382,17 @@ model Class {
   // See docs/adrs/0020-assessment-integrity-and-device-lockdown.md.
   secureAssessmentMode Boolean @default(false) @map("secure_assessment_mode")
 
+  // Nine-week progress checkpoints. Null means "use my plan for this class's
+  // school year"; a class may be pointed at its own plan to run a different pace.
+  progressPlanId String? @map("progress_plan_id")
+
   teacher            Teacher                     @relation(fields: [teacherId], references: [id])
   enrollments        ClassEnrollment[]
   assignments        Assignment[]
   readinessSnapshots ClassReadinessSnapshot[]
   stepVisibility     ClassLessonStepVisibility[]
   suggestions        Suggestion[]
+  progressPlan       ProgressPlan?               @relation(fields: [progressPlanId], references: [id])
 
   @@map("classes")
 }
@@ -451,6 +458,14 @@ model Benchmark {
   approvalStatus      ApprovalStatus @default(DRAFT) @map("approval_status")
   version             Int            @default(1)
 
+  /// Teacher-controlled gate on whether students may open this mission.
+  /// ANDed with the content check (approved mastery form with questions +
+  /// approved lesson) — it is an ADDITIONAL gate, never a replacement.
+  /// Defaults false: content is seeded piecemeal by design, so the existence of
+  /// some rows is not evidence a mission is ready for a 12-year-old.
+  /// See src/lib/mastery/availability.ts.
+  readyForStudents    Boolean        @default(false) @map("ready_for_students")
+
   unit                 Unit                   @relation(fields: [unitId], references: [id])
   reportingCategory    ReportingCategory      @relation(fields: [reportingCategoryId], references: [id])
   clarifications       BenchmarkClarification[]
@@ -466,6 +481,7 @@ model Benchmark {
   remediationItems     RemediationItem[]
   spacedReviewStates   SpacedReviewState[]
   spacedReviewEvents   SpacedReviewEvent[]
+  checkpointTargets    ProgressCheckpointTarget[]
 
   @@map("benchmarks")
 }
@@ -1436,4 +1452,81 @@ model Suggestion {
   // cleanly — this carries the kind for the audience-scoped admin path.
   @@index([audience, kind, status, createdAt])
   @@map("suggestions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Nine-week progress checkpoints
+//
+// A teacher sets, per school year, four checkpoints (the nine-week grading
+// periods). Each carries an end date and up to four target missions; reaching a
+// target earns that Level. Levels only DESCRIBE progress — nothing in the app
+// gates content on a checkpoint date or a Level.
+//
+// Named "checkpoint", not "period": Class.period already means bell-schedule
+// period, so a `period` field here would be a permanent trap.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ProgressPlan {
+  id         String   @id @default(cuid())
+  teacherId  String   @map("teacher_id")
+  schoolYear String   @map("school_year")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  teacher     Teacher              @relation(fields: [teacherId], references: [id])
+  checkpoints ProgressCheckpoint[]
+  classes     Class[]
+
+  @@unique([teacherId, schoolYear])
+  @@map("progress_plans")
+}
+
+model ProgressCheckpoint {
+  id               String   @id @default(cuid())
+  planId           String   @map("plan_id")
+  checkpointNumber Int      @map("checkpoint_number")
+  endsOn           DateTime @map("ends_on") @db.Date
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  plan      ProgressPlan               @relation(fields: [planId], references: [id], onDelete: Cascade)
+  targets   ProgressCheckpointTarget[]
+  snapshots StudentCheckpointLevel[]
+
+  @@unique([planId, checkpointNumber])
+  @@map("progress_checkpoints")
+}
+
+model ProgressCheckpointTarget {
+  id           String @id @default(cuid())
+  checkpointId String @map("checkpoint_id")
+  level        Int
+  benchmarkId  String @map("benchmark_id")
+
+  checkpoint ProgressCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+  benchmark  Benchmark          @relation(fields: [benchmarkId], references: [id])
+
+  @@unique([checkpointId, level])
+  @@map("progress_checkpoint_targets")
+}
+
+/// Locked standing for one student at one checkpoint, written once the
+/// checkpoint's end date has passed. `targetsJson` freezes the targets that
+/// produced this level — targets stay editable afterwards, so without the frozen
+/// copy a locked row would report a level nobody could reconstruct.
+model StudentCheckpointLevel {
+  id              String   @id @default(cuid())
+  checkpointId    String   @map("checkpoint_id")
+  studentId       String   @map("student_id")
+  level           Int
+  missionsCleared Int      @map("missions_cleared")
+  targetsJson     Json     @map("targets_json")
+  lockedAt        DateTime @map("locked_at")
+
+  checkpoint ProgressCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
+  student    Student            @relation(fields: [studentId], references: [id])
+
+  @@unique([checkpointId, studentId])
+  @@index([studentId])
+  @@map("student_checkpoint_levels")
 }

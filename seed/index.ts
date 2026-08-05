@@ -31,53 +31,75 @@ import { seedMissionAssessments } from './assessments'
 
 const prisma = new PrismaClient()
 
+/**
+ * The seed pipeline, in dependency order.
+ *
+ * Named stages exist so a single one can be run on its own:
+ *
+ *     npm run db:seed -- --only=badges
+ *
+ * That matters more than it looks. A full `db:seed` ends in `assessments`,
+ * which RECONCILES existing rows — it rewrites the AssessmentQuestion set of
+ * every live assessment in place. That is correct and idempotent, but it is a
+ * lot of blast radius to accept in order to ship a four-string fix to a badge
+ * definition. Stages are otherwise unchanged and still run in this order by
+ * default, so `npm run db:seed` behaves exactly as before.
+ *
+ * Every stage is idempotent, so running one alone is always safe. The ORDER is
+ * not arbitrary, though: running `assessments` without its question banks, or
+ * `remediation` before the banks exist, will under-produce rather than fail
+ * loudly. When in doubt, run the whole thing.
+ */
+const STAGES: { name: string; label: string; run: () => Promise<unknown> }[] = [
+  { name: 'reporting-categories', label: 'Reporting categories', run: () => seedReportingCategories(prisma) },
+  { name: 'benchmarks', label: 'Benchmarks, units, accommodations', run: () => seedBenchmarks(prisma) },
+  { name: 'misconceptions', label: 'Misconception inventory', run: () => seedMisconceptions(prisma) },
+  { name: 'vocabulary', label: 'Vocabulary', run: () => seedVocabulary(prisma) },
+  { name: 'translations', label: 'L1 term translations (Spanish all tier-3 + Haitian Creole sample)', run: () => seedTermTranslations(prisma) },
+  { name: 'lessons', label: 'Lessons (guided instruction per benchmark — ADR 0013)', run: () => seedLessons(prisma) },
+  { name: 'questions-unit1', label: 'Sample questions (Unit 1, original 15/benchmark)', run: () => seedSampleQuestions(prisma) },
+  { name: 'questions-unit1-backfill', label: 'Unit 1 backfill (→ 30/benchmark, APPROVED per ADR 0013)', run: () => seedUnit1Backfill(prisma) },
+  { name: 'questions-unit1-interim', label: 'Unit 1 interim banks (official 1.1/1.2 — ADR 0017)', run: () => seedUnit1Interim(prisma) },
+  { name: 'questions-unit2', label: 'Unit 2 question bank (Phase 15, Tier C / NEEDS_REVIEW)', run: () => seedUnit2Questions(prisma) },
+  { name: 'remediation', label: 'Remediation items (≥1 per skill_tag — derived from all questions)', run: () => seedRemediationItems(prisma) },
+  { name: 'stimuli', label: 'Stimuli — Unit 1 reading-load variants + accommodations', run: () => seedStimuliUnit1(prisma) },
+  { name: 'stimuli-visual', label: 'Visual stimuli (Canva TIMELINE/CHART/FLOWCHART pilot — ADR 0018)', run: () => seedVisualStimuli(prisma) },
+  { name: 'badges', label: 'Badges', run: () => seedBadges(prisma) },
+  { name: 'assessments', label: 'Mission assessments (pre-check, readiness, vocab, mastery, region reviews)', run: () => seedMissionAssessments(prisma) },
+]
+
 async function main() {
-  console.log('🌱 Starting seed...\n')
+  const onlyArg = process.argv.find((a) => a.startsWith('--only='))
+  const requested = onlyArg
+    ? onlyArg
+        .slice('--only='.length)
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : null
 
-  console.log('1/7 Reporting categories')
-  await seedReportingCategories(prisma)
+  if (requested) {
+    const known = new Set(STAGES.map((s) => s.name))
+    const unknown = requested.filter((n) => !known.has(n))
+    if (unknown.length > 0) {
+      console.error(`Unknown seed stage(s): ${unknown.join(', ')}`)
+      console.error(`Available: ${STAGES.map((s) => s.name).join(', ')}`)
+      process.exit(1)
+    }
+  }
 
-  console.log('2/7 Benchmarks, units, accommodations')
-  await seedBenchmarks(prisma)
+  const toRun = requested ? STAGES.filter((s) => requested.includes(s.name)) : STAGES
 
-  console.log('3/7 Misconception inventory')
-  await seedMisconceptions(prisma)
+  console.log(
+    requested
+      ? `🌱 Starting seed (${toRun.length} of ${STAGES.length} stages: ${requested.join(', ')})...\n`
+      : '🌱 Starting seed...\n'
+  )
 
-  console.log('4/7 Vocabulary')
-  await seedVocabulary(prisma)
-
-  console.log('4b/12 L1 term translations (Spanish all tier-3 + Haitian Creole sample)')
-  await seedTermTranslations(prisma)
-
-  console.log('5/12 Lessons (guided instruction per benchmark — ADR 0013)')
-  await seedLessons(prisma)
-
-  console.log('6/12 Sample questions (Unit 1, original 15/benchmark)')
-  await seedSampleQuestions(prisma)
-
-  console.log('7/12 Unit 1 backfill (→ 30/benchmark, APPROVED per ADR 0013)')
-  await seedUnit1Backfill(prisma)
-
-  console.log('7b/12 Unit 1 interim banks (official 1.1/1.2 — ADR 0017)')
-  await seedUnit1Interim(prisma)
-
-  console.log('8/12 Unit 2 question bank (Phase 15, Tier C / NEEDS_REVIEW)')
-  await seedUnit2Questions(prisma)
-
-  console.log('9/12 Remediation items (≥1 per skill_tag — derived from all questions)')
-  await seedRemediationItems(prisma)
-
-  console.log('10/12 Stimuli — Unit 1 reading-load variants + accommodations')
-  await seedStimuliUnit1(prisma)
-
-  console.log('10b/12 Visual stimuli (Canva TIMELINE/CHART/FLOWCHART pilot — ADR 0018)')
-  await seedVisualStimuli(prisma)
-
-  console.log('11/12 Badges')
-  await seedBadges(prisma)
-
-  console.log('12/12 Mission assessments (pre-check, readiness, vocab, mastery, region reviews)')
-  await seedMissionAssessments(prisma)
+  for (const [i, stage] of toRun.entries()) {
+    console.log(`${i + 1}/${toRun.length} ${stage.label}`)
+    await stage.run()
+  }
 
   console.log('\n✅ Seed complete.')
 }

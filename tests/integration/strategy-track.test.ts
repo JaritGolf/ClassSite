@@ -221,7 +221,26 @@ describe('getStrategyProgress', () => {
 })
 
 describe('badge award hook', () => {
-  it('awards the strategy-track badge once all 7 missions have a use', async () => {
+  /** Does the student currently hold Master Strategist? Null when unseeded. */
+  async function hasTrackBadge(): Promise<boolean | null> {
+    const trackBadge = await prisma.badge.findFirst({
+      where: { name: 'Master Strategist' },
+      select: { id: true },
+    })
+    if (!trackBadge) return null // badges not seeded in this DB — nothing to assert
+    await evaluateAndAwardBadges(studentId)
+    const has = await prisma.studentBadge.findUnique({
+      where: { studentId_badgeId: { studentId, badgeId: trackBadge.id } },
+      select: { id: true },
+    })
+    return has !== null
+  }
+
+  it('withholds the badge while missions are touched but their requirement is unmet', async () => {
+    // The reconciliation. `completedAt` is stamped on the FIRST correct round,
+    // so the badge used to fire here — contradicting the student's own Strategy
+    // page, which (with this class requiring 3 uses) still said "2 to go" on
+    // every one of these missions.
     for (const m of [
       'watch-the-words',
       'flag-and-return',
@@ -232,17 +251,27 @@ describe('badge award hook', () => {
       await submitStrategyRound(studentId, m, correctAnswers(m))
     }
 
-    const trackBadge = await prisma.badge.findFirst({
-      where: { name: 'Master Strategist' },
-      select: { id: true },
-    })
-    if (!trackBadge) return // badges not seeded in this DB — nothing to assert
+    const awarded = await hasTrackBadge()
+    if (awarded === null) return
+    expect(awarded).toBe(false)
+  })
 
-    await evaluateAndAwardBadges(studentId)
-    const has = await prisma.studentBadge.findUnique({
-      where: { studentId_badgeId: { studentId, badgeId: trackBadge.id } },
-      select: { id: true },
-    })
-    expect(has).not.toBeNull()
+  it('awards the badge once every mission actually meets its requirement', async () => {
+    // Drive each mission up to ITS OWN requirement — the class global of 3, the
+    // two-pass override of 5, and time-management's waiver all differ, which is
+    // the point: "complete the track" has to mean each mission's real target.
+    const { byCode } = await resolveStrategyRequirements(studentId)
+    const { progress } = await getStrategyProgress(studentId)
+
+    for (const row of progress) {
+      const required = Math.max(byCode.get(row.code)?.required ?? 0, 1)
+      for (let i = row.useCount; i < required; i++) {
+        await submitStrategyRound(studentId, row.code, correctAnswers(row.code))
+      }
+    }
+
+    const awarded = await hasTrackBadge()
+    if (awarded === null) return
+    expect(awarded).toBe(true)
   })
 })

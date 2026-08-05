@@ -137,7 +137,9 @@ export async function updateProgressAfterAttempt(
   }
 
   // 3. Upsert the StudentProgress row (creates if not exists, increments if exists)
-  await prisma.studentProgress.upsert({
+  //    The returned row carries the pre-existing masteredAt (the update below does
+  //    not touch it), which step 4 needs to keep that timestamp write-once.
+  const progressRow = await prisma.studentProgress.upsert({
     where: { studentId_benchmarkId: { studentId, benchmarkId } },
     create: {
       studentId,
@@ -158,13 +160,18 @@ export async function updateProgressAfterAttempt(
 
     const masteryScore = attempt.score
 
-    // Update progress to MASTERED
+    // Update progress to MASTERED.
+    //
+    // masteredAt is WRITE-ONCE: a REASSESSMENT of an already-mastered benchmark
+    // also lands here, and re-stamping the date would silently move that mission
+    // out of an earlier grading-period snapshot that had not been read/locked yet.
+    // masteryScore still reflects the most recent passing score.
     await prisma.studentProgress.update({
       where: { studentId_benchmarkId: { studentId, benchmarkId } },
       data: {
         status: 'MASTERED',
         masteryScore,
-        masteredAt: new Date(),
+        masteredAt: progressRow.masteredAt ?? new Date(),
       },
     })
 

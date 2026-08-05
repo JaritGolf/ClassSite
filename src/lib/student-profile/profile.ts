@@ -9,6 +9,7 @@ import { prisma } from '@/lib/db'
 import { assertStudentInTeacherClass } from '@/lib/teacher-roster'
 import { getDecayingBenchmarks } from '@/lib/spaced-retrieval/decay'
 import { getStrategyProgress } from '@/lib/strategy-track'
+import { getMissionAvailability } from '@/lib/mastery'
 import {
   getIntegrityEventsByAttempt,
   summarizeIntegrityEvents,
@@ -49,6 +50,15 @@ export interface StudentProfileVM {
   } | null
   mastery: {
     mastered: BenchmarkLite[]
+    /**
+     * Missions the student genuinely cannot open, per the one shared definition
+     * in `lib/mastery/availability`.
+     *
+     * This used to be built from raw status — NOT_STARTED and TEACHER_OVERRIDE
+     * were both filed here, when NOT_STARTED is precisely a GRANT of access and
+     * TEACHER_OVERRIDE is terminal. It was never rendered, so it never misled
+     * anyone; it is corrected rather than removed so it cannot mislead later.
+     */
     locked: BenchmarkLite[]
     exposureComplete: BenchmarkLite[]
     needsRemediation: BenchmarkLite[]
@@ -265,6 +275,9 @@ export async function getStudentProfileForTeacher(
     getStrategyProgress(studentId),
   ])
 
+  // The one shared definition of "can this student open this mission".
+  const availability = await getMissionAvailability(studentId)
+
   // ── Build mastery sections ──────────────────────────────────────────────────
   const mastery: StudentProfileVM['mastery'] = {
     mastered: [],
@@ -284,9 +297,13 @@ export async function getStudentProfileForTeacher(
       case 'MASTERED':
         mastery.mastered.push(lite)
         break
-      case 'NOT_STARTED':
       case 'TEACHER_OVERRIDE':
-        mastery.locked.push(lite)
+        // Terminal, not locked — the teacher deliberately cleared this one.
+        mastery.exposureComplete.push(lite)
+        break
+      case 'NOT_STARTED':
+        // A grant, not a lock. Whether it is actually open is decided below by
+        // the availability rule, not by this status.
         break
       case 'EXPOSURE_COMPLETE':
         mastery.exposureComplete.push(lite)
@@ -307,6 +324,27 @@ export async function getStudentProfileForTeacher(
         }
         break
     }
+  }
+
+  // Locked missions come from the availability rule, not from progress rows —
+  // the ones a student cannot open are largely the ones they have NO row for,
+  // which a loop over their rows can never see. COMING_SOON is excluded on
+  // purpose: unbuilt content is not something the student is locked out of.
+  const lockedIds = [...availability.values()]
+    .filter((node) => node.state === 'LOCKED')
+    .map((node) => node.benchmarkId)
+
+  if (lockedIds.length > 0) {
+    const lockedBenchmarks = await prisma.benchmark.findMany({
+      where: { id: { in: lockedIds } },
+      select: { id: true, code: true, title: true },
+      orderBy: { sequenceOrder: 'asc' },
+    })
+    mastery.locked = lockedBenchmarks.map((b) => ({
+      benchmarkId: b.id,
+      benchmarkCode: b.code,
+      title: b.title,
+    }))
   }
 
   // ── Build calibration trend ─────────────────────────────────────────────────

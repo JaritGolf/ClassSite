@@ -1,1 +1,1 @@
-export { evaluateAndAwardBadges } from './award'
+export { evaluateAndAwardBadges, isCriteriaWinnable } from './award'

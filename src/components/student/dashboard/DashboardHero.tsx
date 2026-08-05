@@ -3,7 +3,10 @@ import { Mascot } from '@/components/ui/Mascot'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface DashboardHeroProps {
-  currentMission: { benchmarkCode: string; title: string; status: string } | null
+  // No status field: the hero only ever renders the title and a link. It used to
+  // carry one that nothing read, which meant threading a value through two
+  // non-null assertions for no reason.
+  currentMission: { benchmarkCode: string; title: string } | null
   studentName: string | null | undefined
 }
 

@@ -40,6 +40,9 @@ describe('Parent Summary — field allowlist (spec §23)', () => {
       'eocReadiness',
       'suggestedReview',
       'positiveIndicators',
+      // Nine-week checkpoint Levels (ADR 0019). Reports the Level only — no
+      // grade vocabulary, no per-mission off-ramp detail, no class comparison.
+      'progressCheckpoints',
     ])
   })
 

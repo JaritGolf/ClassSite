@@ -23,6 +23,7 @@
 import { prisma } from '@/lib/db'
 import { assertStudentInTeacherClass } from '@/lib/teacher-roster'
 import { computeStudentReadiness } from '@/lib/eoc-analytics'
+import { getStudentCheckpoints } from '@/lib/progress-checkpoints'
 import type { StudentProgressStatus } from '@prisma/client'
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -68,6 +69,40 @@ export interface ParentSummaryVM {
   }
   suggestedReview: string[]
   positiveIndicators: string[]
+  /**
+   * Nine-week checkpoint standing. Reports the Level only — how far along the
+   * Mission Map the student reached by each quarter's date.
+   *
+   * Deliberately says nothing about grades in either direction (see ADR 0019):
+   * the Level reframing exists to keep the platform feeling like progress rather
+   * than grading, and a disclaimer would reintroduce exactly that framing.
+   *
+   * Also deliberately omits WHICH missions were off-ramped versus mastered.
+   * Off-ramped missions count toward the Level, but the mechanism stays internal —
+   * consistent with EXPOSURE_COMPLETE already being withheld from parents below.
+   */
+  progressCheckpoints: {
+    /** The quarter currently in play, if any. */
+    current: {
+      quarter: number
+      endsOn: Date
+      level: number
+      levelsSet: number
+      nextLevel: number | null
+      missionsToNextLevel: number | null
+    } | null
+    /** Quarters whose date has passed, with the Level recorded at the time. */
+    completed: Array<{
+      quarter: number
+      endsOn: Date
+      level: number
+      levelsSet: number
+      /** A higher Level reached after the quarter closed, when that happened. */
+      reachedLaterLevel: number | null
+    }>
+    /** One plain-language line about helping at home before the next checkpoint. */
+    howToHelp: string | null
+  }
 }
 
 /**
@@ -82,6 +117,7 @@ export const PARENT_SUMMARY_FIELDS = [
   'eocReadiness',
   'suggestedReview',
   'positiveIndicators',
+  'progressCheckpoints',
 ] as const
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -281,5 +317,72 @@ export async function buildParentSummaryVM(studentId: string): Promise<ParentSum
     },
     suggestedReview,
     positiveIndicators,
+    progressCheckpoints: await buildProgressCheckpoints(studentId, now),
   }
+}
+
+/**
+ * Nine-week checkpoint standing for the parent view.
+ *
+ * Reuses the same read the student and teacher surfaces use, so a parent can
+ * never be shown a different Level than the teacher sees.
+ */
+async function buildProgressCheckpoints(
+  studentId: string,
+  now: Date
+): Promise<ParentSummaryVM['progressCheckpoints']> {
+  const { checkpoints } = await getStudentCheckpoints(studentId, now)
+
+  if (checkpoints.length === 0) {
+    return { current: null, completed: [], howToHelp: null }
+  }
+
+  const open = checkpoints.find((c) => !c.isClosed) ?? null
+
+  const current = open
+    ? {
+        quarter: open.checkpointNumber,
+        endsOn: open.endsOn,
+        level: open.level,
+        levelsSet: open.maxLevel,
+        nextLevel: open.nextLevel,
+        missionsToNextLevel: open.missionsToNextLevel,
+      }
+    : null
+
+  const completed = checkpoints
+    .filter((c) => c.isClosed)
+    .map((c) => ({
+      quarter: c.checkpointNumber,
+      endsOn: c.endsOn,
+      level: c.level,
+      levelsSet: c.maxLevel,
+      reachedLaterLevel: c.caughtUpLevel,
+    }))
+
+  let howToHelp: string | null = null
+  if (open) {
+    const dateLabel = open.endsOn.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'UTC',
+    })
+    if (open.maxLevel > 0 && open.level >= open.maxLevel) {
+      howToHelp =
+        `Your student has reached everything set for Quarter ${open.checkpointNumber}. ` +
+        `Steady practice — even ten minutes of the Daily Drill — keeps earlier missions fresh.`
+    } else if (open.missionsToNextLevel !== null && open.nextLevel !== null) {
+      const n = open.missionsToNextLevel
+      howToHelp =
+        `${n} more ${n === 1 ? 'mission' : 'missions'} would bring your student to Level ` +
+        `${open.nextLevel} by ${dateLabel}. Asking them to walk you through their current ` +
+        `mission is one of the most useful things you can do at home.`
+    } else {
+      howToHelp =
+        `The next checkpoint is ${dateLabel}. Asking your student to walk you through their ` +
+        `current mission is one of the most useful things you can do at home.`
+    }
+  }
+
+  return { current, completed, howToHelp }
 }

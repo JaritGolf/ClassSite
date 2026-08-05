@@ -1,10 +1,18 @@
 import { ModeCard } from './ModeCard'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
-interface HubConfig {
+/** Exported so the page cannot keep its own drifting copy of this shape. */
+export interface HubConfig {
   featureEocReviewEnabled: boolean
   stamina: { label: string; length: number; isLadderPeak: boolean }
-  finalTrial: { open: boolean; length: number; attemptsAllowed: number; reviewWindow: string }
+  finalTrial: {
+    open: boolean
+    length: number
+    attemptsAllowed: number
+    reviewWindow: string
+    /** How many of the four EOC categories currently have questions behind them. */
+    blueprintCoverage: { covered: number; total: number }
+  }
 }
 
 export function Hub({ config }: { config: HubConfig }) {
@@ -19,6 +27,9 @@ export function Hub({ config }: { config: HubConfig }) {
       </div>
     )
   }
+
+  const { covered, total } = config.finalTrial.blueprintCoverage
+  const partialBlueprint = covered < total
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
@@ -89,11 +100,24 @@ export function Hub({ config }: { config: HubConfig }) {
           icon="flame"
         />
 
+        {/* The coverage line is not decoration. When categories have no content
+            the picker backfills from whatever is approved, so the "full EOC
+            simulation" can quietly be one category deep. Saying so is the
+            difference between a practice test and a misleading score. */}
         <ModeCard
           title="Final Republic Trial"
-          description="Full-length EOC simulation. Only level-2 and level-3 stimuli."
+          description={
+            partialBlueprint
+              ? `Full-length EOC simulation. Right now it covers ${config.finalTrial.blueprintCoverage.covered} of the ${config.finalTrial.blueprintCoverage.total} EOC topic areas — the rest aren't built yet.`
+              : 'Full-length EOC simulation. Only level-2 and level-3 stimuli.'
+          }
           startUrl="/api/republic-challenge/final-trial/start"
           meta={`${config.finalTrial.length} questions`}
+          metaExplainer={
+            partialBlueprint
+              ? "The real EOC draws evenly from four topic areas. Until every area has missions, this simulation pulls extra questions from the areas that do — so treat the score as practice, not a prediction."
+              : undefined
+          }
           disabled={!config.finalTrial.open}
           disabledReason="Final Trial opens in April."
           icon="shield"

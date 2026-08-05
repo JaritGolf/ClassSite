@@ -27,6 +27,8 @@ export interface AuthedStudent {
     rcAttemptsAllowed: number
     rcReviewWindow: string
     featureEocReviewEnabled: boolean
+    /** e.g. "2026-2027". Drives the school-year-relative Final Trial gate. */
+    schoolYear: string
   } | null
 }
 
@@ -69,6 +71,7 @@ export async function resolveAuthedStudent(): Promise<
               rcAttemptsAllowed: true,
               rcReviewWindow: true,
               featureEocReviewEnabled: true,
+              schoolYear: true,
             },
           },
         },
@@ -101,6 +104,7 @@ export async function resolveAuthedStudent(): Promise<
             rcAttemptsAllowed: klass.rcAttemptsAllowed,
             rcReviewWindow: klass.rcReviewWindow,
             featureEocReviewEnabled: klass.featureEocReviewEnabled,
+            schoolYear: klass.schoolYear,
           }
         : null,
     },

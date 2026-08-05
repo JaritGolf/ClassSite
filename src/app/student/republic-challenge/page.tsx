@@ -1,12 +1,6 @@
 import { headers } from 'next/headers'
 import { requireAuth } from '@/lib/auth'
-import { Hub } from '@/components/student/republic-challenge/Hub'
-
-interface HubConfig {
-  featureEocReviewEnabled: boolean
-  stamina: { label: string; length: number; isLadderPeak: boolean }
-  finalTrial: { open: boolean; length: number; attemptsAllowed: number; reviewWindow: string }
-}
+import { Hub, type HubConfig } from '@/components/student/republic-challenge/Hub'
 
 async function fetchConfig(): Promise<HubConfig> {
   // SSR fetch — same-origin; pass through the session cookie.
@@ -22,7 +16,13 @@ async function fetchConfig(): Promise<HubConfig> {
     return {
       featureEocReviewEnabled: false,
       stamina: { label: '—', length: 10, isLadderPeak: false },
-      finalTrial: { open: false, length: 50, attemptsAllowed: 1, reviewWindow: 'after_submit' },
+      finalTrial: {
+        open: false,
+        length: 50,
+        attemptsAllowed: 1,
+        reviewWindow: 'after_submit',
+        blueprintCoverage: { covered: 0, total: 4 },
+      },
     }
   }
   return res.json()

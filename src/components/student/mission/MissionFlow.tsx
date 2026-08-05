@@ -82,6 +82,8 @@ export function MissionFlow({ mission }: MissionFlowProps) {
   const [reviewingFrom, setReviewingFrom] = useState<Step | null>(null)
   const [trainingIndex, setTrainingIndex] = useState(0)
   const hydrated = useRef(false)
+  /** Latest step we tried to save, for the pagehide flush below. */
+  const lastSavedStepIdRef = useRef<string | null>(null)
 
   const trainingSteps = trainingStepsOf(mission.lessonSteps)
   const vocabSteps = vocabStepsOf(mission.lessonSteps)
@@ -145,13 +147,47 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     }
   }, [currentStep, completedSteps, trainingIndex, mission.progressKey, mission.benchmarkCode])
 
+  // Last-chance save of the cross-device resume point.
+  //
+  // The per-step `fetch` above can be cut off mid-flight when the tab closes,
+  // the laptop lid shuts, or the network drops — exactly the moments a student
+  // most needs their place kept. `sendBeacon` is queued by the browser and
+  // survives unload, where a fetch is simply cancelled. Same pattern as
+  // ActivityHeartbeat.
+  //
+  // `pagehide` rather than `beforeunload`: it is the event that actually fires
+  // on mobile Safari, and it also covers the back/forward cache.
+  useEffect(() => {
+    function flushResumePoint() {
+      const stepId = lastSavedStepIdRef.current
+      if (!stepId) return
+      try {
+        navigator.sendBeacon?.(
+          '/api/mission/progress',
+          new Blob([JSON.stringify({ benchmarkCode: mission.benchmarkCode, stepId })], {
+            type: 'application/json',
+          })
+        )
+      } catch {
+        /* nothing useful to do during unload */
+      }
+    }
+
+    window.addEventListener('pagehide', flushResumePoint)
+    return () => window.removeEventListener('pagehide', flushResumePoint)
+  }, [mission.benchmarkCode])
+
   function handleTrainingIndexChange(index: number, stepId: string) {
     setTrainingIndex(index)
-    // Cross-device resume point — fire and forget; purely display/resume data.
+    lastSavedStepIdRef.current = stepId
+    // Cross-device resume point. Fire and forget — a lost save costs the student
+    // their place on a DIFFERENT device, never their work (localStorage above
+    // already covers same-device resume, and nothing here is graded).
     fetch('/api/mission/progress', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ benchmarkCode: mission.benchmarkCode, stepId }),
+      keepalive: true,
     }).catch(() => {})
   }
 
