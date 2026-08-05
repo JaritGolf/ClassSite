@@ -2,6 +2,7 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { BadgeMedal, medalForIconKey } from '@/components/ui/BadgeMedal'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
+import { isCriteriaWinnable } from '@/lib/badges'
 
 // The root layout's title template appends " — My Civics Class".
 export const metadata = { title: 'Badges' }
@@ -18,7 +19,7 @@ export default async function BadgesPage() {
     return <div className="p-8 text-center text-gray-500">Student record not found.</div>
   }
 
-  const [earnedBadges, allBadges] = await Promise.all([
+  const [earnedBadges, seededBadges] = await Promise.all([
     prisma.studentBadge.findMany({
       where: { studentId: student.id },
       select: { badgeId: true },
@@ -27,6 +28,16 @@ export default async function BadgesPage() {
   ])
 
   const earnedIds = new Set(earnedBadges.map((sb) => sb.badgeId))
+
+  // Hide badges the engine can never award (see isCriteriaWinnable). A locked
+  // medal a student cannot win no matter what they do is not a goal, it is a
+  // dead end dressed up as one — and it drags down the "N of M earned" count
+  // for no reason. Anything already earned still shows, so nothing a student
+  // has can vanish on them.
+  const allBadges = seededBadges.filter(
+    (b) => earnedIds.has(b.id) || isCriteriaWinnable(b.criteriaJson)
+  )
+
   const byTrack = new Map<string, typeof allBadges>()
   for (const badge of allBadges) {
     if (!byTrack.has(badge.track)) byTrack.set(badge.track, [])

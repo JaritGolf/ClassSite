@@ -73,7 +73,19 @@ export async function seedDemoPeople(): Promise<DemoPeople> {
   })
   if (!cls) {
     cls = await prisma.class.create({
-      data: { teacherId: teacher.id, name: CLASS_NAME, period: CLASS_PERIOD, schoolYear: SCHOOL_YEAR },
+      data: {
+        teacherId: teacher.id,
+        name: CLASS_NAME,
+        period: CLASS_PERIOD,
+        schoolYear: SCHOOL_YEAR,
+        // Turn the Strategist Track ON in the demo. The column defaults to 0
+        // ("no requirement"), which is the right default for a real class — the
+        // teacher opts in — but it meant all 7 authored strategy missions sat
+        // unexercised and the whole track looked like dead weight. 2 asks for a
+        // second correct round, which is what makes it practice rather than a
+        // click-through.
+        strategyUsesRequired: 2,
+      },
       select: { id: true },
     })
   }

@@ -58,33 +58,53 @@ const BADGES = [
     track: 'MASTERY' as const,
     criteriaJson: { event: 'mastery_score_above', threshold: 0.9, tag: 'founding-documents' },
   },
+  // The four Pillar badges match on ReportingCategory.name EXACTLY.
+  //
+  // All four previously carried invented names ('Origins of American
+  // Democracy', 'Civic Foundations', 'Government Structures and Functions',
+  // 'Civic Participation') that match nothing in `seed/reporting_categories.ts`,
+  // so the lookup returned zero benchmarks and every one of them was dead.
+  // These strings are now the real four, verbatim. If you rename a reporting
+  // category, rename it here in the same commit.
   {
     name: 'Pillar I — Origins',
-    description: 'Master all Origins of American Democracy benchmarks.',
+    description: 'Master every available Origins and Purposes of Law and Government mission.',
     iconKey: 'pillar',
     track: 'MASTERY' as const,
-    criteriaJson: { event: 'reporting_category_mastered', category: 'Origins of American Democracy' },
+    criteriaJson: {
+      event: 'reporting_category_mastered',
+      category: 'Origins and Purposes of Law and Government',
+    },
   },
   {
     name: 'Pillar II — Citizens',
-    description: 'Master all Civic Foundations benchmarks.',
+    description: 'Master every available Roles, Rights, and Responsibilities of Citizens mission.',
     iconKey: 'users',
     track: 'MASTERY' as const,
-    criteriaJson: { event: 'reporting_category_mastered', category: 'Civic Foundations' },
+    criteriaJson: {
+      event: 'reporting_category_mastered',
+      category: 'Roles, Rights, and Responsibilities of Citizens',
+    },
   },
   {
     name: 'Pillar III — Policies',
-    description: 'Master all Government Structures and Functions benchmarks.',
+    description: 'Master every available Government Policies and Political Processes mission.',
     iconKey: 'building',
     track: 'MASTERY' as const,
-    criteriaJson: { event: 'reporting_category_mastered', category: 'Government Structures and Functions' },
+    criteriaJson: {
+      event: 'reporting_category_mastered',
+      category: 'Government Policies and Political Processes',
+    },
   },
   {
     name: 'Pillar IV — Organization',
-    description: 'Master all Civic Participation benchmarks.',
+    description: 'Master every available Organization and Function of Government mission.',
     iconKey: 'organization',
     track: 'MASTERY' as const,
-    criteriaJson: { event: 'reporting_category_mastered', category: 'Civic Participation' },
+    criteriaJson: {
+      event: 'reporting_category_mastered',
+      category: 'Organization and Function of Government',
+    },
   },
   {
     name: 'Source Reader',
@@ -129,19 +149,28 @@ const BADGES = [
     track: 'READING' as const,
     criteriaJson: { event: 'claim_identified', count: 5 },
   },
+  // These two are retargeted onto Source Decoder LEVEL COMPLETION, which is a
+  // real, tracked event (`SourceDecoderProgress`), instead of the per-item
+  // counters that no table records. The levels line up with what the badges
+  // already claim to be about: level 3 is "Author's Purpose", level 4 is
+  // "Source Showdown".
+  //
+  // Only these two. Levels 1 and 2 are already claimed by Source Reader and
+  // Source Analyst above — pointing all four READING badges at levels would
+  // hand out two badges for one action.
   {
     name: 'Purpose Finder',
-    description: 'Correctly identify author purpose in 5 Source Decoder activities.',
+    description: "Complete Source Decoder Level 3 — Author's Purpose.",
     iconKey: 'target',
     track: 'READING' as const,
-    criteriaJson: { event: 'source_decoder_purpose', count: 5 },
+    criteriaJson: { event: 'source_decoder_level', level: 3 },
   },
   {
     name: 'Source Showdown Champion',
-    description: 'Complete a compare-sources Source Decoder activity.',
+    description: 'Complete Source Decoder Level 4 — Source Showdown.',
     iconKey: 'arrows-right-left',
     track: 'READING' as const,
-    criteriaJson: { event: 'source_decoder_compare', count: 1 },
+    criteriaJson: { event: 'source_decoder_level', level: 4 },
   },
   // ENGAGEMENT track
   {
