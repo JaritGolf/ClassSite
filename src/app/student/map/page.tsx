@@ -1,5 +1,7 @@
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getMissionAvailability } from '@/lib/mastery'
+import { getCheckpointMarkersForStudent } from '@/lib/progress-checkpoints'
 import { MissionMap } from '@/components/student/map/MissionMap'
 
 // The root layout's title template appends " — My Civics Class".
@@ -17,7 +19,7 @@ export default async function MapPage() {
     return <div className="p-8 text-center text-gray-500">Student record not found.</div>
   }
 
-  const [units, progressRows] = await Promise.all([
+  const [units, progressRows, availability, checkpointMarkers] = await Promise.all([
     prisma.unit.findMany({
       where: { active: true },
       orderBy: { sequenceOrder: 'asc' },
@@ -30,11 +32,17 @@ export default async function MapPage() {
     }),
     prisma.studentProgress.findMany({
       where: { studentId: student.id },
-      select: { benchmarkId: true, status: true, masteryScore: true },
+      select: { benchmarkId: true, masteryScore: true },
     }),
+    // The single source of truth for what a node looks like and whether it
+    // opens. This page deliberately does NOT derive either from `status` — that
+    // divergence between the engine and the map is the bug being fixed here.
+    getMissionAvailability(student.id),
+    // Nine-week checkpoint flags. Display only — these never affect what opens.
+    getCheckpointMarkersForStudent(student.id),
   ])
 
-  const progressByBenchmarkId = new Map(progressRows.map((p) => [p.benchmarkId, p]))
+  const scoreByBenchmarkId = new Map(progressRows.map((p) => [p.benchmarkId, p.masteryScore]))
 
   const mapData = units.map((unit) => ({
     id: unit.id,
@@ -42,14 +50,19 @@ export default async function MapPage() {
     sequenceOrder: unit.sequenceOrder,
     gameRegionName: unit.gameRegionName,
     benchmarks: unit.benchmarks.map((b) => {
-      const progress = progressByBenchmarkId.get(b.id)
+      // A benchmark always has an entry: computeAvailability walks the same
+      // active-unit set this query does. COMING_SOON is the safe default if a
+      // future caller ever passes one it has not seen.
+      const node = availability.get(b.id)
       return {
         id: b.id,
         code: b.code,
         title: b.title,
         sequenceOrder: b.sequenceOrder,
-        status: progress?.status ?? 'NOT_STARTED',
-        masteryScore: progress?.masteryScore ?? null,
+        state: node?.state ?? ('COMING_SOON' as const),
+        masteryScore: scoreByBenchmarkId.get(b.id) ?? null,
+        openable: node?.openable ?? false,
+        checkpoint: checkpointMarkers.get(b.id) ?? null,
       }
     }),
   }))

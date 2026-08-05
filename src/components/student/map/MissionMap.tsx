@@ -1,13 +1,19 @@
 import { Mascot } from '@/components/ui/Mascot'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import { BenchmarkNode, PATH_COLUMN_W, PATH_ROW_H, NODE_R } from './BenchmarkNode'
+import type { MissionNodeState } from '@/lib/mastery'
 
 interface BenchmarkData {
   id: string
   code: string
   title: string
-  status: string
+  /** Decided server-side by computeAvailability — see lib/mastery/availability. */
+  state: MissionNodeState
   masteryScore: number | null
+  /** Whether the student may open this mission. Never inferred from `state`. */
+  openable: boolean
+  /** Nine-week checkpoint target landing here, if any. Display only. */
+  checkpoint?: { checkpointNumber: number; level: number } | null
 }
 
 interface UnitData {
@@ -46,11 +52,14 @@ function TrailSvg({ count }: { count: number }) {
   }))
   const height = (count - 1) * PATH_ROW_H + NODE_R * 2
 
+  // Control points sit half a row apart so the curve stays smooth if PATH_ROW_H changes.
+  const ctrl = PATH_ROW_H / 2
+
   let d = `M ${points[0].x} ${points[0].y}`
   for (let i = 1; i < points.length; i++) {
     const prev = points[i - 1]
     const cur = points[i]
-    d += ` C ${prev.x} ${prev.y + 76}, ${cur.x} ${cur.y - 76}, ${cur.x} ${cur.y}`
+    d += ` C ${prev.x} ${prev.y + ctrl}, ${cur.x} ${cur.y - ctrl}, ${cur.x} ${cur.y}`
   }
 
   return (
@@ -89,7 +98,11 @@ export function MissionMap({ map }: MissionMapProps) {
     <div className="space-y-10">
       {map.map((unit, unitIdx) => {
         const theme = REGION_THEMES[(unit.sequenceOrder - 1) % REGION_THEMES.length]
-        const mastered = unit.benchmarks.filter((b) => b.status === 'MASTERED').length
+        const mastered = unit.benchmarks.filter((b) => b.state === 'MASTERED').length
+        // Denominator is every benchmark in the unit, NOT just the playable ones.
+        // Counting only playable ones would read 100% today and then fall to 73%
+        // the day new content lands — progress that goes backwards for doing
+        // nothing wrong. The honest denominator is the whole unit.
         const total = unit.benchmarks.length
         const pct = total > 0 ? Math.round((mastered / total) * 100) : 0
 
@@ -134,8 +147,10 @@ export function MissionMap({ map }: MissionMapProps) {
                   id={b.id}
                   code={b.code}
                   title={b.title}
-                  status={b.status}
+                  state={b.state}
                   masteryScore={b.masteryScore}
+                  openable={b.openable}
+                  checkpoint={b.checkpoint ?? null}
                   offsetX={OFFSETS[i % OFFSETS.length]}
                 />
               ))}

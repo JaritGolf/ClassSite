@@ -27,6 +27,7 @@ import { seedDemoPeople } from './people'
 import { seedHeroProgress } from './hero-progress'
 import { seedClassmatesProgress } from './classmates-progress'
 import { seedExtras } from './extras'
+import { seedDemoProgressCheckpoints } from './progress-checkpoints'
 
 async function main() {
   if (process.env.NODE_ENV === 'production') {
@@ -52,13 +53,17 @@ async function main() {
   console.log('5/6 Extras: streak, spaced review, badges, accommodations')
   await seedExtras({ heroStudentId: people.heroStudentId, teacherUserId: people.teacherUserId })
 
+  console.log('6/7 Nine-week progress checkpoints')
+  const checkpointSummary = await seedDemoProgressCheckpoints(people.classId)
+  console.log(`   ${checkpointSummary}`)
+
   // Last — the derive below reads spaced-review history, which step 5 writes.
   //
   // Needed because every recordLastActivity hook lives in an API route handler
   // and this seeder drives the ENGINE layer directly (see engine-helpers.ts), so
   // no activity row is ever written and the dashboard's "pick up where you left
   // off" card would silently not render. Same derive the backfill CLI uses.
-  console.log('6/6 Last-activity rows (dashboard "pick up where you left off")')
+  console.log('7/7 Last-activity rows (dashboard "pick up where you left off")')
   for (const studentId of [people.heroStudentId, ...people.classmateStudentIds]) {
     const derived = await deriveLastActivityFromHistory(studentId)
     if (derived) {

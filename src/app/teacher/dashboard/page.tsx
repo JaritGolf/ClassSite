@@ -16,6 +16,7 @@ import {
   getEocReadinessTrend,
   getOffRampStudents,
   getStrategyCompletionStatus,
+  getCheckpointLevelsForTeacher,
 } from '@/lib/class-analytics'
 import { getClassDecayRates } from '@/lib/spaced-retrieval/decay'
 import { getTeacherRoster } from '@/lib/teacher-roster'
@@ -29,6 +30,7 @@ import { OffRampList } from '@/components/teacher/dashboard/OffRampList'
 import { RecommendedSmallGroups } from '@/components/teacher/dashboard/RecommendedSmallGroups'
 import { EocReadinessTrendChart } from '@/components/teacher/dashboard/EocReadinessTrendChart'
 import { StrategyCompletionTable } from '@/components/teacher/dashboard/StrategyCompletionTable'
+import { CheckpointLevelTable } from '@/components/teacher/dashboard/CheckpointLevelTable'
 import { LessonPreviewLinks } from '@/components/teacher/dashboard/LessonPreviewLinks'
 
 export default async function TeacherDashboard() {
@@ -49,6 +51,7 @@ export default async function TeacherDashboard() {
     offRampStudents,
     decayRates,
     strategyCompletion,
+    checkpointLevels,
   ] = await Promise.all([
     getClassStatusDistribution(userId),
     getClassMasteryByUnit(userId),
@@ -61,6 +64,7 @@ export default async function TeacherDashboard() {
     getOffRampStudents(userId),
     getClassDecayRates(roster.teacherId),
     getStrategyCompletionStatus(userId),
+    getCheckpointLevelsForTeacher(userId),
   ])
 
   // Lesson walkthrough quick links (ADR 0015 teacher preview).
@@ -147,6 +151,9 @@ export default async function TeacherDashboard() {
 
       {/* Small groups */}
       <RecommendedSmallGroups groups={smallGroups} />
+
+      {/* Nine-week checkpoint Levels */}
+      <CheckpointLevelTable tables={checkpointLevels} />
 
       {/* Strategist track completion */}
       <StrategyCompletionTable rows={strategyCompletion} />

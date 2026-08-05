@@ -45,3 +45,6 @@ export type { OffRampRow } from './off-ramp'
 
 export { getStrategyCompletionStatus } from './strategy-completion'
 export type { StrategyCompletionRow } from './strategy-completion'
+
+export { getCheckpointLevelsForTeacher } from './checkpoint-levels'
+export type { CheckpointLevelRow, ClassCheckpointLevels } from './checkpoint-levels'

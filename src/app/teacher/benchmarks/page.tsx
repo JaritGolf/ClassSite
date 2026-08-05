@@ -9,13 +9,19 @@
 
 import { requireAuth } from '@/lib/auth'
 import { getBenchmarksGroupedByUnit } from '@/lib/class-analytics'
+import { getBenchmarkReadiness } from '@/lib/mastery'
 import { EmptyState } from '@/components/teacher/shared/EmptyState'
+import { ReadinessToggle } from '@/components/teacher/benchmark/ReadinessToggle'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import Link from 'next/link'
 
 export default async function BenchmarksPage() {
   const session = await requireAuth(['TEACHER'])
-  const unitGroups = await getBenchmarksGroupedByUnit(session.user.userId)
+  const [unitGroups, readiness] = await Promise.all([
+    getBenchmarksGroupedByUnit(session.user.userId),
+    getBenchmarkReadiness(),
+  ])
+  const readinessById = new Map(readiness.map((r) => [r.benchmarkId, r]))
 
   const hasAnyBenchmarks = unitGroups.some((group) => group.benchmarks.length > 0)
 
@@ -83,6 +89,16 @@ export default async function BenchmarksPage() {
                         Rate
                       </ExplainerHover>
                     </th>
+                    <th className="px-4 py-3 text-right">
+                      <ExplainerHover
+                        theme="admin"
+                        variant="underline"
+                        title="Students"
+                        text="Whether students can open this mission. A mission opens only when you switch it on AND it has an approved lesson plus an approved Mastery Challenge — so this can withhold a mission, but it can never put an empty one in front of a student. Withheld missions show as 'Coming Soon' on the Mission Map, never as a padlock."
+                      >
+                        Students
+                      </ExplainerHover>
+                    </th>
                     <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
@@ -110,6 +126,21 @@ export default async function BenchmarksPage() {
                         >
                           {row.hasData ? `${row.masteryRatePercent}%` : 'Not started'}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {(() => {
+                          const r = readinessById.get(row.benchmarkId)
+                          // Absent only for a benchmark outside the active-unit
+                          // set the toggle query covers — nothing to switch.
+                          if (!r) return <span className="text-xs text-gray-400">—</span>
+                          return (
+                            <ReadinessToggle
+                              benchmarkId={row.benchmarkId}
+                              readyForStudents={r.readyForStudents}
+                              hasContent={r.hasContent}
+                            />
+                          )
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Link

@@ -18,6 +18,18 @@ function formatDate(d: Date): string {
   })
 }
 
+/**
+ * Checkpoint dates are date-only values stored at UTC midnight. They must be
+ * formatted in UTC — formatting in local time would render them as the day before.
+ */
+function formatCheckpointDate(d: Date): string {
+  return new Date(d).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 export function ParentSummaryView({ summary }: { summary: ParentSummaryVM }) {
   return (
     <>
@@ -150,6 +162,84 @@ export function ParentSummaryView({ summary }: { summary: ParentSummaryVM }) {
           </div>
         </div>
       </section>
+
+      {/* Nine-week checkpoint Levels. Reports the Level only — see ADR 0019 for why
+          this copy neither mentions grades nor disclaims them. */}
+      {(summary.progressCheckpoints.current !== null ||
+        summary.progressCheckpoints.completed.length > 0) && (
+        <section>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-600">
+            <ExplainerHover
+              theme="admin"
+              variant="underline"
+              title="Mission Map Checkpoints"
+              text={
+                'The teacher marks a spot on the Mission Map for each nine weeks. The Level shows ' +
+                'how far along that map your student had reached by the checkpoint date. Students ' +
+                'are never blocked by these dates — they can keep working ahead at any time.'
+              }
+            >
+              Mission Map Checkpoints
+            </ExplainerHover>
+          </h2>
+
+          {summary.progressCheckpoints.current && (
+            <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/60 p-4">
+              <p className="text-sm font-semibold text-indigo-900">
+                Quarter {summary.progressCheckpoints.current.quarter} — Level{' '}
+                {summary.progressCheckpoints.current.level} of{' '}
+                {summary.progressCheckpoints.current.levelsSet}
+              </p>
+              <p className="mt-1 text-sm text-indigo-900">
+                Checkpoint date: {formatCheckpointDate(summary.progressCheckpoints.current.endsOn)}
+                {summary.progressCheckpoints.current.nextLevel !== null &&
+                  summary.progressCheckpoints.current.missionsToNextLevel !== null && (
+                    <>
+                      {' · '}
+                      {summary.progressCheckpoints.current.missionsToNextLevel}{' '}
+                      {summary.progressCheckpoints.current.missionsToNextLevel === 1
+                        ? 'mission'
+                        : 'missions'}{' '}
+                      to Level {summary.progressCheckpoints.current.nextLevel}
+                    </>
+                  )}
+              </p>
+            </div>
+          )}
+
+          {summary.progressCheckpoints.completed.length > 0 && (
+            <table className="mt-3 w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-gray-600">
+                  <th className="pb-2 font-medium">Quarter</th>
+                  <th className="pb-2 font-medium">Checkpoint date</th>
+                  <th className="pb-2 text-right font-medium">Level reached</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.progressCheckpoints.completed.map((c) => (
+                  <tr key={c.quarter} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 pr-2 text-gray-700">Quarter {c.quarter}</td>
+                    <td className="py-2 pr-2 text-gray-600">{formatCheckpointDate(c.endsOn)}</td>
+                    <td className="py-2 text-right font-medium text-gray-900">
+                      Level {c.level} of {c.levelsSet}
+                      {c.reachedLaterLevel !== null && (
+                        <span className="block text-xs font-normal text-indigo-700">
+                          reached Level {c.reachedLaterLevel} since
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          {summary.progressCheckpoints.howToHelp && (
+            <p className="mt-3 text-sm text-gray-700">{summary.progressCheckpoints.howToHelp}</p>
+          )}
+        </section>
+      )}
 
       {/* Recent assessments — score + pass/fail only */}
       <section>

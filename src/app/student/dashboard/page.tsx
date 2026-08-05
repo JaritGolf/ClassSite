@@ -4,6 +4,9 @@ import { recordActivity, getOrCreateStreak } from '@/lib/streak'
 import { touchActivitySafe } from '@/lib/activity-sessions'
 import { getFirstUnreadBeat } from '@/lib/narrative'
 import { getLastActivityForStudent } from '@/lib/student-activity'
+import { getMissionAvailability, pickCurrentMissionId } from '@/lib/mastery'
+import { getStudentCheckpoints } from '@/lib/progress-checkpoints'
+import { CheckpointCard } from '@/components/student/dashboard/CheckpointCard'
 import { DashboardHero } from '@/components/student/dashboard/DashboardHero'
 import { ReadinessMeter } from '@/components/student/dashboard/ReadinessMeter'
 import { DrillCTA } from '@/components/student/dashboard/DrillCTA'
@@ -30,7 +33,7 @@ export default async function StudentDashboard() {
   }
 
   const [
-    currentMission,
+    availability,
     drillCount,
     recentBadges,
     masteredCount,
@@ -39,26 +42,10 @@ export default async function StudentDashboard() {
     activeRemediation,
     lastActivity,
   ] = await Promise.all([
-    prisma.studentProgress.findFirst({
-      where: { studentId: student.id, status: 'IN_PROGRESS' },
-      include: {
-        benchmark: {
-          select: { code: true, title: true, unit: { select: { id: true, sequenceOrder: true } } },
-        },
-      },
-      orderBy: { benchmark: { sequenceOrder: 'asc' } },
-    }).then(async (row) => {
-      if (row) return row
-      return prisma.studentProgress.findFirst({
-        where: { studentId: student.id, status: 'NOT_STARTED' },
-        include: {
-          benchmark: {
-            select: { code: true, title: true, unit: { select: { id: true, sequenceOrder: true } } },
-          },
-        },
-        orderBy: { benchmark: { sequenceOrder: 'asc' } },
-      })
-    }),
+    // Same source of truth the Mission Map uses. This page used to run its own
+    // "first IN_PROGRESS, else first NOT_STARTED" query, which is how it ended up
+    // linking to a mission the map was drawing as locked.
+    getMissionAvailability(student.id),
     prisma.spacedReviewState.count({
       where: { studentId: student.id, dueAt: { lte: new Date() } },
     }),
@@ -85,11 +72,25 @@ export default async function StudentDashboard() {
   const streakState = await recordActivity(student.id, new Date())
   await touchActivitySafe(student.id, { area: 'dashboard' })
 
+  // Current nine-week checkpoint standing (display only — never gates anything).
+  const { current: currentCheckpoint } = await getStudentCheckpoints(student.id)
+
   const pct = totalCount > 0 ? Math.round((masteredCount / totalCount) * 100) : 0
   const readinessMeter = { pct, ciLow: Math.max(0, pct - 5), ciHigh: Math.min(100, pct + 5) }
 
+  // The earliest mission the student can act on. A brand-new student with zero
+  // progress rows resolves to the first playable benchmark, so the hero always
+  // has something to start — no special-casing needed.
+  const currentMissionId = pickCurrentMissionId(availability)
+  const currentMission = currentMissionId
+    ? await prisma.benchmark.findUnique({
+        where: { id: currentMissionId },
+        select: { code: true, title: true, unit: { select: { id: true, sequenceOrder: true } } },
+      })
+    : null
+
   const missionData = currentMission
-    ? { benchmarkCode: currentMission.benchmark.code, title: currentMission.benchmark.title, status: currentMission.status }
+    ? { benchmarkCode: currentMission.code, title: currentMission.title }
     : null
 
   const badges = recentBadges.map((sb) => ({
@@ -103,7 +104,7 @@ export default async function StudentDashboard() {
   // mission), falling back to the first active unit when they have no progress
   // rows yet — otherwise students in later units would forever see Unit 1 beats.
   let narrativeBeat: { beatKey: string; unitId: string; npcName: string; dialogue: string } | null = null
-  const beatUnit = currentMission?.benchmark.unit ?? firstUnit
+  const beatUnit = currentMission?.unit ?? firstUnit
   if (beatUnit) {
     const unitCode = `unit-${beatUnit.sequenceOrder}`
     const beat = await getFirstUnreadBeat(student.id, beatUnit.id, unitCode)
@@ -133,7 +134,20 @@ export default async function StudentDashboard() {
       <div className="animate-pop-in [animation-delay:90ms]">
         <ReadinessMeter {...readinessMeter} />
       </div>
-      <div className="grid gap-4 animate-pop-in [animation-delay:180ms] sm:grid-cols-2">
+      {currentCheckpoint && (
+        <div className="animate-pop-in [animation-delay:180ms]">
+          <CheckpointCard
+            checkpointNumber={currentCheckpoint.checkpointNumber}
+            endsOn={currentCheckpoint.endsOn}
+            level={currentCheckpoint.level}
+            maxLevel={currentCheckpoint.maxLevel}
+            nextLevel={currentCheckpoint.nextLevel}
+            missionsToNextLevel={currentCheckpoint.missionsToNextLevel}
+            missionsPastTopTarget={currentCheckpoint.missionsPastTopTarget}
+          />
+        </div>
+      )}
+      <div className="grid gap-4 animate-pop-in [animation-delay:270ms] sm:grid-cols-2">
         <StreakWidget
           currentLength={streakState.currentLength}
           longestLength={streakState.longestLength}
@@ -144,7 +158,7 @@ export default async function StudentDashboard() {
       {activeRemediation && (
         <a
           href={`/student/remediation/${activeRemediation.id}`}
-          className="block rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-card transition-colors hover:border-amber-300 hover:bg-amber-50 animate-pop-in [animation-delay:270ms]"
+          className="block rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-card transition-colors hover:border-amber-300 hover:bg-amber-50 animate-pop-in [animation-delay:360ms]"
         >
           <div className="flex items-center gap-4">
             <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-400 text-amber-950">
@@ -162,7 +176,7 @@ export default async function StudentDashboard() {
           </div>
         </a>
       )}
-      <div className="animate-pop-in [animation-delay:360ms]">
+      <div className="animate-pop-in [animation-delay:450ms]">
         <BadgeRack badges={badges} />
       </div>
       <NarrativeOverlayWrapper beat={narrativeBeat} />

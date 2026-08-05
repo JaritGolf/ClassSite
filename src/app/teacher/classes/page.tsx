@@ -57,6 +57,12 @@ export default async function ClassesPage() {
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-gray-500">{cls.studentIds.length} students</span>
                   <Link
+                    href={`/teacher/classes/${cls.id}/progress-targets`}
+                    className="text-sm text-indigo-600 hover:underline"
+                  >
+                    Nine-week targets
+                  </Link>
+                  <Link
                     href={`/teacher/classes/${cls.id}/settings`}
                     className="text-sm text-indigo-600 hover:underline"
                   >
