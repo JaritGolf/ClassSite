@@ -150,6 +150,108 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**MISSION PROGRESSION REPAIR — THE LOOP NOW WORKS (2026-08-04) — Tier 1 `tsc` GREEN
+(0 errors) + Tier 2 jest GREEN (1,771 passed + 2 intentional skips, 159/159 suites,
+sharded ×4) + full in-browser verification on both roles.** Implements the
+`/office-hours` → `/plan-eng-review` plan (18 tasks, 9 P1). **The headline finding was
+not in the plan:** the four "phantom" `progress_*` tables T1 was meant to adopt-or-drop
+turned out to belong to a **dormant, uncommitted worktree**
+(`.claude/worktrees/nine-week-progress-levels-2f05f8`, ADR 0019, last touched 2026-07-25)
+that had **already built most of Wave 1** plus an entire teacher-facing nine-week "Levels"
+feature — with a committed migration for those tables. Owner chose to **merge that work
+first, then apply the delta.** Its branch tip is an ancestor of HEAD, so this was a patch
+application, not a branch merge: 14 files applied cleanly, 4 conflicts (all
+additive-vs-additive) resolved by hand.
+**Their availability rule was the one this plan's review rejected twice.**
+`availability.ts` said *"a benchmark with a StudentProgress row is OPEN"* — but
+`POST /api/mission/progress` upserts a row on any visit and there is no server-side
+mission gate, so visiting a locked mission and advancing one training step permanently
+unlocked it. Replaced with the reviewed **status allowlist**.
+**What their branch got right that this plan did not know:** `Benchmark.sequenceOrder` is
+**not unique** (four suites insert fixtures at 9995-9999, so a bare global lookup jumps
+into them — hence the `SS.7.CG.` prefix guard), and `masteredAt` was being re-stamped on
+every pass, corrupting point-in-time snapshots. Both kept.
+What shipped on top:
+(1) **`src/lib/mastery/availability.ts` rewritten** — `PLAYABLE_BENCHMARK_WHERE` (the one
+definition of playable), `loadAvailabilityInputs` (DB), pure `computeAvailability`
+returning a typed `MissionNodeState` union, `canOpenMission`, `pickCurrentMissionId`,
+`getPlayableBenchmarkIds`. Predicate: `TERMINAL = {MASTERED, EXPOSURE_COMPLETE,
+TEACHER_OVERRIDE}`, `GRANTED = {NOT_STARTED}`, plus engine-written work states
+(READY_FOR_MASTERY / NEEDS_REMEDIATION / REMEDIATION_COMPLETE / INTERVENTION_REQUIRED)
+which only a server-graded attempt can write. **`IN_PROGRESS` is deliberately excluded** —
+it is written only on the create branch of that upsert, i.e. it is the literal signature of
+an ungranted row.
+(2) **Per-benchmark ready flag** (`20260804120000_benchmark_ready_for_students`, additive).
+Defaults **false**, with a backfill that flips true for every benchmark already passing the
+content check — which resolved to **exactly the 8 known-playable benchmarks (1.1–1.7,
+1.10)**, so zero regression. Content is seeded piecemeal *by design*, so inferring
+readiness from "what rows happen to exist" would put a draft lesson in front of students
+the moment it seeds.
+(3) **`api/mission/progress` gated on `reached()` — but only when CREATING the row.** Kept
+as an `upsert`: the plan's `upsert`→`update` would have thrown P2025 and **500'd every
+day-one student on their first training click**. Checking on every ping would roughly
+double load on the hottest student write path for zero added safety.
+(4) **`BenchmarkNode` re-keyed off the node-state union** — three `Record<MissionNodeState,…>`
+tables (a missing entry is now a compile error, not a wrong pixel) and the
+`?? STATUS_NODE.NOT_STARTED` fallback that hid the original bug is gone. New
+**`COMING_SOON`** state: unbuilt missions render sparkle/slate, **never a padlock** — a lock
+tells a 12-year-old they failed to earn something that does not exist.
+(5) **Consumers unified**: map page, dashboard, and `student-profile` all read the module.
+The dashboard's own "first IN_PROGRESS else first NOT_STARTED" query is gone. `profile.ts`'s
+`mastery.locked` (which filed NOT_STARTED **and** TEACHER_OVERRIDE as "locked" — a grant and
+a terminal status) now derives from the rule; it was never rendered, and is corrected rather
+than deleted so it cannot mislead later.
+(6) **`sendBeacon` on `pagehide`** for the resume bookmark (the per-step `fetch` is cancelled
+on unload); the two **dead routes** `/api/student/{map,dashboard}` deleted (zero callers).
+(7) **Badges**: `reporting_category_mastered` and `unit_complete` now count **playable**
+benchmarks — `award.ts:114` was `mastered === benchmarks.length`, and Origins has 11
+benchmarks with 8 playable, so **fixing the four category strings alone would have produced
+zero awards**. The four Pillar strings were also invented ('Origins of American Democracy'
+etc. match nothing) and are now verbatim. Purpose Finder → Source Decoder **level 3**,
+Source Showdown Champion → **level 4** (levels 1–2 are already owned by other badges, so
+mapping all four would double-award). `isCriteriaWinnable` hides the 8 badges the engine can
+never award — **18 of 26 now show**.
+(8) **Targeted seed runner** `npm run db:seed -- --only=badges` (15 named stages) so a
+four-string badge fix no longer drags in the stage-15 assessment reconciler.
+(9) **Republic Challenge**: Final Trial gate is now **school-year relative**
+(`final-trial-window.ts`) — the old `getUTCFullYear()` read **OPEN in August**, and the start
+route had **no date gate at all**, so one direct POST in week one permanently burned the
+single attempt; both the flag and the window are now enforced server-side. Category and
+Source Sprint pickers show only options with a real pool (were 4→**1** and 8→**3**; the rest
+returned 422 EMPTY_POOL on click), computed dynamically so they reappear as content lands.
+The Final Trial card now **says** it covers 1 of 4 EOC topic areas, because
+`pickBlueprintWeighted` backfills silently — the worst failure mode, since the score looks
+like readiness.
+(10) **Test infrastructure**: jsdom + Testing Library added as a **separate jest project**
+with its own roots (the global `testEnvironment: 'node'` is untouched — 150+ suites depend on
+it). +27 pure predicate tests, +24 component tests. **Mutation-tested**: reintroducing the
+original bug fails 2 tests.
+**Verification:** `tsc` 0 errors; jest **159/159 suites, 1,771 passed + 2 skips** across all
+four shards; live walk as student and teacher — map renders
+Mastered×4 / Needs-Remediation / Locked×3 / Coming-Soon×3 with clickability matching exactly;
+**the self-widening hole is closed and provably wrote nothing** (POST for 1.6/1.8/1.10 → 403,
+1.5 → 200, progress rows unchanged at 5); dashboard and map now agree on the current mission;
+a **brand-new student gets exactly one open mission** instead of an all-padlock map; Final
+Trial direct POST → 403 `TRIAL_NOT_OPEN`; **zero external request origins**; no console
+errors. Probe RC sessions deleted.
+**Regression caught in the browser and fixed:** the ported nine-week page hardcoded
+`title: '… — Civics Quest'`, which the post-rebrand title template turned into
+"… — Civics Quest — My Civics Class".
+**Env note (cost real time):** `npm install` of the three dev deps **replaced the
+`node_modules` symlink with a real directory**, putting 492MB back inside iCloud-synced
+Documents — the exact condition that used to stall `next dev` for minutes. Restored the
+`node_modules -> node_modules.nosync` convention by hand. The documented warning covers
+`npm ci`; **plain `npm install` does it too when it has packages to add.**
+**NOT committed — awaiting owner review.** Commit message when ready:
+`feat(phase-8/9): mission progression repair — derived availability, ready flag, badge and Republic Challenge fixes (ADR 0019)`.
+**Owner decisions still open:** whether the 3 empty Pillar badges should be hidden as well as
+the 8 unwinnable ones (they become winnable when content lands, so they are currently shown,
+consistent with COMING_SOON map nodes); and whether `Class.strategyUsesRequired` should
+default to 2 in the schema rather than only in the demo seed (left at 0 = opt-in, since
+flipping the default turns the feature on for every existing class).
+
+---
+
 **DISTRICT APPROVAL PACKET + APP-LAYER SECURITY HARDENING (2026-08-03) — Tier 1 `tsc` GREEN
 + Tier 2 jest GREEN (1,646 passed + 2 intentional skips, 153/153 suites, sharded ×4, all
 shards exit 0) + live in-browser CSP verification.** Owner is submitting the app to PBCSD for
@@ -1605,6 +1707,55 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-08-04 (Mission progression repair — implementing the office-hours plan):**
+Owner: "please implement the plan" (the `/office-hours` design doc, finalized by
+`/plan-eng-review` — 18 tasks, Wave ½ + Wave 1 locked). Started with T1, the blocking task:
+decide adopt-or-drop on four `progress_*` tables holding 12 rows that no migration in this
+branch knew about.
+**T1's premise was wrong, and finding that out was the most valuable thing this session did.**
+The tables are not orphans. `grep` across `src/ seed/ prisma/ tests/ scripts/` found zero
+references, which is what the eng review saw — but checking `git worktree list` and then the
+worktree's own uncommitted `prisma/schema.prisma` found
+`.claude/worktrees/nine-week-progress-levels-2f05f8`: dormant since 2026-07-25, uncommitted,
+carrying **a committed migration for all four tables**, an entire nine-week "Levels" feature,
+and **most of Wave 1 already built** — including `src/lib/mastery/availability.ts`, the exact
+file T2 said to create. Dropping those tables would have destroyed a feature. Stopped and put
+it to the owner rather than proceeding; owner chose to merge their work first, then apply the
+delta.
+**Their predicate was the one the review had already rejected twice** ("a benchmark with a
+StudentProgress row is OPEN"), which is self-widening because `api/mission/progress` upserts
+on any visit and no server-side gate exists. So the merge kept their UI and their two genuinely
+better findings (`sequenceOrder` is not unique; `masteredAt` must be write-once) and replaced
+the rule. Full inventory in Current Build Phase.
+**Two plan items were wrong on inspection and were corrected, not implemented as written:**
+the `upsert`→`update` change would have 500'd every day-one student (P2025), so the gate runs
+on create only; and T15's Final Trial fix was scoped to the config route, but the **start
+endpoint had no date gate at all**, so fixing only the UI would have left the single attempt
+burnable by a direct POST.
+**One test was updated rather than obeyed.** `strategy-track.test.ts` asserted the Master
+Strategist badge fires once all 7 missions "have a use", while an earlier test in the same
+file sets the class requirement to 3 — encoding exactly the contradiction T18 exists to fix.
+Rewrote it to assert both directions (withheld while unmet, awarded once every mission meets
+its own requirement, including the override of 5 and the waiver).
+**Verification:** `tsc` 0 errors; jest **159/159 suites, 1,771 passed + 2 intentional skips**,
+sharded ×4, all shards clean (baseline 153/1,646 — +6 suites, +125 tests); live browser walk
+as student and teacher. The check that mattered most: after POSTing `api/mission/progress` for
+three closed missions and getting 403s, the student's progress rows were **still exactly 5** —
+the self-widening write is genuinely gone, not just refused at the UI. Also mutation-tested the
+component suite by reintroducing the original bug (2 tests failed, as intended) and restored
+the file.
+**Found in the browser, not the tests:** the ported nine-week page still carried the
+pre-rebrand title, rendering "Nine-Week Progress Targets — Civics Quest — My Civics Class".
+**Env note worth keeping:** `npm install` (not just `npm ci`, which is what the existing
+build-decision warns about) **replaced the `node_modules` symlink with a real directory** when
+it had packages to add — putting 492MB back under iCloud sync. Restored the
+`node_modules -> node_modules.nosync` convention manually and re-verified Prisma through it.
+The `prisma generate` engine self-copy ENOENT also recurred twice as documented; hand-copied
+the `.dylib.node` each time.
+**NOT committed — awaiting owner review.** Note that 3 dev dependencies were added
+(`jest-environment-jsdom`, `@testing-library/react`, `@testing-library/jest-dom`); the
+**6 runtime dependencies are unchanged**, so the district packet's dependency claim still holds.
 
 **Session of 2026-08-03 (District approval packet + security hardening):** Owner: "I need to
 submit the app to the district for approval — find all the features that would help
