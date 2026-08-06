@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { trainingStepsOf, vocabStepsOf, scenarioStepsOf } from '@/lib/lesson-content'
 import type { GlossaryTerm } from '@/lib/reading-load'
 import { StepIndicator } from './StepIndicator'
+import { StepContextBar } from './StepContextBar'
+import { MissionPlanPanel } from './MissionPlanPanel'
+import { MISSION_STEP_ORDER, estimateMissionMinutes, type MissionStepKey } from './mission-steps'
 import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
+import { NextStepHandoff } from '@/components/student/NextStepHandoff'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { TrainingWalkthrough } from './TrainingWalkthrough'
@@ -14,18 +17,22 @@ import { ScenarioLab } from './ScenarioLab'
 import { PracticeArena } from './PracticeArena'
 import type { LessonStepView } from './LessonStepRenderer'
 
-const STEP_ORDER = [
-  'pre-check',
-  'briefing',
-  'vocab',
-  'training',
-  'scenario-lab',
-  'practice',
-  'readiness-check',
-  'mastery-challenge',
-] as const
+/**
+ * The mission arc.
+ *
+ * Step order, labels and explainers now come from `mission-steps.ts` — they used
+ * to be duplicated here and in StepIndicator, which could silently drift.
+ *
+ * Two guidance changes beyond that:
+ *   - A `plan` step opens the mission. Students used to land straight in an
+ *     ungraded quiz with no statement of what the mission covered or how long it
+ *     would take.
+ *   - The Mastery Challenge is taken HERE instead of navigating out to
+ *     `/student/assessment/[id]`, so the mission's context survives to the moment
+ *     of completion and can hand the student their next step.
+ */
 
-type Step = typeof STEP_ORDER[number]
+type Step = MissionStepKey
 
 interface MissionData {
   benchmarkCode: string
@@ -67,7 +74,7 @@ interface MissionFlowProps {
 }
 
 export function MissionFlow({ mission }: MissionFlowProps) {
-  const [currentStep, setCurrentStep] = useState<Step>('pre-check')
+  const [currentStep, setCurrentStep] = useState<Step>('plan')
   const [completedSteps, setCompletedSteps] = useState<Step[]>([])
   const [preCheckDone, setPreCheckDone] = useState(false)
   // Topic labels of pre-check misses → "here's what this mission will teach you".
@@ -77,6 +84,11 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     reviewTopics?: string[] | null
   } | null>(null)
   const [readinessAttempt, setReadinessAttempt] = useState(0)
+  // Mastery Challenge, taken in place. `started` is a deliberate gate: mounting
+  // AssessmentPlayer POSTs /start and creates an AssessmentAttempt row, so it
+  // must follow an explicit choice rather than merely arriving at this step.
+  const [masteryStarted, setMasteryStarted] = useState(false)
+  const [masteryResult, setMasteryResult] = useState<{ passed: boolean } | null>(null)
   // Set when the student jumps back from a failed readiness check — completing
   // the review returns them to the readiness check instead of marching forward.
   const [reviewingFrom, setReviewingFrom] = useState<Step | null>(null)
@@ -91,6 +103,10 @@ export function MissionFlow({ mission }: MissionFlowProps) {
 
   // ── Resume (spec §21.3 "continue from last saved step") ──────────────────
   // Device-local flow state first; else the server-side training step pointer.
+  //
+  // Adding `plan` at the FRONT of the order is resume-safe because saved steps
+  // are validated by membership, not by index — a student mid-mission keeps
+  // their place and never sees the plan screen again.
   useEffect(() => {
     if (hydrated.current) return
     hydrated.current = true
@@ -98,9 +114,11 @@ export function MissionFlow({ mission }: MissionFlowProps) {
       const raw = localStorage.getItem(flowStorageKey(mission.progressKey, mission.benchmarkCode))
       if (raw) {
         const saved = JSON.parse(raw) as SavedFlowState
-        if (saved.v === 1 && (STEP_ORDER as readonly string[]).includes(saved.step)) {
+        if (saved.v === 1 && (MISSION_STEP_ORDER as readonly string[]).includes(saved.step)) {
           setCurrentStep(saved.step)
-          setCompletedSteps(saved.completed.filter((s) => (STEP_ORDER as readonly string[]).includes(s)))
+          setCompletedSteps(
+            saved.completed.filter((s) => (MISSION_STEP_ORDER as readonly string[]).includes(s))
+          )
           setTrainingIndex(Math.min(Math.max(0, saved.trainingIndex), Math.max(0, trainingSteps.length - 1)))
           return
         }
@@ -112,16 +130,16 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     // passed the Readiness Check (or mastered) resumes at the Mastery
     // Challenge on a fresh device instead of being dumped back into training.
     if (mission.derivedResumeStep) {
-      const idx = STEP_ORDER.indexOf(mission.derivedResumeStep)
+      const idx = MISSION_STEP_ORDER.indexOf(mission.derivedResumeStep)
       setCurrentStep(mission.derivedResumeStep)
-      setCompletedSteps(STEP_ORDER.slice(0, idx) as Step[])
+      setCompletedSteps(MISSION_STEP_ORDER.slice(0, idx) as Step[])
       return
     }
     if (mission.resumeStepId) {
       const idx = trainingSteps.findIndex((s) => s.id === mission.resumeStepId)
       if (idx >= 0) {
         setCurrentStep('training')
-        setCompletedSteps(['pre-check', 'briefing', 'vocab'])
+        setCompletedSteps(['plan', 'pre-check', 'briefing', 'vocab'])
         setTrainingIndex(idx)
       }
     }
@@ -198,9 +216,9 @@ export function MissionFlow({ mission }: MissionFlowProps) {
       setReviewingFrom(null)
       return
     }
-    const nextIndex = STEP_ORDER.indexOf(step) + 1
-    if (nextIndex < STEP_ORDER.length) {
-      setCurrentStep(STEP_ORDER[nextIndex])
+    const nextIndex = MISSION_STEP_ORDER.indexOf(step) + 1
+    if (nextIndex < MISSION_STEP_ORDER.length) {
+      setCurrentStep(MISSION_STEP_ORDER[nextIndex])
     }
   }
 
@@ -211,16 +229,39 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     setCurrentStep(step)
   }
 
+  const assessmentCount = [
+    mission.preCheckAssessmentId,
+    mission.vocabCheckAssessmentId,
+    mission.practiceAssessmentId,
+    mission.readinessAssessmentId,
+    mission.assessmentId,
+  ].filter(Boolean).length
+
   return (
     <div className="space-y-6">
       <StepIndicator currentStep={currentStep} completedSteps={completedSteps} />
 
+      {currentStep === 'plan' && (
+        <MissionPlanPanel
+          target={mission.studentFriendlyTarget}
+          summary={mission.lessonSummary}
+          estimatedMinutes={estimateMissionMinutes({
+            trainingSteps: trainingSteps.length,
+            vocabSteps: vocabSteps.length,
+            scenarioSteps: scenarioSteps.length,
+            assessmentCount,
+          })}
+          onStart={() => completeStep('plan')}
+        />
+      )}
+
       {currentStep === 'pre-check' &&
         (mission.preCheckAssessmentId ? (
           <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+            <StepContextBar stepKey="pre-check" />
             <StepHeader icon="search" title="Mission Pre-Check">
-              A few quick questions to see what you already know — this does NOT count toward
-              your score. It&apos;s just scouting!
+              Answer what you can and guess where you need to — either way it tells us where to
+              start.
             </StepHeader>
             <AssessmentPlayer
               assessmentId={mission.preCheckAssessmentId}
@@ -267,8 +308,9 @@ export function MissionFlow({ mission }: MissionFlowProps) {
           </div>
         ) : (
           <StepPanel
+            stepKey="pre-check"
             title="Mission Pre-Check"
-            description="Answer a few quick questions to help us understand what you already know. This does NOT count toward your score — it's just scouting!"
+            description="There's no pre-check for this mission — head straight to the briefing."
             onContinue={() => completeStep('pre-check')}
             ctaLabel="Skip Pre-Check"
           />
@@ -276,6 +318,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
 
       {currentStep === 'briefing' && (
         <StepPanel
+          stepKey="briefing"
           title="Mission Briefing"
           description={mission.lessonBody ?? mission.lessonSummary ?? mission.studentFriendlyTarget}
           onContinue={() => completeStep('briefing')}
@@ -284,25 +327,36 @@ export function MissionFlow({ mission }: MissionFlowProps) {
       )}
 
       {currentStep === 'vocab' && (
-        <VocabPanel
-          terms={mission.terms}
-          vocabSteps={vocabSteps}
-          vocabCheckAssessmentId={mission.vocabCheckAssessmentId}
-          onContinue={() => completeStep('vocab')}
-        />
+        <div className="space-y-4">
+          <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+            <StepContextBar stepKey="vocab" />
+          </div>
+          <VocabPanel
+            terms={mission.terms}
+            vocabSteps={vocabSteps}
+            vocabCheckAssessmentId={mission.vocabCheckAssessmentId}
+            onContinue={() => completeStep('vocab')}
+          />
+        </div>
       )}
 
       {currentStep === 'training' &&
         (trainingSteps.length > 0 ? (
-          <TrainingWalkthrough
-            steps={trainingSteps}
-            glossaryTerms={mission.glossaryTerms}
-            initialIndex={trainingIndex}
-            onIndexChange={handleTrainingIndexChange}
-            onComplete={() => completeStep('training')}
-          />
+          <div className="space-y-4">
+            <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+              <StepContextBar stepKey="training" />
+            </div>
+            <TrainingWalkthrough
+              steps={trainingSteps}
+              glossaryTerms={mission.glossaryTerms}
+              initialIndex={trainingIndex}
+              onIndexChange={handleTrainingIndexChange}
+              onComplete={() => completeStep('training')}
+            />
+          </div>
         ) : (
           <StepPanel
+            stepKey="training"
             title="Guided Training"
             description="Work through the guided lesson content for this benchmark."
             onContinue={() => completeStep('training')}
@@ -312,9 +366,15 @@ export function MissionFlow({ mission }: MissionFlowProps) {
 
       {currentStep === 'scenario-lab' &&
         (scenarioSteps.length > 0 ? (
-          <ScenarioLab steps={scenarioSteps} onComplete={() => completeStep('scenario-lab')} />
+          <div className="space-y-4">
+            <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+              <StepContextBar stepKey="scenario-lab" />
+            </div>
+            <ScenarioLab steps={scenarioSteps} onComplete={() => completeStep('scenario-lab')} />
+          </div>
         ) : (
           <StepPanel
+            stepKey="scenario-lab"
             title="Scenario Lab"
             description="Apply what you've learned to a real civic scenario or source document."
             onContinue={() => completeStep('scenario-lab')}
@@ -325,10 +385,11 @@ export function MissionFlow({ mission }: MissionFlowProps) {
       {currentStep === 'practice' &&
         (mission.practiceAssessmentId ? (
           <div className="space-y-4 rounded-2xl border-2 border-amber-200 bg-white p-5 shadow-card">
+            <StepContextBar stepKey="practice" />
             <div className="flex items-start justify-between gap-3">
               <StepHeader icon="bolt" title="Practice Arena" tone="amber">
-                Warm up before the Readiness Check. Miss a few in a row and I&apos;ll walk one
-                through with you — that&apos;s the point of practice.
+                Miss a few in a row and I&apos;ll walk one through with you — that&apos;s the point
+                of practice.
               </StepHeader>
               <button
                 type="button"
@@ -346,6 +407,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
           </div>
         ) : (
           <StepPanel
+            stepKey="practice"
             title="Practice Arena"
             description="No practice set is available for this benchmark yet — head straight to the Readiness Check."
             onContinue={() => completeStep('practice')}
@@ -356,9 +418,9 @@ export function MissionFlow({ mission }: MissionFlowProps) {
       {currentStep === 'readiness-check' &&
         (mission.readinessAssessmentId ? (
           <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+            <StepContextBar stepKey="readiness-check" />
             <StepHeader icon="target" title="Readiness Check">
-              A short quiz to see if you&apos;re ready. Score 70% or higher to unlock the Mastery
-              Challenge.
+              Score 70% or higher and the Mastery Challenge opens up.
             </StepHeader>
             <AssessmentPlayer
               key={readinessAttempt}
@@ -430,6 +492,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
           </div>
         ) : (
           <StepPanel
+            stepKey="readiness-check"
             title="Readiness Check"
             description="Short formative quiz to see if you're ready for the Mastery Challenge."
             onContinue={() => completeStep('readiness-check')}
@@ -438,32 +501,73 @@ export function MissionFlow({ mission }: MissionFlowProps) {
         ))}
 
       {currentStep === 'mastery-challenge' && (
-        <div className="relative space-y-4 overflow-hidden rounded-3xl border-b-4 border-indigo-950 bg-gradient-to-br from-indigo-700 to-indigo-900 p-8 text-center text-white">
-          <svg
-            aria-hidden="true"
-            className="pointer-events-none absolute -left-8 -top-10 h-44 w-44 text-white/10"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M12 3l7.5 3v5.5c0 5-3.7 8.3-7.5 10.5-3.8-2.2-7.5-5.5-7.5-10.5V6L12 3z" />
-          </svg>
-          <span className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15">
-            <TrackIcon name="shield" className="h-9 w-9" strokeWidth={1.8} />
-          </span>
-          <h2 className="relative font-display text-2xl font-bold">Mastery Challenge</h2>
-          <p className="relative mx-auto max-w-md text-base leading-relaxed text-indigo-100">
-            This is the final assessment. You need 80% or higher to master this benchmark and unlock the next mission.
-            Confidence ratings are required.
-          </p>
-          {mission.assessmentId ? (
-            <Link
-              href={`/student/assessment/${mission.assessmentId}`}
-              className="relative inline-block rounded-2xl border-b-4 border-amber-600 bg-amber-400 px-7 py-3 font-display text-base font-bold text-amber-950 transition-colors hover:bg-amber-300 active:translate-y-[3px] active:border-b-0"
-            >
-              Begin Mastery Challenge →
-            </Link>
+        <div className="space-y-4">
+          {/* Own white card: the context bar is styled for light surfaces, and the
+              intro panel below is a dark gradient. Every one of the nine steps
+              gets the same orientation line this way. */}
+          <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+            <StepContextBar stepKey="mastery-challenge" />
+          </div>
+          {!masteryStarted ? (
+            <div className="relative space-y-4 overflow-hidden rounded-3xl border-b-4 border-indigo-950 bg-gradient-to-br from-indigo-700 to-indigo-900 p-8 text-center text-white">
+              <svg
+                aria-hidden="true"
+                className="pointer-events-none absolute -left-8 -top-10 h-44 w-44 text-white/10"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 3l7.5 3v5.5c0 5-3.7 8.3-7.5 10.5-3.8-2.2-7.5-5.5-7.5-10.5V6L12 3z" />
+              </svg>
+              <span className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15">
+                <TrackIcon name="shield" className="h-9 w-9" strokeWidth={1.8} />
+              </span>
+              <h2 className="relative font-display text-2xl font-bold">Mastery Challenge</h2>
+              <p className="relative mx-auto max-w-md text-base leading-relaxed text-indigo-100">
+                This is the final assessment. You need 80% or higher to master this benchmark and
+                unlock the next mission. You&apos;ll rate how sure you are on each question.
+              </p>
+              {mission.assessmentId ? (
+                // Stays in the mission (this used to navigate away to
+                // /student/assessment/[id], which threw away the mission context
+                // at the exact moment the student needed to be told what's next).
+                // Still gated on a click: mounting the player creates an attempt.
+                <button
+                  type="button"
+                  onClick={() => setMasteryStarted(true)}
+                  className="relative inline-block rounded-2xl border-b-4 border-amber-600 bg-amber-400 px-7 py-3 font-display text-base font-bold text-amber-950 transition-colors hover:bg-amber-300 active:translate-y-[3px] active:border-b-0"
+                >
+                  Begin Mastery Challenge →
+                </button>
+              ) : (
+                <p className="relative text-base text-amber-200">
+                  Assessment not yet available for this benchmark.
+                </p>
+              )}
+            </div>
           ) : (
-            <p className="relative text-base text-amber-200">Assessment not yet available for this benchmark.</p>
+            mission.assessmentId && (
+              <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+                <AssessmentPlayer
+                  assessmentId={mission.assessmentId}
+                  onComplete={(r) => setMasteryResult({ passed: r.passed })}
+                />
+              </div>
+            )
+          )}
+
+          {/* The mission debrief. The player above already shows the score, the
+              confetti, the Founder card and the calibration breakdown — this adds
+              only the thing that was missing: where to go now. */}
+          {masteryResult && (
+            <NextStepHandoff
+              heading="What's next"
+              intro={
+                masteryResult.passed
+                  ? undefined
+                  : "Not there yet — here's how to close the gap before your next attempt."
+              }
+              secondary="both"
+            />
           )}
         </div>
       )}
@@ -500,11 +604,13 @@ function StepHeader({
 }
 
 function StepPanel({
+  stepKey,
   title,
   description,
   onContinue,
   ctaLabel,
 }: {
+  stepKey: MissionStepKey
   title: string
   description: string
   onContinue: () => void
@@ -512,6 +618,7 @@ function StepPanel({
 }) {
   return (
     <div className="space-y-4 rounded-2xl border-2 border-indigo-100 bg-white p-6 shadow-card">
+      <StepContextBar stepKey={stepKey} />
       <h2 className="font-display text-xl font-bold text-gray-900">{title}</h2>
       <div className="max-w-prose whitespace-pre-line text-base leading-7 text-gray-800">{description}</div>
       <button

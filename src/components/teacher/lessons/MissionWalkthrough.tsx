@@ -18,24 +18,24 @@ import { trainingStepsOf, vocabStepsOf, scenarioStepsOf } from '@/lib/lesson-con
 import type { GlossaryTerm } from '@/lib/reading-load'
 import type { AssessmentPreview, PreviewAssessmentType } from '@/lib/lesson-media'
 import { StepIndicator } from '@/components/student/mission/StepIndicator'
+import { MissionPlanPanel } from '@/components/student/mission/MissionPlanPanel'
+import {
+  MISSION_STEP_ORDER,
+  estimateMissionMinutes,
+  type MissionStepKey,
+} from '@/components/student/mission/mission-steps'
 import { TrainingWalkthrough } from '@/components/student/mission/TrainingWalkthrough'
 import { VocabPanel, type TermView } from '@/components/student/mission/VocabPanel'
 import { ScenarioLab } from '@/components/student/mission/ScenarioLab'
 import type { LessonStepView } from '@/components/student/mission/LessonStepRenderer'
 import { AssessmentPreviewCard } from './AssessmentPreviewCard'
 
-const STEP_ORDER = [
-  'pre-check',
-  'briefing',
-  'vocab',
-  'training',
-  'scenario-lab',
-  'practice',
-  'readiness-check',
-  'mastery-challenge',
-] as const
+// Shared with the student flow so the preview cannot drift out of step with it —
+// this used to be a hand-maintained copy of MissionFlow's order, and the two
+// disagreed the moment a step was added.
+const STEP_ORDER = MISSION_STEP_ORDER
 
-type WalkStep = (typeof STEP_ORDER)[number]
+type WalkStep = MissionStepKey
 
 export interface WalkthroughData {
   benchmarkCode: string
@@ -58,7 +58,7 @@ const STUDENT_EXPERIENCE: Record<PreviewAssessmentType, string> = {
 }
 
 export function MissionWalkthrough({ data }: { data: WalkthroughData }) {
-  const [currentStep, setCurrentStep] = useState<WalkStep>('pre-check')
+  const [currentStep, setCurrentStep] = useState<WalkStep>('plan')
 
   const stepIndex = STEP_ORDER.indexOf(currentStep)
   const trainingSteps = trainingStepsOf(data.lessonSteps)
@@ -108,6 +108,23 @@ export function MissionWalkthrough({ data }: { data: WalkthroughData }) {
         completedSteps={STEP_ORDER.slice(0, stepIndex) as unknown as string[]}
         onStepClick={(key) => setCurrentStep(key as WalkStep)}
       />
+
+      {currentStep === 'plan' && (
+        <MissionPlanPanel
+          target={data.studentFriendlyTarget}
+          summary={null}
+          estimatedMinutes={estimateMissionMinutes({
+            trainingSteps: trainingSteps.length,
+            vocabSteps: vocabSteps.length,
+            scenarioSteps: scenarioSteps.length,
+            assessmentCount: (
+              ['PRE_CHECK', 'VOCAB_CHECK', 'PRACTICE', 'READINESS_CHECK', 'MASTERY_CHALLENGE'] as const
+            ).filter((t) => previewsFor(t).length > 0).length,
+          })}
+          onStart={() => go(1)}
+          ctaLabel="Next step"
+        />
+      )}
 
       {currentStep === 'pre-check' && (
         <PhasePanel title="Pre-Check" note="Students start here with an ungraded warm-up.">

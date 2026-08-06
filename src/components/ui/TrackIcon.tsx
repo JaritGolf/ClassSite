@@ -23,6 +23,7 @@ export type TrackIconName =
   | 'sparkle'
   | 'target'
   | 'chat'
+  | 'gear'
 
 const PATHS: Record<TrackIconName, ReactNode> = {
   home: (
@@ -98,6 +99,20 @@ const PATHS: Record<TrackIconName, ReactNode> = {
   ),
   chat: (
     <path d="M21 12a8 8 0 01-8 8H4l2.3-3A8 8 0 1121 12z" />
+  ),
+  /**
+   * Settings, drawn as sliders rather than a cog.
+   *
+   * A cog needs radial teeth to read as a cog, and at the 16px the nav uses
+   * those teeth collapse into a sunburst (tried it — it looked like a sun).
+   * Two tracks with handles stay unambiguous at any size.
+   */
+  gear: (
+    <>
+      <path d="M4 8h11M19 8h1M4 16h5M13 16h7" />
+      <circle cx="17" cy="8" r="2.1" />
+      <circle cx="11" cy="16" r="2.1" />
+    </>
   ),
 }
 

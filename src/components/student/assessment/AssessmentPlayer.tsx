@@ -1,11 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { buildAssessmentSubmitBody, type ConfidenceValue } from '@/lib/assessment/wire'
+import {
+  buildAssessmentSubmitBody,
+  isHighStakesAssessmentType,
+  type ConfidenceValue,
+} from '@/lib/assessment/wire'
 import { ConfidenceSelector } from './ConfidenceSelector'
 import { useSecureMode } from './useSecureMode'
 import { SecureModeGate, SecureModeBreak, SecureModeNotice } from './SecureModeGate'
 import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
+import { NextStepHandoff } from '@/components/student/NextStepHandoff'
 import { Mascot } from '@/components/ui/Mascot'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import type { GlossaryAnnotation } from '@/lib/reading-load'
@@ -120,15 +125,27 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   const containerRef = useRef<HTMLDivElement>(null)
   const secureMode = meta?.secureMode === true && !submitted
   // Embedded in the mission flow (pre-check / readiness): record and block, but
-  // do not seize the screen mid-mission. Standalone high-stakes assessments get
-  // the full fullscreen treatment.
+  // do not seize the screen mid-mission. Standalone assessments get the full
+  // fullscreen treatment.
   const isEmbedded = !!onComplete
+  // ...EXCEPT for the attempts that decide mastery, which keep the fullscreen
+  // gate wherever they render. The Mastery Challenge is now embedded in the
+  // mission flow so its debrief can hand off in context; without this clause,
+  // passing `onComplete` would silently downgrade its Focus Mode from
+  // fullscreen-gated to ungated (ADR 0020). Deciding from the server-provided
+  // assessment type instead of from the presence of a callback also means the
+  // standalone behaviour of every existing type is unchanged.
+  const highStakes = meta ? isHighStakesAssessmentType(meta.assessmentType) : false
+  // ONE value drives both the hook and the Begin gate below. They used to be two
+  // copies of the same expression; entering fullscreen needs a user gesture, so
+  // if the hook demands it and the gate never renders, fullscreen never happens.
+  const requireFullscreen = secureMode && (!isEmbedded || highStakes)
   const integrity = useSecureMode({
     assessmentId,
     attemptId,
     enabled: secureMode,
     containerRef,
-    requireFullscreen: secureMode && !isEmbedded,
+    requireFullscreen,
   })
 
   useEffect(() => {
@@ -235,20 +252,21 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
         {result.calibration && <CalibrationCard calibration={result.calibration} />}
 
         {onComplete ? (
+          // Embedded: the surrounding flow (mission debrief) owns the handoff.
           <p className="text-base text-gray-600">Great work — continue your mission below.</p>
-        ) : result.passed ? (
-          <p className="text-base text-gray-600">Next mission unlocked. Head to the Mission Map!</p>
         ) : (
-          <p className="text-base text-gray-600">Remediation has been assigned to strengthen your skills.</p>
-        )}
-
-        {!onComplete && (
-          <a
-            href="/student/map"
-            className="mt-4 inline-block rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
-          >
-            Mission Map
-          </a>
+          // Standalone. This used to be the app's worst dead end: a failed
+          // Mastery Challenge assigned a specific remediation, then offered a
+          // link to the Mission Map instead of to the work it had just assigned.
+          // The handoff resolves and names the real next step either way.
+          <NextStepHandoff
+            intro={
+              !result.passed && highStakes
+                ? "Not there yet — here's how to close the gap before your next attempt."
+                : undefined
+            }
+            secondary="both"
+          />
         )}
       </div>
     )
@@ -297,8 +315,9 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   }
 
   // Focus Mode gate — fullscreen needs a user gesture, so a click is required
-  // before the questions render. Embedded assessments skip the gate entirely.
-  if (secureMode && !isEmbedded && !integrity.started) {
+  // before the questions render. Formative embedded checks skip it; embedded
+  // high-stakes attempts do not (see `requireFullscreen` above).
+  if (requireFullscreen && !integrity.started) {
     return <SecureModeGate title={meta.title} onBegin={() => void integrity.begin()} />
   }
 

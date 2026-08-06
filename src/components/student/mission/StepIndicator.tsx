@@ -1,17 +1,7 @@
 import type { ReactNode } from 'react'
-import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
+import { TrackIcon } from '@/components/ui/TrackIcon'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
-
-const STEPS: { key: string; label: string; icon: TrackIconName; explainer: string }[] = [
-  { key: 'pre-check', label: 'Pre-Check', icon: 'compass', explainer: "A quick, ungraded warm-up so you (and the app) can see what you already know before training starts." },
-  { key: 'briefing', label: 'Briefing', icon: 'chat', explainer: 'The big picture for this mission — what it covers and why it matters.' },
-  { key: 'vocab', label: 'Key Terms', icon: 'book', explainer: "The mission's key vocabulary words, with definitions you can look up any time." },
-  { key: 'training', label: 'Training', icon: 'sparkle', explainer: 'The main lesson — notes, examples, and short ungraded checks as you go.' },
-  { key: 'scenario-lab', label: 'Scenario Lab', icon: 'search', explainer: 'Practice applying what you learned to a real-world-style scenario.' },
-  { key: 'practice', label: 'Practice', icon: 'bolt', explainer: 'Optional extra practice questions that adjust to how you’re doing — skip this if you feel ready.' },
-  { key: 'readiness-check', label: 'Readiness Check', icon: 'target', explainer: 'A graded check to confirm you’re ready for the Mastery Challenge. You can retry it.' },
-  { key: 'mastery-challenge', label: 'Mastery Challenge', icon: 'shield', explainer: 'The final graded assessment for this mission — score 80%+ to master it and unlock the next mission.' },
-]
+import { MISSION_STEPS as STEPS } from './mission-steps'
 
 interface StepIndicatorProps {
   currentStep: string

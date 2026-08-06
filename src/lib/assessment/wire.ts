@@ -61,6 +61,33 @@ export function isSecureAssessmentType(assessmentType: string): boolean {
   return SECURE_ASSESSMENT_TYPES.has(assessmentType)
 }
 
+/**
+ * The subset of secure types whose Focus Mode must include the FULLSCREEN gate,
+ * even when the player is embedded in another flow.
+ *
+ * Narrower than SECURE_ASSESSMENT_TYPES on purpose: these are the attempts that
+ * decide mastery, so they warrant seizing the screen. A formative check
+ * (READINESS_CHECK, DIAGNOSTIC) records and blocks but should not take over the
+ * screen mid-lesson.
+ *
+ * Load-bearing: `AssessmentPlayer` previously inferred "needs fullscreen" from
+ * the ABSENCE of an `onComplete` callback. That inference was safe only while
+ * nothing embedded a high-stakes assessment — the moment the Mastery Challenge
+ * moved inside the mission flow, passing a callback would have silently
+ * downgraded Focus Mode from fullscreen-gated to ungated (ADR 0020). Deciding
+ * from the server-provided assessment type cannot drift that way.
+ */
+export const HIGH_STAKES_ASSESSMENT_TYPES: ReadonlySet<string> = new Set([
+  'MASTERY_CHALLENGE',
+  'REASSESSMENT',
+  'REPUBLIC_CHALLENGE',
+  'FINAL_TRIAL',
+])
+
+export function isHighStakesAssessmentType(assessmentType: string): boolean {
+  return HIGH_STAKES_ASSESSMENT_TYPES.has(assessmentType)
+}
+
 // ── Assessment integrity ──────────────────────────────────────────────────────
 
 /**
