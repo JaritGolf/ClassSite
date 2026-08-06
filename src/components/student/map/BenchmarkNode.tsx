@@ -90,7 +90,7 @@ const STATE_LABELS: Record<MissionNodeState, string> = {
 }
 
 const STATE_EXPLAINERS: Record<MissionNodeState, string> = {
-  MASTERED: "You've hit 80%+ on this mission's Mastery Challenge. It's done — nice work.",
+  MASTERED: "You've hit 80%+ on this mission's Mastery Challenge. It's done — nice work. Click to look back at anything from this mission any time.",
   IN_PROGRESS: "You've started this mission's training but haven't taken (or passed) the Mastery Challenge yet.",
   READY_FOR_MASTERY: "You've finished training on this mission — take the Mastery Challenge to lock it in.",
   NEEDS_REMEDIATION: "A Mastery Challenge attempt came up short. Finish the review activity here to try again.",

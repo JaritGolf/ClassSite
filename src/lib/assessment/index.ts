@@ -47,6 +47,9 @@ export type { StartAttemptResult, SubmitResult, FeedbackItem } from './attempt'
 export { fetchAssessmentForStudent } from './question-fetcher'
 export type { SafeQuestion, SafeOption, AssessmentMeta } from './question-fetcher'
 
+export { getAttemptReviewsForStudent } from './attempt-review'
+export type { AttemptReview, AttemptReviewResponse } from './attempt-review'
+
 export { gradeResponses, computeScore } from './grader'
 export type { ResponseInput, GradeResult } from './grader'
 

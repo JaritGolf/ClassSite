@@ -5,7 +5,9 @@ import { getStudentAccommodations } from '@/lib/reading-load'
 import { resolveL1Language, getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
 import { resolveEffectiveSteps } from '@/lib/lesson-content'
 import { getClassStepOverrideMap } from '@/lib/lesson-media'
+import { getAttemptReviewsForStudent } from '@/lib/assessment'
 import { MissionFlow } from '@/components/student/mission/MissionFlow'
+import { MissionReview } from '@/components/student/mission/MissionReview'
 
 interface PageProps {
   params: { benchmarkCode: string }
@@ -149,6 +151,39 @@ export default async function MissionPage({ params }: PageProps) {
     masteryAssessmentId = masteryForms[submittedMasteryAttempts % masteryForms.length].id
   }
 
+  // Mastered missions are revisitable: full lesson content stays readable, and
+  // every assessment step is replaced with a review of the student's own past
+  // attempts (all rotating forms) — right/wrong per question, answer key
+  // withheld so results can't be shared to cheat.
+  const isMastered = student != null && progress?.status === 'MASTERED'
+  const attemptReviews = isMastered
+    ? await (async () => {
+        const [preCheck, vocabCheck, readinessCheck, masteryChallenge] = await Promise.all([
+          getAttemptReviewsForStudent({
+            studentId: student!.id,
+            benchmarkId: benchmark.id,
+            assessmentType: 'PRE_CHECK',
+          }),
+          getAttemptReviewsForStudent({
+            studentId: student!.id,
+            benchmarkId: benchmark.id,
+            assessmentType: 'VOCAB_CHECK',
+          }),
+          getAttemptReviewsForStudent({
+            studentId: student!.id,
+            benchmarkId: benchmark.id,
+            assessmentType: 'READINESS_CHECK',
+          }),
+          getAttemptReviewsForStudent({
+            studentId: student!.id,
+            benchmarkId: benchmark.id,
+            assessmentType: 'MASTERY_CHALLENGE',
+          }),
+        ])
+        return { preCheck, vocabCheck, readinessCheck, masteryChallenge }
+      })()
+    : null
+
   const missionData = {
     benchmarkCode: benchmark.code,
     benchmarkTitle: benchmark.title,
@@ -184,7 +219,23 @@ export default async function MissionPage({ params }: PageProps) {
         <h1 className="font-display text-3xl font-bold text-indigo-900">{benchmark.title}</h1>
         {lesson && <p className="mt-1 text-base font-semibold text-indigo-700">{lesson.studentFriendlyTarget}</p>}
       </div>
-      <MissionFlow mission={missionData} />
+      {attemptReviews ? (
+        <MissionReview
+          mission={{
+            benchmarkCode: missionData.benchmarkCode,
+            benchmarkTitle: missionData.benchmarkTitle,
+            lessonSummary: missionData.lessonSummary,
+            lessonBody: missionData.lessonBody,
+            studentFriendlyTarget: missionData.studentFriendlyTarget,
+            lessonSteps: missionData.lessonSteps,
+            terms: missionData.terms,
+            glossaryTerms: missionData.glossaryTerms,
+            attemptReviews,
+          }}
+        />
+      ) : (
+        <MissionFlow mission={missionData} />
+      )}
     </div>
   )
 }
