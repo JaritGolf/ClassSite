@@ -7,12 +7,26 @@ import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import { SuggestionBox } from '@/components/ui/SuggestionBox'
 
-const NAV_ITEMS: { href: string; label: string; icon: TrackIconName; explain: string }[] = [
+interface NavItem {
+  href: string
+  label: string
+  icon: TrackIconName
+  explain: string
+  /**
+   * Noun for this tab's count badge, used to give the badge an accessible name
+   * ("2 tasks waiting"). A bare number next to a label tells a screen-reader
+   * user nothing.
+   */
+  badgeNoun?: [singular: string, plural: string]
+}
+
+const NAV_ITEMS: NavItem[] = [
   {
     href: '/student/dashboard',
     label: 'Dashboard',
     icon: 'home',
     explain: 'Your home base — your EOC readiness, streak, and what to do next.',
+    badgeNoun: ['task waiting', 'tasks waiting'],
   },
   {
     href: '/student/map',
@@ -25,6 +39,7 @@ const NAV_ITEMS: { href: string; label: string; icon: TrackIconName; explain: st
     label: 'Daily Drill',
     icon: 'bolt',
     explain: "A short daily review that brings back questions you're starting to forget, timed to when you're about to forget them.",
+    badgeNoun: ['question due', 'questions due'],
   },
   {
     href: '/student/republic-challenge',
@@ -50,9 +65,30 @@ const NAV_ITEMS: { href: string; label: string; icon: TrackIconName; explain: st
     icon: 'medal',
     explain: "See what you've earned and what's still open.",
   },
+  // Settings lives in the scrollable row with the other destinations rather than
+  // pinned on the right. It IS a destination, and the right-hand cluster is
+  // `flex-shrink-0`: with "Settings" and "Sign out" both sitting there as text,
+  // the item row was squeezed to 53px of visible width on a 375px phone (the
+  // wordmark was already hidden below `sm` for the same reason).
+  {
+    href: '/student/settings',
+    label: 'Settings',
+    icon: 'gear',
+    explain:
+      'Accessibility tools and preferences — high contrast, large text, read-aloud language, and more.',
+  },
 ]
 
-export function StudentNav() {
+/**
+ * Count badges, keyed by nav href. Zero or missing renders nothing.
+ *
+ * Computed in the student layout from two cheap indexed counts — deliberately
+ * NOT from the full next-step resolver, which would add its availability queries
+ * to every single student page render.
+ */
+export type StudentNavBadges = Partial<Record<string, number>>
+
+export function StudentNav({ badges = {} }: { badges?: StudentNavBadges }) {
   const pathname = usePathname()
 
   return (
@@ -74,11 +110,16 @@ export function StudentNav() {
       <div className="flex items-center gap-1 overflow-x-auto">
         {NAV_ITEMS.map((item) => {
           const active = pathname.startsWith(item.href)
+          const count = item.badgeNoun ? badges[item.href] ?? 0 : 0
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-display font-semibold transition-colors ${
+              // px-2.5 rather than px-3: eight destinations in the row (Settings
+              // joined them) just overflow a 1280px viewport at the wider
+              // padding. Vertical padding is untouched so the touch target keeps
+              // its height.
+              className={`flex items-center gap-1 whitespace-nowrap rounded-xl px-2.5 py-2 text-sm font-display font-semibold transition-colors ${
                 active
                   ? 'bg-indigo-600 text-white'
                   : 'text-gray-700 hover:bg-indigo-50 hover:text-indigo-700'
@@ -91,6 +132,24 @@ export function StudentNav() {
                   {item.label}
                 </span>
               </ExplainerHover>
+              {count > 0 && item.badgeNoun && (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className={`flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 font-display text-xs font-bold ${
+                      active ? 'bg-white text-indigo-700' : 'bg-amber-400 text-amber-950'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                  {/* The number alone is meaningless to a screen reader, and the
+                      badge must never be the only way to know work is waiting
+                      (rule #10 — no status by colour or glyph alone). */}
+                  <span className="sr-only">
+                    , {count} {count === 1 ? item.badgeNoun[0] : item.badgeNoun[1]}
+                  </span>
+                </>
+              )}
             </Link>
           )
         })}
@@ -98,20 +157,9 @@ export function StudentNav() {
 
       <div className="ml-auto flex items-center gap-3 flex-shrink-0">
         {/* Students get the Comment / Question toggle: the two land on separate tabs
-            of the teacher report page. `mr-2` keeps the icon off the Settings link. */}
+            of the teacher report page. `mr-2` keeps the icon off Sign out. */}
         <SuggestionBox allowKindToggle recipient="teacher" className="mr-2" />
-        <Link
-          href="/student/settings"
-          className="rounded-xl px-3 py-2 text-sm font-display font-semibold text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 transition-colors"
-        >
-          <ExplainerHover
-            title="Settings"
-            text="Accessibility tools and preferences — high contrast, large text, read-aloud language, and more."
-            variant="plain"
-          >
-            Settings
-          </ExplainerHover>
-        </Link>
+        {/* Settings moved into the scrollable row above — see the NAV_ITEMS note. */}
         <form action="/api/auth/signout" method="POST">
           <button
             type="submit"

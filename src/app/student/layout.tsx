@@ -1,6 +1,6 @@
 import { requireAuth, getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { StudentNav } from '@/components/student/layout/StudentNav'
+import { StudentNav, type StudentNavBadges } from '@/components/student/layout/StudentNav'
 import { PauseBanner } from '@/components/student/layout/PauseBanner'
 import { ActivityHeartbeat } from '@/components/student/layout/ActivityHeartbeat'
 
@@ -12,6 +12,10 @@ export default async function StudentLayout({ children }: { children: React.Reac
   let reduceMotion = false
   let highContrast = false
   let largeText = false
+  // Nav count badges — "there is work waiting here". Two cheap indexed counts
+  // only: this layout runs on EVERY student page, so it must not pull in the
+  // next-step resolver's availability queries just to decorate a tab.
+  let navBadges: StudentNavBadges = {}
 
   const session = await getSession()
   if (session) {
@@ -20,7 +24,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
       select: { id: true },
     })
     if (student) {
-      const [settings, accommodations] = await Promise.all([
+      const [settings, accommodations, drillDueCount, remediationCount] = await Promise.all([
         prisma.studentUiSettings.findUnique({
           where: { studentId: student.id },
           select: {
@@ -34,7 +38,21 @@ export default async function StudentLayout({ children }: { children: React.Reac
           where: { studentId: student.id, active: true },
           select: { accommodation: { select: { code: true } } },
         }),
+        // Uses the `due_at` index the spaced-retrieval engine already requires.
+        prisma.spacedReviewState.count({
+          where: { studentId: student.id, dueAt: { lte: new Date() } },
+        }),
+        prisma.studentRemediation.count({
+          where: { studentId: student.id, status: 'ASSIGNED' },
+        }),
       ])
+
+      navBadges = {
+        '/student/daily-drill': drillDueCount,
+        // Assigned remediation surfaces on the Dashboard, which is where the
+        // ranked plan that links to it lives.
+        '/student/dashboard': remediationCount,
+      }
 
       if (settings) {
         pausePointMinutes = settings.pausePointMinutes
@@ -62,7 +80,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
 
   return (
     <div className={themeClass}>
-      <StudentNav />
+      <StudentNav badges={navBadges} />
       <main className="min-h-screen bg-indigo-50 bg-dots bg-[length:26px_26px]">{children}</main>
       <PauseBanner pausePointMinutes={pausePointMinutes} />
       {/* Invisible — records session start/duration. Renders nothing. */}

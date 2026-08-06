@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { DrillCard } from '@/components/student/drill/DrillCard'
+import { NextStepHandoff } from '@/components/student/NextStepHandoff'
 import { Mascot } from '@/components/ui/Mascot'
 
 interface DrillItem {
@@ -77,22 +78,20 @@ export default function DailyDrillPage() {
       )}
 
       {done ? (
-        <div className="space-y-3 rounded-3xl border-2 border-amber-200 bg-white py-12 text-center shadow-card animate-pop-in">
+        // "See you tomorrow!" used to end the session here even when the student
+        // had an open mission and half a class period left. Celebrate the drill,
+        // then hand them the next thing.
+        <div className="rounded-3xl border-2 border-amber-200 bg-white px-4 py-10 text-center shadow-card animate-pop-in">
           <Mascot pose={items.length === 0 ? 'happy' : 'celebrating'} className="mx-auto h-24 w-24" />
-          <p className="font-display text-2xl font-bold text-gray-900">
+          <p className="mt-2 font-display text-2xl font-bold text-gray-900">
             {items.length === 0 ? 'All caught up for today!' : 'Drill complete — great work!'}
           </p>
-          <p className="text-base text-gray-600">
+          <p className="mt-1 text-base text-gray-600">
             {items.length === 0
-              ? 'No items are due right now. Come back tomorrow!'
-              : 'Your spaced review state has been updated. See you tomorrow!'}
+              ? 'Nothing is due for review right now.'
+              : 'Your review schedule is updated — these will come back just before you forget them.'}
           </p>
-          <a
-            href="/student/dashboard"
-            className="mt-4 inline-block rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
-          >
-            Back to Dashboard
-          </a>
+          <NextStepHandoff secondary="both" />
         </div>
       ) : (
         // Keyed per question so answer/confidence/feedback state can't leak

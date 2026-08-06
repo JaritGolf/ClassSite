@@ -16,6 +16,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { parseRemediationContent } from '@/lib/lesson-content'
 import { CheckQuestion } from '@/components/student/mission/LessonStepRenderer'
+import { NextStepHandoff } from '@/components/student/NextStepHandoff'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon } from '@/components/ui/TrackIcon'
 
@@ -106,9 +107,10 @@ export function RemediationActivity({
               Take Second Chance Challenge →
             </Link>
           ) : (
-            <Link href="/student/map" className="text-base font-semibold text-indigo-600 hover:underline">
-              Back to Mission Map
-            </Link>
+            // No reassessment authored for this benchmark. This branch used to
+            // read "Back to Mission Map", which left a student who had just
+            // finished assigned work with nothing to do.
+            <NextStepHandoff heading="Your next step" secondary="map" />
           )}
         </div>
       )}

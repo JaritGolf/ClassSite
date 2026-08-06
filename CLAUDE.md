@@ -150,6 +150,89 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**STUDENT NAVIGATION — THE PLATFORM NOW GUIDES (2026-08-05, ADR 0022) — Tier 1 `tsc` GREEN
+(0 errors, 8.2s) + Tier 2 jest GREEN (1,907 passed + 2 intentional skips, 167/167 suites,
+sharded ×4) + full in-browser verification on both roles.** Owner: student navigation must be
+seamless and friction-free, and the platform must heavily guide students on what to do next —
+**before and after a lesson, not just inside one**.
+**Two failures were in the way.** (1) Nothing ranked the dashboard's FOUR near-equal CTAs
+(`ContinueLastActivity`, `DashboardHero`, `DrillCTA`, remediation card — two of them
+near-duplicates). (2) **Every terminal screen dead-ended into the Mission Map**, including the
+worst one: a failed Mastery Challenge assigned a specific remediation and then offered a link to
+the *map* instead of to the work it had just assigned.
+What shipped:
+(1) **`src/lib/student-next-step/`** — extends the `mastery/availability.ts` pattern (one module
+owning a question every surface used to answer itself) from "which mission is open" to "what
+should this student do next". Pure `rankNextSteps` + single `loadRankInputs` composing
+`getMissionAvailability`/`pickCurrentMissionId`, `getStrategyProgress`,
+`getLastActivityForStudent`. Order: REMEDIATION → MISSION_RESUME → DRILL → MISSION_START →
+STRATEGY → REPUBLIC_CHALLENGE → ALL_CAUGHT_UP. **`primary` is non-nullable** — an empty ranking
+collapses to ALL_CAUGHT_UP, so the platform always has an answer.
+(2) **`GET /api/student/next-step`** (`no-store`, studentId from the session cookie only) for the
+client terminal screens; server components call `getStudentPlan` directly. Safe because
+`submit` **awaits** `updateProgressAfterAttempt` before responding, so a plan fetched afterwards
+already reflects the unlock and the assignment.
+(3) **Dashboard restructured**: one dominant `NextStepCard` naming the ACTUAL step ("You've
+unlocked the Mastery Challenge", not "Continue Mission") + a quiet ordered `ThenList` + a demoted
+"Your progress" row. **`ContinueLastActivity`, `DashboardHero` and `DrillCTA` were deleted** —
+they *are* the competing CTAs the owner asked us to remove. The 2026-07-25 resume feature is
+preserved by making `getLastActivityForStudent` a ranking input (the `LAST_ACTIVITY` kind
+surfaces Source Decoder / a specific RC mode, deduped on `href`).
+(4) **All four dead ends replaced** by one shared `NextStepHandoff` (primary CTA + quiet
+Dashboard/Mission Map links, and fallback links even if the fetch fails).
+(5) **Mission arc**: a new `plan` first step (what it covers, 8 steps ahead, "about N min"
+scaled to real content, "you can stop and come back"); `StepContextBar` on every step ("STEP 4
+OF 9 · Training" + a **`gradeNote`** answering *does this count?* — previously only implied);
+the **Mastery Challenge now taken in-mission** with the debrief handing off in context.
+`STEP_ORDER` + StepIndicator's `STEPS` + the teacher walkthrough's third copy all now read one
+`mission-steps.ts`. Adding `plan` at the FRONT is resume-safe because saved steps are validated
+by **membership, not index**.
+(6) **⚠ THE REGRESSION THIS HAD TO AVOID:** `AssessmentPlayer` inferred "needs the fullscreen
+Focus Mode gate" from the **absence** of `onComplete`. Embedding the Mastery Challenge would have
+**silently downgraded Focus Mode from fullscreen-gated to ungated (ADR 0020)**. Fixed by deciding
+from the server-provided type — new `HIGH_STAKES_ASSESSMENT_TYPES` in `assessment/wire.ts` —
+with `requireFullscreen = secureMode && (!isEmbedded || highStakes)` computed **once** and used
+for both the hook arg and the Begin-gate render (they were two copies of one expression, and
+fullscreen needs a user gesture, so hook-demands-it + gate-never-renders = never fullscreen). The
+`||` form can only ever ADD the gate, so every standalone type is unchanged.
+(7) **Nav count badges** from **two cheap indexed counts** in the layout — deliberately NOT the
+resolver, which would add availability's queries to every student page render. `sr-only` text
+("Daily Drill, 3 questions due"), never colour/glyph alone.
+(8) **Mobile nav fixed in passing:** the item row was down to **53px** visible at 375px (worse
+than the 109px a prior session achieved, because `SuggestionBox` had since joined the
+`flex-shrink-0` right cluster). Moved **Settings into the scrollable row** where it belongs as a
+destination → **140px**. New `gear` TrackIcon drawn as **sliders**, because a cog's radial teeth
+read as a sunburst at 16px (tried it).
+**Verification:** `tsc` 0 errors; jest **167/167 suites, 1,907 passed + 2 skips** across all four
+shards; live walk as student and teacher. **The Focus Mode matrix was proven live:** embedded
+Mastery Challenge → fullscreen Begin gate with questions hidden; embedded Readiness Check →
+questions immediately, Focus Mode still armed ("Take a break" present). Failed a real Mastery
+Challenge (40%) in-mission and confirmed the handoff replaced the map dead end; then created the
+remediation the engine would assign and confirmed the plan resolves to
+`/student/remediation/<real-id>` with "Start Training Mission". Drill completion now hands off
+instead of "See you tomorrow!". Mission plan screen, 9-tile indicator, teacher walkthrough
+(starts on `plan`, 9 jumpable tiles, no blank panels). **Zero external request origins**; no
+console errors; high-contrast verified through the REAL settings path (gradient → white, amber
+CTA → white + black border, badges outlined) — note that injecting `.cq-high-contrast` via JS in
+dev does NOT reproduce it, which briefly looked like a bug.
+**Demo data restored to baseline** (48 attempts, 0 remediations, 3 badges, streak 16/16, SM-2
+rows restored field-by-field, class secure-mode off, `.env.local` byte-identical by checksum).
+**One residue disclosed:** `StudentLastActivity` now reads DAILY_DRILL — I had no snapshot of its
+prior value, and any real student action overwrites it.
+**NOT committed — awaiting owner review.** Commit message when ready:
+`feat(phase-8/9): student next-step guidance — ranked resolver, dashboard restructure, terminal-screen handoffs, mission plan step (ADR 0022)`.
+**Env fix worth keeping (this unblocked everything):** `tsc` hung for **>20 minutes at 0% CPU in
+interruptible sleep**, twice. Cause: **`.next` was a real directory inside iCloud-synced
+Documents full of dataless placeholder files**, and `tsconfig.json` includes `.next/types/**/*.ts`
+— reading it never returned while `fileproviderd` sat pegged at 98% CPU. Replaced with the
+documented `.next -> .next.nosync` convention (`/.next*` is already gitignored) → **tsc went from
+>20 min to 8.2 seconds**, and the full 167-suite sharded run to ~25s. This very likely also
+explains the standing "next dev takes 15–20 min to boot" note. The worktree's `node_modules` was
+also a real 508M directory of mostly-evicted placeholders (`du` reported 17M) — replaced with a
+worktree-local `node_modules.nosync` + symlink.
+
+---
+
 **MISSION PROGRESSION REPAIR — THE LOOP NOW WORKS (2026-08-04) — Tier 1 `tsc` GREEN
 (0 errors) + Tier 2 jest GREEN (1,771 passed + 2 intentional skips, 159/159 suites,
 sharded ×4) + full in-browser verification on both roles.** Implements the
@@ -1708,6 +1791,47 @@ the **district sign-offs** remain owner-pending.
 
 _(Update this at the end of every session.)_
 
+**Session of 2026-08-05 (Student navigation — the platform as a guide, ADR 0022):** Owner: make
+student navigation seamless and friction-free, and have the platform heavily guide what to do next
+— before and after a lesson, not just inside one. Read the surfaces first rather than planning
+from this file, which is what turned a vague ask into two concrete defects: four unranked
+dashboard CTAs, and four terminal screens that all dead-ended into the Mission Map. Scoped the
+four design forks via AskUserQuestion (owner took the recommendation on each: one dominant action
++ a "then" list; primary-plus-quiet-alternatives on exits; all three mission-arc changes; count
+badges rather than nav regrouping). Full inventory in Current Build Phase.
+**The single most valuable finding was in the code, not the plan.** Embedding the Mastery
+Challenge required passing `onComplete`, and `AssessmentPlayer` inferred "needs the fullscreen
+Focus Mode gate" from the *absence* of that callback — so the change would have silently
+downgraded Focus Mode from gated to ungated (ADR 0020). Caught it while reading the component,
+fixed it by deriving from the server-provided assessment type, and then **proved both directions
+live** rather than trusting the reasoning: embedded mastery gates and hides questions, embedded
+readiness does not gate but stays armed.
+**Two plan items were adjusted on contact with reality, not implemented as written.** The plan
+said to delete `ContinueLastActivity`; I kept the *feature* by making `getLastActivityForStudent`
+a ranking input, because it is the only thing that surfaces Source Decoder levels and specific
+Republic Challenge modes. And the plan put the drill above a resumable mission; I split
+mission-resume above the drill and mission-*start* below it, so a 3-minute decaying review never
+waits behind a 20-minute new mission but also never interrupts work in flight.
+**Verification:** `tsc` 0 errors; jest **167/167 suites, 1,907 passed + 2 intentional skips**,
+sharded ×4; live walk as student and teacher. Deliberately failed a real Mastery Challenge (40%)
+to see the worst dead end replaced in situ. Mutation-tested the component suite (pointing the CTA
+back at the map fails a test) and restored the file. All probe rows removed and demo data restored
+to baseline field-by-field; `.env.local` restored byte-identical by checksum. **Disclosed
+honestly:** `StudentLastActivity` reads DAILY_DRILL because I never snapshotted its prior value,
+and the nav badge count is server-rendered so it can read stale until the next navigation.
+**Env note — this cost most of the session and is worth keeping.** `tsc` hung twice for >20
+minutes at **0% CPU in interruptible sleep**. It was not slowness: `.next` was a real directory
+inside iCloud-synced Documents full of **dataless placeholder files**, `tsconfig.json` includes
+`.next/types/**/*.ts`, and `fileproviderd` was pegged at 98% CPU so those reads never returned.
+Diagnosed by checking accumulated CPU time (2.29s in 7 minutes) and `lsof`, then timing a
+recursive read of `.next` (hung) against `src` (481 files in 0.085s). Replacing `.next` with the
+documented `.next -> .next.nosync` symlink took tsc to **8.2 seconds** and the full sharded suite
+to ~25 seconds. I suspect this is the real cause of the standing "next dev takes 15–20 minutes to
+boot" memory. Also: `du -sh` reports only *materialized* bytes, which is how to spot an evicted
+tree (node_modules read 17M of an expected 508M).
+
+---
+
 **Session of 2026-08-04 (Mission progression repair — implementing the office-hours plan):**
 Owner: "please implement the plan" (the `/office-hours` design doc, finalized by
 `/plan-eng-review` — 18 tasks, Wave ½ + Wave 1 locked). Started with T1, the blocking task:
@@ -2816,6 +2940,11 @@ _(Add entries as the agent makes judgment calls. Format: `[date] [topic]: [chose
 - [2026-07-30] Duplicate-session write race accepted rather than locked (ADR 0019): two simultaneous first-requests can each open a session; `mergeAdjacentSessions` collapses them on read. Chosen over a lock/serializable transaction on a per-minute hot path. Reversible if duplicates ever prove more than cosmetic.
 - [2026-07-18] `officialStatement` persisted via migration, not read from seed at request time (teacher benchmark description): chose an additive nullable `Benchmark.officialStatement` column (migration `20260718120000_add_benchmark_official_statement`), written by `seed/benchmarks.ts`'s existing upsert, over importing `seed/official_standards.ts` directly into app code at render time (owner's explicit choice via AskUserQuestion). Keeps `seed/` doing only seeding and the app reading only from Postgres, consistent with the "PostgreSQL only" rule, and mirrors how `lessonSummary` already works. Reversible by dropping the column and switching `getBenchmarkDescription` to a direct import if ever needed.
 - [2026-08-03] Rebrand keeps the old brand inside stateful identifiers (rebrand): `.cq-*` a11y CSS classes, the `cq_sub_mode` cookie, the `civics-quest:sentence-chunking` and `cq:mission:*` localStorage keys, the `civics_quest_dev` local DB, and the `civics_quest_v3_build_spec.md` filename all keep the pre-rebrand name (owner's explicit choice via AskUserQuestion). Each one holds live state or is a declared reference: renaming the keys silently resets saved student accessibility/resume state, the cookie drops sub mode for active sessions (and is asserted by 3 suites + hardcoded in `middleware.ts`), the CSS classes are the WCAG high-contrast compliance surface, and the spec filename is referenced by name in CLAUDE.md + 6 docs. Do-not-fix comments now sit at both localStorage/cookie sites. Reversible only with a migration/compat-read for each — not a find-and-replace.
+- [2026-08-05] Focus Mode's fullscreen decision comes from the assessment TYPE, not from the presence of an `onComplete` callback (ADR 0022): `AssessmentPlayer` used `isEmbedded = !!onComplete` to decide whether to demand fullscreen, which was safe only while nothing embedded a high-stakes assessment. Moving the Mastery Challenge into the mission flow would have silently un-gated it. Now `requireFullscreen = secureMode && (!isEmbedded || HIGH_STAKES_ASSESSMENT_TYPES.has(type))`, computed once and shared by the hook and the Begin-gate render. The `||` form can only ever ADD the gate, so no existing standalone behaviour changed. Reversible by narrowing the type set; do NOT reintroduce the callback inference.
+- [2026-08-05] `StudentPlan.primary` is non-nullable (ADR 0022): an empty ranking collapses to an `ALL_CAUGHT_UP` step rather than returning null, so "the platform always has an answer" is a type-level guarantee and no consumer has to render an empty state. Reversible only by making every caller handle null.
+- [2026-08-05] Next-step time estimates are nominal and rendered approximately (ADR 0022): only the drill is derived from real data (due-item count); mission length scales to the content present; the rest are constants in one table. Always "about N min", never a precise figure we did not measure. `StudentActivitySession.areaSeconds` could replace them with per-student medians later.
+- [2026-08-05] Nav badges use two cheap indexed counts, not the next-step resolver (ADR 0022): the student layout runs on every student page, so it must not pull in availability's queries to decorate a tab. Consequence: the badge is server-rendered and can read stale until the next navigation (e.g. right after finishing the drill on the same page). Reversible by making the badges a client component that refetches.
+- [2026-08-05] `.next` must be a symlink to `.next.nosync`, not a real directory: a real `.next` inside iCloud-synced Documents accumulates dataless placeholder files, and because `tsconfig.json` includes `.next/types/**/*.ts`, `tsc` blocks forever reading them (observed: >20 min at 0% CPU while `fileproviderd` sat at 98%). Restoring the symlink took `tsc` to 8.2s and the full sharded suite to ~25s. `/.next*` is already gitignored. Same convention as `node_modules -> node_modules.nosync`; `du -sh` reporting far less than expected is the tell that a tree is evicted.
 - [2026-08-03] Site identity uses static `icon.svg` + `ImageResponse` OG card, no new deps (rebrand): the app icon is a static SVG (zero runtime cost, nothing to fail at build) while the 1200×630 share card is generated by `next/og`'s `ImageResponse`, which ships inside Next 14 — chosen over adding an image library or committing a hand-made PNG. The eagle is an inline data-URI SVG so the card renders with no network requests (rule #9). Gotcha baked into the file as a comment: satori ignores a viewBox's min-x/min-y, so the card's copy of the mark carries pre-translated zero-offset coordinates and must be kept in visual sync with `icon.svg` by hand. Reversible by replacing `opengraph-image.tsx` with a static PNG.
 
 ---
