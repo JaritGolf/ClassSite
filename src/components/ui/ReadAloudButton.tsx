@@ -7,9 +7,30 @@
  * no speech synthesis.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+
+/**
+ * Suppress the per-piece buttons inside a composite module.
+ *
+ * A composite can hold a paragraph, a picture and a diagram, each of which
+ * renders its own read-aloud today — so one screen would sprout several
+ * buttons that all drive ONE speech queue. Worse, this component cancels
+ * `speechSynthesis` globally on unmount, so any one of them unmounting stops
+ * another's playback, and `onend` never fires for the interrupted one, leaving
+ * it stuck showing "Stop".
+ *
+ * A composite therefore wraps its pieces in this provider and renders a single
+ * button that reads the whole module in order — which is also what a student
+ * actually wants.
+ */
+const SuppressReadAloud = createContext(false)
+
+export function ReadAloudSuppressed({ children }: { children: ReactNode }) {
+  return <SuppressReadAloud.Provider value={true}>{children}</SuppressReadAloud.Provider>
+}
 
 export function ReadAloudButton({ text, label = 'Read aloud' }: { text: string; label?: string }) {
+  const suppressed = useContext(SuppressReadAloud)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [hasSpeech, setHasSpeech] = useState(false)
 
@@ -36,7 +57,7 @@ export function ReadAloudButton({ text, label = 'Read aloud' }: { text: string; 
     setIsSpeaking(true)
   }, [hasSpeech, isSpeaking, text])
 
-  if (!hasSpeech) return null
+  if (!hasSpeech || suppressed) return null
 
   return (
     <button

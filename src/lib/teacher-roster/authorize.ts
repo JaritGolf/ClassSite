@@ -43,6 +43,34 @@ export async function assertClassOwnedByTeacher(
 }
 
 /**
+ * Assert that EVERY class is owned by the teacher, on ONE roster query.
+ *
+ * `assertClassOwnedByTeacher` re-runs the full roster query per call, so
+ * guarding a multi-class save in a loop fires N identical queries before any
+ * write — a teacher applying one change to five periods paid for five. Prefer
+ * this wherever a request names more than one class.
+ *
+ * Fails on the FIRST class the teacher does not own and names it, so a request
+ * mentioning one foreign class never partially applies to the classes they do
+ * own. An empty list is an input error, not a vacuous pass — silently
+ * succeeding on "apply to no classes" would look like a save that worked.
+ */
+export async function assertClassesOwnedByTeacher(
+  teacherUserId: string,
+  classIds: readonly string[]
+): Promise<void> {
+  if (classIds.length === 0) {
+    throw new RosterError('NOT_FOUND', 'At least one class must be selected')
+  }
+  const roster = await getTeacherRoster(teacherUserId)
+  const owned = new Set(roster.classes.map((c) => c.id))
+  const foreign = classIds.find((id) => !owned.has(id))
+  if (foreign) {
+    throw new RosterError('FORBIDDEN', `Class ${foreign} is not owned by this teacher`)
+  }
+}
+
+/**
  * Return the Student record for a student enrolled in the teacher's class.
  * Throws RosterError('FORBIDDEN') if not enrolled, RosterError('NOT_FOUND')
  * if the student record doesn't exist.

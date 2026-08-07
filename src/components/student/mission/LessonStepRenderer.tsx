@@ -18,25 +18,33 @@
  */
 
 import { useRef, useState } from 'react'
-import { parseStepContent, type CheckOption } from '@/lib/lesson-content'
+import {
+  parseStepContent,
+  type CheckOption,
+  type ContentBlock,
+  type LessonStepLike,
+} from '@/lib/lesson-content'
 import { seededShuffle } from '@/lib/shuffle'
 import { buildGlossaryAnnotations, type GlossaryTerm } from '@/lib/reading-load'
 import { StimulusDisplay, renderAnnotatedText } from '@/components/reading-load/StimulusDisplay'
 import { Mascot } from '@/components/ui/Mascot'
-import { ReadAloudButton } from '@/components/ui/ReadAloudButton'
+import { ReadAloudButton, ReadAloudSuppressed } from '@/components/ui/ReadAloudButton'
 import { VideoStepView } from './media/VideoStepView'
 import { ImageStepView } from './media/ImageStepView'
 import { DiagramStepView } from './media/DiagramStepView'
 import { InfographicStepView } from './media/InfographicStepView'
 
-export interface LessonStepView {
-  id: string
-  stepType: string
-  title: string
-  content: string
-  sequenceOrder: number
-  required: boolean
-}
+/**
+ * The step shape this renderer needs.
+ *
+ * Aliased to the canonical `LessonStepLike` rather than redeclared — this file
+ * previously carried a third structurally identical copy of the same six
+ * fields (alongside `LessonStepLike` and, later, `ResolvedStep`), which is
+ * exactly how they drift. Deliberately the LOOSE subset, with no `origin`:
+ * the student path passes fully-resolved steps that carry it, while the
+ * teacher preview and walkthrough pass raw LessonStep rows that do not.
+ */
+export type LessonStepView = LessonStepLike
 
 interface LessonStepRendererProps {
   step: LessonStepView
@@ -105,7 +113,105 @@ export function LessonStepRenderer({
   if (parsed.kind === 'infographic') {
     return <InfographicStepView infographic={parsed.infographic} />
   }
+  if (parsed.kind === 'composite') {
+    return (
+      <CompositeView
+        blocks={parsed.blocks}
+        glossaryTerms={glossaryTerms}
+        revealAll={revealAnswers}
+      />
+    )
+  }
   return <NoteView text={parsed.text} glossaryTerms={glossaryTerms} />
+}
+
+// ── Composite modules: an ordered stack of content pieces ────────────────────
+
+/** The text a piece contributes to the module's single read-aloud, in order. */
+function blockSpeech(block: ContentBlock): string {
+  switch (block.type) {
+    case 'text':
+      return block.data.text
+    case 'timeline':
+      return [block.data.intro, ...block.data.events.map((e) => `${e.marker}. ${e.label}`)]
+        .filter(Boolean)
+        .join('. ')
+    case 'image':
+      return block.data.longDescription
+    case 'video':
+      return `${block.data.title}. ${block.data.description}`
+    case 'diagram':
+      return `${block.data.title}. ${block.data.summary}`
+    case 'infographic':
+      return `${block.data.title}. ${block.data.summary}`
+    case 'worked-example':
+      return [block.data.problem, ...block.data.thinkAloud, block.data.answer, block.data.whyItWorks]
+        .filter(Boolean)
+        .join('. ')
+  }
+}
+
+function CompositeView({
+  blocks,
+  glossaryTerms,
+  revealAll,
+}: {
+  blocks: ContentBlock[]
+  glossaryTerms?: GlossaryTerm[]
+  revealAll?: boolean
+}) {
+  // ONE read-aloud for the whole module, covering every piece in order. The
+  // per-piece buttons are suppressed below — several of them on one screen
+  // would compete for a single speech queue and cancel each other.
+  const speech = blocks.map(blockSpeech).filter(Boolean).join('. ')
+
+  return (
+    <div className="space-y-6">
+      {speech && (
+        <div className="flex justify-end">
+          <ReadAloudButton text={speech} label="Read this aloud" />
+        </div>
+      )}
+      <ReadAloudSuppressed>
+        {blocks.map((block, index) => (
+          <div key={index} className={index > 0 ? 'mt-6' : undefined}>
+            {renderBlock(block, glossaryTerms, revealAll)}
+          </div>
+        ))}
+      </ReadAloudSuppressed>
+    </div>
+  )
+}
+
+function renderBlock(
+  block: ContentBlock,
+  glossaryTerms: GlossaryTerm[] | undefined,
+  revealAll: boolean | undefined
+) {
+  switch (block.type) {
+    case 'text':
+      return <NoteView text={block.data.text} glossaryTerms={glossaryTerms} />
+    case 'timeline':
+      return (
+        <TimelineView
+          intro={block.data.intro}
+          connector={block.data.connector}
+          events={block.data.events}
+        />
+      )
+    case 'image': {
+      const { ...image } = block.data
+      return <ImageStepView {...image} />
+    }
+    case 'video':
+      return <VideoStepView {...block.data} />
+    case 'diagram':
+      return <DiagramStepView diagram={block.data} />
+    case 'infographic':
+      return <InfographicStepView infographic={block.data} />
+    case 'worked-example':
+      return <WorkedExampleView {...block.data} revealAll={revealAll} />
+  }
 }
 
 // ── Note text: read-aloud + glossary popovers (spec §31.2 supports) ──────────

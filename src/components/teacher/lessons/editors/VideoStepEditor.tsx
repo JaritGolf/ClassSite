@@ -56,7 +56,7 @@ export function VideoStepEditor({
 
       <FormField
         label="Description"
-        hint="Always-visible text alternative (also the read-aloud target) — at least 20 characters."
+        hint="Always-visible text alternative — what the video covers. This is also what read-aloud speaks."
         error={errors?.description}
       >
         {(props) => (
@@ -87,7 +87,6 @@ export function VideoStepEditor({
             <input
               {...props}
               type="text"
-              maxLength={12}
               className={inputClasses}
               value={value.durationLabel ?? ''}
               onChange={(e) => onChange({ ...value, durationLabel: e.target.value || undefined })}

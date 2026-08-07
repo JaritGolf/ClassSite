@@ -8,7 +8,9 @@ import {
   scenarioStepsOf,
   stepNeedsAttempt,
   canAdvance,
+  withResumeAnchors,
   type LessonStepLike,
+  type StepOrigin,
 } from '@/lib/lesson-content'
 
 const CHECK_JSON = JSON.stringify({
@@ -90,5 +92,72 @@ describe('stepNeedsAttempt / canAdvance', () => {
       expect(stepNeedsAttempt(s)).toBe(false)
       expect(canAdvance(s, new Set())).toBe(true)
     }
+  })
+})
+
+describe('withResumeAnchors', () => {
+  function node(id: string, origin: StepOrigin, stepType = 'NOTE'): LessonStepLike & {
+    origin: StepOrigin
+  } {
+    return { id, stepType, title: id, content: id, sequenceOrder: 1, required: false, origin }
+  }
+
+  it('a built-in step reports itself', () => {
+    const [a] = withResumeAnchors([node('a', 'BUILTIN')])
+    expect(a.progressStepId).toBe('a')
+  })
+
+  it('a teacher module reports the nearest preceding built-in', () => {
+    const result = withResumeAnchors([
+      node('a', 'BUILTIN'),
+      node('cstep:x', 'CLASS'),
+      node('cstep:y', 'CLASS'),
+      node('b', 'BUILTIN'),
+    ])
+    expect(result.map((s) => s.progressStepId)).toEqual(['a', 'a', 'a', 'b'])
+  })
+
+  it('a teacher module before every built-in reports null', () => {
+    const result = withResumeAnchors([node('cstep:x', 'CLASS'), node('a', 'BUILTIN')])
+    expect(result.map((s) => s.progressStepId)).toEqual([null, 'a'])
+  })
+
+  it('anchors are BUCKET-LOCAL, so the anchor always resolves inside its own bucket', () => {
+    // REGRESSION GUARD. MissionFlow resolves the saved pointer with
+    // trainingSteps.findIndex(s => s.id === resumeStepId). If the anchor were
+    // taken from the whole lesson it could be a VOCABULARY step — absent from
+    // the training bucket — findIndex would return -1, and the student would
+    // be silently dropped back to the first training step.
+    const lesson = [
+      node('note-1', 'BUILTIN', 'NOTE'),
+      node('vocab-1', 'BUILTIN', 'VOCABULARY'),
+      node('cstep:mine', 'CLASS', 'NOTE'),
+    ]
+
+    const training = withResumeAnchors(trainingStepsOf(lesson))
+    const anchor = training.find((s) => s.id === 'cstep:mine')?.progressStepId
+
+    expect(anchor).toBe('note-1')
+    expect(anchor).not.toBe('vocab-1')
+    // The whole point: the anchor is findable in the bucket it was computed for.
+    expect(training.findIndex((s) => s.id === anchor)).toBeGreaterThanOrEqual(0)
+  })
+
+  it('preserves order, length and every original field', () => {
+    const input = [node('a', 'BUILTIN'), node('cstep:x', 'CLASS')]
+    const result = withResumeAnchors(input)
+    expect(result.map((s) => s.id)).toEqual(['a', 'cstep:x'])
+    expect(result[1]).toMatchObject({ stepType: 'NOTE', origin: 'CLASS', title: 'cstep:x' })
+  })
+
+  it('bucketing passes origin straight through, so anchors can be computed after it', () => {
+    const lesson = [
+      node('a', 'BUILTIN', 'NOTE'),
+      node('cstep:x', 'CLASS', 'SOURCE_ANALYSIS'),
+      node('b', 'BUILTIN', 'VOCABULARY'),
+    ]
+    expect(trainingStepsOf(lesson).map((s) => s.origin)).toEqual(['BUILTIN'])
+    expect(scenarioStepsOf(lesson).map((s) => s.origin)).toEqual(['CLASS'])
+    expect(vocabStepsOf(lesson).map((s) => s.origin)).toEqual(['BUILTIN'])
   })
 })

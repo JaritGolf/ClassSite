@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 
 interface LibraryIllustration {
   key: string
@@ -19,16 +19,62 @@ interface LibraryPhoto {
   height: number | null
 }
 
+/**
+ * What the picker hands back.
+ *
+ * The metadata fields matter: an IMAGE step requires alt + caption + credit +
+ * license + a 40-character description, which is a real amount of typing. The
+ * library endpoint already returns author/source/license/title per photo and
+ * this component used to throw all of it away. Passing it through prefills
+ * three of the five fields for library images.
+ *
+ * `alt` and `longDescription` are deliberately NEVER prefilled — they are the
+ * accessibility content itself and have to be written by a human who has
+ * looked at the picture.
+ */
+export interface PickedImage {
+  asset: string
+  width?: number
+  height?: number
+  caption?: string
+  credit?: string
+  license?: string
+}
+
+/** Plain-language messages for every failure the import route can return. */
+const IMPORT_ERRORS: Record<string, string> = {
+  INSECURE_SCHEME: 'That link has to start with https:// — try copying the address again.',
+  UNSUPPORTED_URL: "That doesn't look like a public web address. Paste the link to the picture itself.",
+  BLOCKED_ADDRESS: "That address isn't reachable from here. Try a link from a public website.",
+  HOST_UNREACHABLE: "We couldn't find that website. Check the address for a typo.",
+  TOO_MANY_REDIRECTS:
+    'That link keeps bouncing to other pages. Try right-clicking the picture and copying its direct address.',
+  TIMED_OUT:
+    'That site took too long to answer. Try again, or save the picture to your computer and upload it instead.',
+  NOT_PUBLIC:
+    "That picture is behind a login, so we can't fetch it. Save it to your computer and upload it instead.",
+  NOT_FOUND: "There's no picture at that address anymore.",
+  NOT_AN_IMAGE:
+    "That link points to a web page, not a picture. Right-click the picture, choose 'Copy image address', and paste that.",
+  UNSUPPORTED_FORMAT: "That picture is in a format we can't use. PNG, JPEG, and WebP all work.",
+  FILE_TOO_LARGE: 'That picture is bigger than 4 MB. Try a smaller version.',
+  TOO_MANY_IMPORTS:
+    "You've added a lot of pictures in the last hour. Give it a few minutes and try again.",
+  RIGHTS_NOT_CONFIRMED: 'Tick the box to confirm you have the rights to use this picture.',
+  FETCH_FAILED:
+    "We couldn't get that picture. Try saving it to your computer and uploading it instead.",
+}
+
 export function ImageAssetPicker({
   currentAsset,
   onPick,
   onClose,
 }: {
   currentAsset: string
-  onPick: (result: { asset: string; width?: number; height?: number }) => void
+  onPick: (result: PickedImage) => void
   onClose: () => void
 }) {
-  const [tab, setTab] = useState<'library' | 'upload'>('library')
+  const [tab, setTab] = useState<'library' | 'upload' | 'link'>('library')
   const [illustrations, setIllustrations] = useState<LibraryIllustration[]>([])
   const [photos, setPhotos] = useState<LibraryPhoto[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,6 +82,14 @@ export function ImageAssetPicker({
   const [rightsConfirmed, setRightsConfirmed] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importError, setImportError] = useState<string | null>(null)
+  // Two image pieces in one module can each open a picker, so these ids must
+  // be unique per instance — duplicates would point both labels at the first
+  // input. Same approach FormField already takes.
+  const linkFieldId = useId()
+  const linkHintId = useId()
 
   useEffect(() => {
     let cancelled = false
@@ -59,21 +113,57 @@ export function ImageAssetPicker({
     try {
       const form = new FormData()
       form.append('file', uploadFile)
+      // The server enforces this too — the checkbox below is the UI half of a
+      // real record, not a client-side nicety.
+      form.append('rightsConfirmed', 'true')
       const res = await fetch('/api/lessons/media/upload', { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) {
-        setUploadError(
-          data.error === 'FILE_TOO_LARGE'
-            ? 'That file is too large (max 4MB).'
-            : data.error === 'UNSUPPORTED_FORMAT'
-              ? 'Unsupported image format — use PNG, JPEG, or WebP.'
-              : 'Upload failed — try again.'
+        setUploadError(IMPORT_ERRORS[data.error] ?? 'That upload didn’t work — try again.')
+        return
+      }
+      onPick({
+        asset: data.path,
+        width: data.width ?? undefined,
+        height: data.height ?? undefined,
+        license: 'Used with permission',
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  /**
+   * Paste a link: the SERVER fetches the picture once and stores it on our own
+   * domain. The teacher gets the convenience of pasting a URL, and students'
+   * browsers never contact the other site.
+   */
+  async function submitImport() {
+    if (!linkUrl.trim() || !rightsConfirmed) return
+    setImporting(true)
+    setImportError(null)
+    try {
+      const res = await fetch('/api/lessons/media/import-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: linkUrl.trim(), rightsConfirmed: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setImportError(
+          IMPORT_ERRORS[data.error] ??
+            "We couldn’t get that picture. Try saving it to your computer and uploading it instead."
         )
         return
       }
-      onPick({ asset: data.path, width: data.width ?? undefined, height: data.height ?? undefined })
+      onPick({
+        asset: data.path,
+        width: data.width ?? undefined,
+        height: data.height ?? undefined,
+        credit: data.sourceHost ? `Source: ${data.sourceHost}` : undefined,
+      })
     } finally {
-      setUploading(false)
+      setImporting(false)
     }
   }
 
@@ -106,6 +196,17 @@ export function ImageAssetPicker({
             }`}
           >
             Upload new
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === 'link'}
+            onClick={() => setTab('link')}
+            className={`rounded-t-md px-3 py-1.5 text-sm font-semibold ${
+              tab === 'link' ? 'bg-indigo-100 text-indigo-800' : 'text-gray-500 hover:bg-gray-100'
+            }`}
+          >
+            Paste a link
           </button>
         </div>
         <button
@@ -153,7 +254,17 @@ export function ImageAssetPicker({
                     key={photo.path}
                     type="button"
                     onClick={() =>
-                      onPick({ asset: photo.path, width: photo.width ?? undefined, height: photo.height ?? undefined })
+                      onPick({
+                        asset: photo.path,
+                        width: photo.width ?? undefined,
+                        height: photo.height ?? undefined,
+                        // Prefill what the library already knows, so the
+                        // teacher types two fields instead of five.
+                        caption: photo.title || undefined,
+                        credit:
+                          [photo.author, photo.source].filter(Boolean).join(' / ') || undefined,
+                        license: photo.license || undefined,
+                      })
                     }
                     aria-current={currentAsset === photo.path}
                     className={`rounded-md border-2 p-2 text-left text-xs hover:border-indigo-400 ${
@@ -172,6 +283,54 @@ export function ImageAssetPicker({
             </div>
           </div>
         )
+      ) : tab === 'link' ? (
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-gray-800" htmlFor={linkFieldId}>
+            Address of the picture
+          </label>
+          <input
+            id={linkFieldId}
+            type="url"
+            inputMode="url"
+            placeholder="https://…"
+            value={linkUrl}
+            onChange={(e) => setLinkUrl(e.target.value)}
+            aria-describedby={linkHintId}
+            className="block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <p id={linkHintId} className="text-xs text-gray-600">
+            Right-click the picture on the other website, choose{' '}
+            <strong>Copy image address</strong>, and paste it here. We save a copy to this site, so
+            your students never load anything from the other website — and your picture won&apos;t
+            disappear if that site changes.
+          </p>
+          <p className="text-xs text-gray-600">
+            You are responsible for only using images you have the rights to use — owned by you,
+            licensed for this use, or public domain.
+          </p>
+          <label className="flex items-start gap-2 text-sm text-gray-800">
+            <input
+              type="checkbox"
+              checked={rightsConfirmed}
+              onChange={(e) => setRightsConfirmed(e.target.checked)}
+              className="mt-0.5"
+            />
+            I confirm I have the rights to use this image.
+          </label>
+          {importError && (
+            <p role="alert" className="text-xs font-semibold text-rose-700">
+              {importError}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={submitImport}
+            disabled={!linkUrl.trim() || !rightsConfirmed || importing}
+            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
+          >
+            {importing ? 'Getting the picture…' : 'Get this picture and use it'}
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
           <input

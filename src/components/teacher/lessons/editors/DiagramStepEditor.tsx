@@ -107,7 +107,7 @@ export function DiagramStepEditor({
 
       <FormField
         label="Summary"
-        hint="Full-text equivalent, always rendered (read-aloud target) — at least 40 characters."
+        hint="Full-text equivalent, always rendered. This is what read-aloud speaks and what a student gets if the diagram can't be seen."
         error={errors?.summary}
       >
         {(props) => (
@@ -139,7 +139,6 @@ export function DiagramStepEditor({
                     type="text"
                     className={inputClasses}
                     placeholder="Label"
-                    maxLength={60}
                     value={node.label}
                     onChange={(e) => update({ label: e.target.value })}
                   />

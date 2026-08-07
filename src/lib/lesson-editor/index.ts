@@ -28,3 +28,25 @@ export {
   LESSON_STEPS_REORDERED,
   type AddStepInput,
 } from './structure'
+
+export {
+  addClassModule,
+  editClassModule,
+  deleteClassModule,
+  reorderClassPlan,
+  resetClassPlanOrder,
+  setClassModuleVisibility,
+  isTeacherAddableStepType,
+  ClassStructureError,
+  TEACHER_ADDABLE_STEP_TYPES,
+  MAX_CLASS_MODULES_PER_LESSON,
+  CLASS_LESSON_STEP_ADDED,
+  CLASS_LESSON_STEP_EDITED,
+  CLASS_LESSON_STEP_REMOVED,
+  CLASS_LESSON_PLAN_REORDERED,
+  type AddClassModuleInput,
+  type EditClassModuleInput,
+  type ReorderClassPlanInput,
+  type ModulePlacement,
+  type TeacherAddableStepType,
+} from './class-structure'

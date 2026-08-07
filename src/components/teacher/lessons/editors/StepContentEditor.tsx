@@ -11,97 +11,22 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import {
-  parseStepContent,
-  VideoSchema,
-  ImageSchema,
-  DiagramSchema,
-  InfographicSchema,
-  WorkedExampleSchema,
-  InteractiveCheckSchema,
-  SourceAnalysisSchema,
-  TimelineSchema,
-  type VideoContent,
-  type ImageContent,
-  type DiagramContent,
-  type InfographicContent,
-  type WorkedExampleContent,
-  type InteractiveCheckContent,
-  type SourceAnalysisContent,
-} from '@/lib/lesson-content'
-import { VideoStepEditor } from './VideoStepEditor'
-import { ImageStepEditor } from './ImageStepEditor'
-import { DiagramStepEditor, blankForVariant } from './DiagramStepEditor'
-import { InfographicStepEditor, blankBlock } from './InfographicStepEditor'
-import { WorkedExampleStepEditor } from './WorkedExampleStepEditor'
-import { InteractiveCheckStepEditor } from './InteractiveCheckStepEditor'
-import { SourceAnalysisStepEditor, newGuidingQuestion } from './SourceAnalysisStepEditor'
-import { PlainTextStepEditor, type PlainTextValue } from './PlainTextStepEditor'
+import { parseStepContent } from '@/lib/lesson-content'
 import { FormField, inputClasses } from './form/FormField'
+import { DraftEditor } from './blocks/DraftEditor'
+import {
+  blankDraft,
+  toPayload,
+  validateDraft,
+  type DraftValue,
+} from './blocks/block-draft'
 
-type DraftValue =
-  | { kind: 'VIDEO'; data: VideoContent }
-  | { kind: 'IMAGE'; data: ImageContent }
-  | { kind: 'DIAGRAM'; data: DiagramContent }
-  | { kind: 'INFOGRAPHIC'; data: InfographicContent }
-  | { kind: 'WORKED_EXAMPLE'; data: WorkedExampleContent }
-  | { kind: 'INTERACTIVE_CHECK'; data: InteractiveCheckContent }
-  | { kind: 'SOURCE_ANALYSIS'; data: SourceAnalysisContent }
-  | { kind: 'PLAIN_TEXT'; data: PlainTextValue }
+export type { DraftValue } from './blocks/block-draft'
 
 export interface SaveResult {
   ok: boolean
   error?: string
   fieldErrors?: Record<string, string>
-}
-
-function blankDraft(stepType: string): DraftValue {
-  switch (stepType) {
-    case 'VIDEO':
-      return { kind: 'VIDEO', data: { youtubeId: '', title: '', description: '' } }
-    case 'IMAGE':
-      return {
-        kind: 'IMAGE',
-        data: { asset: '', alt: '', caption: '', credit: '', license: '', longDescription: '' },
-      }
-    case 'DIAGRAM':
-      return { kind: 'DIAGRAM', data: blankForVariant('flow', '', '') }
-    case 'INFOGRAPHIC':
-      return {
-        kind: 'INFOGRAPHIC',
-        data: { title: '', summary: '', blocks: [blankBlock('fact'), blankBlock('fact')] },
-      }
-    case 'WORKED_EXAMPLE':
-      return {
-        kind: 'WORKED_EXAMPLE',
-        data: { problem: '', thinkAloud: ['', ''], answer: '', whyItWorks: '' },
-      }
-    case 'INTERACTIVE_CHECK':
-      return {
-        kind: 'INTERACTIVE_CHECK',
-        data: {
-          question: '',
-          options: [
-            { text: '', correct: true, feedback: '' },
-            { text: '', correct: false, feedback: '' },
-            { text: '', correct: false, feedback: '' },
-            { text: '', correct: false, feedback: '' },
-          ],
-        },
-      }
-    case 'SOURCE_ANALYSIS':
-      return {
-        kind: 'SOURCE_ANALYSIS',
-        data: {
-          sourceTitle: '',
-          sourceAttribution: '',
-          passage: '',
-          guidingQuestions: [newGuidingQuestion()],
-        },
-      }
-    default:
-      return { kind: 'PLAIN_TEXT', data: { mode: 'text', text: '' } }
-  }
 }
 
 function initDraft(stepType: string, content: string): { value: DraftValue; degraded: boolean } {
@@ -135,121 +60,19 @@ function initDraft(stepType: string, content: string): { value: DraftValue; degr
       const { kind: _k, ...rest } = parsed
       return { value: { kind: 'PLAIN_TEXT', data: { mode: 'timeline', ...rest } }, degraded: false }
     }
+    case 'composite':
+      // Defensive only. A composite module holds several pieces and belongs to
+      // CompositeStepEditor; every caller routes content types there, so this
+      // branch is unreachable in practice. It must still exist because the
+      // switch is exhaustive over ParsedStepContent — and it deliberately does
+      // NOT try to squeeze a multi-piece module into a single-shape draft,
+      // which would silently discard every piece but one on save.
+      return { value: blankDraft(stepType), degraded: true }
     case 'text':
       if (stepType === 'NOTE' || stepType === 'VOCABULARY' || stepType === 'DISCUSSION') {
         return { value: { kind: 'PLAIN_TEXT', data: { mode: 'text', text: parsed.text } }, degraded: false }
       }
       return { value: blankDraft(stepType), degraded: content.trim().length > 0 }
-  }
-}
-
-function fromZod(result: { success: boolean; data?: unknown; error?: { issues: { path: (string | number)[]; message: string }[] } }) {
-  if (result.success) {
-    return { valid: true, fieldErrors: {} as Record<string, string>, serialized: JSON.stringify(result.data) }
-  }
-  const fieldErrors: Record<string, string> = {}
-  for (const issue of result.error?.issues ?? []) {
-    const key = issue.path[0]?.toString() ?? '_root'
-    if (!fieldErrors[key]) fieldErrors[key] = issue.message
-  }
-  return { valid: false, fieldErrors, serialized: null as string | null }
-}
-
-function validateDraft(draft: DraftValue) {
-  switch (draft.kind) {
-    case 'VIDEO':
-      return fromZod(VideoSchema.safeParse(draft.data))
-    case 'IMAGE':
-      return fromZod(ImageSchema.safeParse(draft.data))
-    case 'DIAGRAM':
-      return fromZod(DiagramSchema.safeParse(draft.data))
-    case 'INFOGRAPHIC':
-      return fromZod(InfographicSchema.safeParse(draft.data))
-    case 'WORKED_EXAMPLE':
-      return fromZod(WorkedExampleSchema.safeParse(draft.data))
-    case 'INTERACTIVE_CHECK':
-      return fromZod(InteractiveCheckSchema.safeParse(draft.data))
-    case 'SOURCE_ANALYSIS':
-      return fromZod(SourceAnalysisSchema.safeParse(draft.data))
-    case 'PLAIN_TEXT':
-      if (draft.data.mode === 'text') {
-        return draft.data.text.length > 0
-          ? { valid: true, fieldErrors: {} as Record<string, string>, serialized: draft.data.text }
-          : { valid: false, fieldErrors: { text: 'Required' }, serialized: null as string | null }
-      } else {
-        const { mode: _mode, ...rest } = draft.data
-        return fromZod(TimelineSchema.safeParse({ kind: 'timeline', ...rest }))
-      }
-  }
-}
-
-function toPayload(draft: DraftValue): unknown {
-  if (draft.kind !== 'PLAIN_TEXT') return draft.data
-  if (draft.data.mode === 'text') return { text: draft.data.text }
-  const { mode: _mode, ...rest } = draft.data
-  return { kind: 'timeline', ...rest }
-}
-
-function renderEditor(
-  draft: DraftValue,
-  setDraft: (d: DraftValue) => void,
-  fieldErrors: Record<string, string>,
-  stepType: string
-) {
-  switch (draft.kind) {
-    case 'VIDEO':
-      return (
-        <VideoStepEditor value={draft.data} onChange={(data) => setDraft({ kind: 'VIDEO', data })} errors={fieldErrors} />
-      )
-    case 'IMAGE':
-      return (
-        <ImageStepEditor value={draft.data} onChange={(data) => setDraft({ kind: 'IMAGE', data })} errors={fieldErrors} />
-      )
-    case 'DIAGRAM':
-      return (
-        <DiagramStepEditor value={draft.data} onChange={(data) => setDraft({ kind: 'DIAGRAM', data })} errors={fieldErrors} />
-      )
-    case 'INFOGRAPHIC':
-      return (
-        <InfographicStepEditor
-          value={draft.data}
-          onChange={(data) => setDraft({ kind: 'INFOGRAPHIC', data })}
-          errors={fieldErrors}
-        />
-      )
-    case 'WORKED_EXAMPLE':
-      return (
-        <WorkedExampleStepEditor
-          value={draft.data}
-          onChange={(data) => setDraft({ kind: 'WORKED_EXAMPLE', data })}
-          errors={fieldErrors}
-        />
-      )
-    case 'INTERACTIVE_CHECK':
-      return (
-        <InteractiveCheckStepEditor
-          value={draft.data}
-          onChange={(data) => setDraft({ kind: 'INTERACTIVE_CHECK', data })}
-          errors={fieldErrors}
-        />
-      )
-    case 'SOURCE_ANALYSIS':
-      return (
-        <SourceAnalysisStepEditor
-          value={draft.data}
-          onChange={(data) => setDraft({ kind: 'SOURCE_ANALYSIS', data })}
-          errors={fieldErrors}
-        />
-      )
-    case 'PLAIN_TEXT':
-      return (
-        <PlainTextStepEditor
-          value={draft.data}
-          onChange={(data) => setDraft({ kind: 'PLAIN_TEXT', data })}
-          errors={fieldErrors}
-          allowTimeline={stepType === 'NOTE'}
-        />
-      )
   }
 }
 
@@ -270,6 +93,7 @@ export function StepContentEditor({
   saveLabel,
   classOptions,
   defaultCheckedClassIds,
+  initialDraft,
 }: {
   stepId: string
   stepType: string
@@ -283,8 +107,29 @@ export function StepContentEditor({
    * so a teacher can apply this edit to several of their classes at once. */
   classOptions?: StepContentClassOption[]
   defaultCheckedClassIds?: string[]
+  /**
+   * Start from this draft instead of parsing `initialContent`.
+   *
+   * For a NEW module there is nothing to parse: a blank payload cannot satisfy
+   * its own schema, so round-tripping one through parseStepContent always fell
+   * out of the text fallback — which showed the teacher raw JSON in a textarea
+   * (NOTE/VOCABULARY), silently dropped them into the plain-text editor instead
+   * of the timeline editor, or flew a "this content didn't match the expected
+   * shape" banner on a module they had just created. Callers adding a module
+   * pass `blankDraft(...)` here and skip parsing entirely.
+   */
+  initialDraft?: DraftValue
 }) {
-  const init = useMemo(() => initDraft(stepType, initialContent), [stepId, stepType, initialContent])
+  const init = useMemo(
+    () =>
+      initialDraft
+        ? { value: initialDraft, degraded: false }
+        : initDraft(stepType, initialContent),
+    // `initialDraft` is a mount-time seed only; re-deriving it on identity
+    // change would discard whatever the teacher has typed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [stepId, stepType, initialContent]
+  )
   const [draft, setDraft] = useState<DraftValue>(init.value)
   const [title, setTitle] = useState(initialTitle)
   const [checkedClassIds, setCheckedClassIds] = useState<string[]>(defaultCheckedClassIds ?? [])
@@ -353,7 +198,12 @@ export function StepContentEditor({
         )}
       </FormField>
 
-      {renderEditor(draft, setDraft, fieldErrors, stepType)}
+      <DraftEditor
+        draft={draft}
+        onChange={setDraft}
+        errors={fieldErrors}
+        allowTimeline={stepType === 'NOTE'}
+      />
 
       {classOptions && (
         <fieldset className="rounded-md border border-gray-200 p-3">

@@ -21,5 +21,6 @@ export type { TeacherRoster } from './roster'
 export {
   assertStudentInTeacherClass,
   assertClassOwnedByTeacher,
+  assertClassesOwnedByTeacher,
   getStudentInTeacherClass,
 } from './authorize'

@@ -362,7 +362,7 @@ model Class {
   period       String?
   schoolYear   String  @map("school_year")
   active       Boolean @default(true)
-  subPrepNotes String? @db.Text @map("sub_prep_notes")
+  subPrepNotes String? @map("sub_prep_notes") @db.Text
 
   // Phase 11 — Republic Challenge per-class configuration
   rcSessionLengthOverride Int?    @map("rc_session_length_override")
@@ -391,6 +391,8 @@ model Class {
   assignments        Assignment[]
   readinessSnapshots ClassReadinessSnapshot[]
   stepVisibility     ClassLessonStepVisibility[]
+  classLessonSteps   ClassLessonStep[]
+  lessonOutlines     ClassLessonOutline[]
   suggestions        Suggestion[]
   progressPlan       ProgressPlan?               @relation(fields: [progressPlanId], references: [id])
 
@@ -464,24 +466,24 @@ model Benchmark {
   /// Defaults false: content is seeded piecemeal by design, so the existence of
   /// some rows is not evidence a mission is ready for a 12-year-old.
   /// See src/lib/mastery/availability.ts.
-  readyForStudents    Boolean        @default(false) @map("ready_for_students")
+  readyForStudents Boolean @default(false) @map("ready_for_students")
 
-  unit                 Unit                   @relation(fields: [unitId], references: [id])
-  reportingCategory    ReportingCategory      @relation(fields: [reportingCategoryId], references: [id])
-  clarifications       BenchmarkClarification[]
-  connectionsFrom      BenchmarkConnection[]  @relation("ConnectionSource")
-  connectionsTo        BenchmarkConnection[]  @relation("ConnectionTarget")
-  terms                Term[]
-  resources            Resource[]
-  lessons              Lesson[]
-  questions            Question[]
-  assessments          Assessment[]
-  assignments          Assignment[]
-  studentProgress      StudentProgress[]
-  remediationItems     RemediationItem[]
-  spacedReviewStates   SpacedReviewState[]
-  spacedReviewEvents   SpacedReviewEvent[]
-  checkpointTargets    ProgressCheckpointTarget[]
+  unit               Unit                       @relation(fields: [unitId], references: [id])
+  reportingCategory  ReportingCategory          @relation(fields: [reportingCategoryId], references: [id])
+  clarifications     BenchmarkClarification[]
+  connectionsFrom    BenchmarkConnection[]      @relation("ConnectionSource")
+  connectionsTo      BenchmarkConnection[]      @relation("ConnectionTarget")
+  terms              Term[]
+  resources          Resource[]
+  lessons            Lesson[]
+  questions          Question[]
+  assessments        Assessment[]
+  assignments        Assignment[]
+  studentProgress    StudentProgress[]
+  remediationItems   RemediationItem[]
+  spacedReviewStates SpacedReviewState[]
+  spacedReviewEvents SpacedReviewEvent[]
+  checkpointTargets  ProgressCheckpointTarget[]
 
   @@map("benchmarks")
 }
@@ -573,25 +575,29 @@ model Lesson {
   // list again on any future `db:seed` run (see seed/lessons/_seeder.ts) —
   // admin-added steps can't be mistaken for "dropped" and deleted, and a
   // deliberately-removed step can't be resurrected by its old seed def.
-  structureEditedAt DateTime? @map("structure_edited_at")
+  structureEditedAt     DateTime?      @map("structure_edited_at")
 
-  benchmark Benchmark   @relation(fields: [benchmarkId], references: [id])
-  steps     LessonStep[]
+  benchmark     Benchmark            @relation(fields: [benchmarkId], references: [id])
+  steps         LessonStep[]
+  // Per-class authoring layer (ADR 0023). Both cascade — a teacher's modules
+  // and their arrangement are meaningless once the lesson itself is gone.
+  classSteps    ClassLessonStep[]
+  classOutlines ClassLessonOutline[]
 
   @@map("lessons")
 }
 
 model LessonStep {
-  id            String         @id @default(cuid())
-  lessonId      String         @map("lesson_id")
-  stepType      LessonStepType @map("step_type")
-  title         String
-  content       String
-  sequenceOrder Int            @map("sequence_order")
-  required      Boolean        @default(true)
+  id              String           @id @default(cuid())
+  lessonId        String           @map("lesson_id")
+  stepType        LessonStepType   @map("step_type")
+  title           String
+  content         String
+  sequenceOrder   Int              @map("sequence_order")
+  required        Boolean          @default(true)
   // Global teacher kill-switch for media steps (per-class overrides live on
   // ClassLessonStepVisibility). Core instructional steps stay enabled.
-  enabled       Boolean        @default(true)
+  enabled         Boolean          @default(true)
   // Set the moment an admin edits this step's global content via the content
   // editor. Once set, a reseed excludes title/content/stepType from this
   // step's update payload (title/content stay whatever the admin set) —
@@ -599,24 +605,38 @@ model LessonStep {
   contentEditedAt DateTime?        @map("content_edited_at")
   source          LessonStepSource @default(SEED) @map("source")
 
-  lesson          Lesson                      @relation(fields: [lessonId], references: [id])
-  currentProgress StudentProgress[]           @relation("CurrentLessonStep")
-  classVisibility ClassLessonStepVisibility[]
+  lesson             Lesson                      @relation(fields: [lessonId], references: [id])
+  currentProgress    StudentProgress[]           @relation("CurrentLessonStep")
+  classVisibility    ClassLessonStepVisibility[]
+  // Teacher modules that were added relative to this step (ADR 0023). The FK
+  // is SetNull, so deleting this step orphans the anchor but never deletes a
+  // teacher's own content.
+  anchoredClassSteps ClassLessonStep[]           @relation("ClassStepAnchor")
 
   @@map("lesson_steps")
 }
 
-// Per-class override for a lesson step, on two independent axes:
+// Per-class override for a BUILT-IN lesson step, on two independent axes:
 //   - visibility: null = inherit the step's global `enabled` flag;
-//     true/false forces show/hide (existing ADR 0015 behavior, unchanged).
+//     true/false forces show/hide (ADR 0015 behavior; since ADR 0023 the
+//     per-class axis accepts ANY step type, while the GLOBAL `enabled`
+//     kill-switch is still media-only).
 //   - content: overrideTitle/overrideContent null = inherit the step's
 //     global title/content; non-null = this class sees the override instead
-//     (ADR TBD — lesson content editor). The two axes are independent: a
-//     step can be globally enabled but hidden for class A while also
-//     carrying a content override that only matters for class B.
+//     (ADR 0023). The two axes are independent: a step can be globally
+//     enabled but hidden for class A while also carrying a content override
+//     that only matters for class B.
 // A row with all three overrides null is meaningless and is pruned (see
 // pruneOrUpdateOverrideRow in src/lib/lesson-media/index.ts). Cascade: an
 // override is meaningless once its step is deleted.
+//
+// NOTE the name is narrower than the contract — this table carries visibility
+// AND content. Deliberately not renamed: a @@map rename touches every call
+// site for zero user-visible benefit. This comment is the contract.
+// ORDER is deliberately NOT here: a pure reorder would create rows carrying no
+// visibility or content opinion, and pruneOrUpdateOverrideRow would then
+// delete a teacher's arrangement the moment they reset a content override.
+// Order lives in ClassLessonOutline.
 model ClassLessonStepVisibility {
   id              String   @id @default(cuid())
   classId         String   @map("class_id")
@@ -632,6 +652,99 @@ model ClassLessonStepVisibility {
 
   @@unique([classId, lessonStepId])
   @@map("class_lesson_step_visibility")
+}
+
+// Where a class-added module sits relative to its anchor. AFTER is the default
+// (the "add a module here" gesture between two steps); BEFORE lets a teacher
+// put their own opener ahead of the lesson's first built-in step.
+enum ClassStepAnchor {
+  BEFORE
+  AFTER
+}
+
+// A lesson module a TEACHER authored for ONE of their classes (ADR 0023).
+//
+// Deliberately NOT a LessonStep row with a nullable classId: `lesson.steps` is
+// read unfiltered by the student mission page, three teacher pages, the admin
+// page and the seeder, so a nullable discriminator means one forgotten `where`
+// leaks Period 3's module into Period 5's mission. Keeping teacher content in
+// its own table also means the seeder's delete-dropped-steps pass can never
+// reach it, and no global surface has to learn it exists.
+//
+// `content` holds the same string LessonStep.content holds (JSON for
+// structured types, plain text for NOTE/VOCABULARY/DISCUSSION) and is
+// validated by the SAME validateAndSerializeStepContent — a class module can
+// never carry a shape the student renderer would reject.
+model ClassLessonStep {
+  id             String         @id @default(cuid())
+  classId        String         @map("class_id")
+  lessonId       String         @map("lesson_id")
+  // Shared by the sibling rows created by ONE "add to all 5 classes" action,
+  // so "edit/delete this everywhere" is a lookup rather than a heuristic.
+  siblingGroupId String         @map("sibling_group_id")
+  stepType       LessonStepType @map("step_type")
+  title          String
+  content        String
+  // Always false. A teacher module must never gate progression (see
+  // stepNeedsAttempt in src/lib/lesson-content/gating.ts) and can never be a
+  // StudentProgress.currentStepId, which is an FK to LessonStep.
+  required       Boolean        @default(false)
+  // The class's own hide switch for its own module — NOT routed through
+  // ClassLessonStepVisibility, whose FK targets LessonStep and whose
+  // "delete the row when every axis is null" invariant would need a nullable
+  // second FK and a fourth axis to accommodate this.
+  visible        Boolean        @default(true)
+
+  // RECONSTRUCTION METADATA ONLY — position is authoritative in
+  // ClassLessonOutline. Consulted when this module is absent from the saved
+  // order (added on another device, or the outline was never written because
+  // the teacher never reordered). SetNull, not Cascade: the seeder's
+  // delete-dropped-steps pass must never take a teacher's module with it.
+  anchorLessonStepId String?         @map("anchor_lesson_step_id")
+  anchorPosition     ClassStepAnchor @default(AFTER) @map("anchor_position")
+
+  // Scalar, no relation — same convention as UploadedLessonImage.uploadedBy.
+  // Attribution only; assertClassOwnedByTeacher is what authorizes writes.
+  createdByUserId String   @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  class      Class       @relation(fields: [classId], references: [id])
+  lesson     Lesson      @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  anchorStep LessonStep? @relation("ClassStepAnchor", fields: [anchorLessonStepId], references: [id], onDelete: SetNull)
+
+  // The read path is always "every module for this class + lesson", ordered by
+  // createdAt for the deterministic reconciliation tie-break.
+  @@index([classId, lessonId, createdAt])
+  @@index([siblingGroupId])
+  @@map("class_lesson_steps")
+}
+
+// ONE row per (class, lesson) holding that class's effective module order as
+// an ordered array mixing built-in LessonStep ids and ClassLessonStep ids
+// (ADR 0023).
+//
+// AN ABSENT ROW MEANS the class has expressed no ordering opinion and sees the
+// pristine built-in sequence. That is what makes "behaviour is identical for a
+// class that never reordered" a structural property rather than a code path.
+//
+// Json rather than String[]: this schema uses no scalar lists anywhere, the
+// array is always read and written whole, and it is never queried
+// element-wise. It carries no referential integrity, so every read runs
+// through reconcileClassOutline (src/lib/lesson-content/class-outline.ts).
+model ClassLessonOutline {
+  id             String   @id @default(cuid())
+  classId        String   @map("class_id")
+  lessonId       String   @map("lesson_id")
+  orderedItemIds Json     @default("[]") @map("ordered_item_ids")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  class  Class  @relation(fields: [classId], references: [id])
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, lessonId])
+  @@map("class_lesson_outlines")
 }
 
 // Binary storage for teacher/admin-uploaded lesson images (Postgres, not
@@ -717,13 +830,13 @@ model Question {
   sourceTier          SourceTier          @default(B) @map("source_tier")
   active              Boolean             @default(true)
 
-  benchmark         Benchmark         @relation(fields: [benchmarkId], references: [id])
-  reportingCategory ReportingCategory @relation(fields: [reportingCategoryId], references: [id])
-  stimulus          Stimulus?         @relation(fields: [stimulusId], references: [id])
-  misconception     Misconception?    @relation("QuestionMisconception", fields: [misconceptionId], references: [id])
-  options           QuestionOption[]
-  assessmentItems   AssessmentQuestion[]
-  attemptResponses  AttemptResponse[]
+  benchmark          Benchmark            @relation(fields: [benchmarkId], references: [id])
+  reportingCategory  ReportingCategory    @relation(fields: [reportingCategoryId], references: [id])
+  stimulus           Stimulus?            @relation(fields: [stimulusId], references: [id])
+  misconception      Misconception?       @relation("QuestionMisconception", fields: [misconceptionId], references: [id])
+  options            QuestionOption[]
+  assessmentItems    AssessmentQuestion[]
+  attemptResponses   AttemptResponse[]
   spacedReviewEvents SpacedReviewEvent[]
 
   @@index([benchmarkId])
@@ -739,8 +852,8 @@ model QuestionOption {
   feedback        String?
   misconceptionId String? @map("misconception_id")
 
-  question         Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  misconception    Misconception? @relation("OptionMisconception", fields: [misconceptionId], references: [id])
+  question         Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  misconception    Misconception?    @relation("OptionMisconception", fields: [misconceptionId], references: [id])
   attemptResponses AttemptResponse[]
 
   @@map("question_options")
@@ -935,11 +1048,11 @@ model AttemptResponse {
 // ============================================================
 
 model AttemptIntegrityEvent {
-  id        String @id @default(cuid())
-  attemptId String @map("attempt_id")
+  id         String   @id @default(cuid())
+  attemptId  String   @map("attempt_id")
   /// BLUR | VISIBILITY_HIDDEN | FULLSCREEN_EXIT | COPY_BLOCKED
   /// | CUT_BLOCKED | PASTE_BLOCKED | CONTEXT_MENU_BLOCKED | PRINT_BLOCKED
-  eventType String @map("event_type")
+  eventType  String   @map("event_type")
   /// Client-reported time away in ms; null for instantaneous events.
   durationMs Int?     @map("duration_ms")
   recordedAt DateTime @default(now()) @map("recorded_at")
@@ -992,9 +1105,9 @@ model RemediationItem {
   content         String
   approvalStatus  ApprovalStatus  @default(DRAFT) @map("approval_status")
 
-  benchmark           Benchmark          @relation(fields: [benchmarkId], references: [id])
-  misconception       Misconception?     @relation("RemediationMisconception", fields: [misconceptionId], references: [id])
-  fixForMisconception Misconception[]    @relation("MisconceptionFix")
+  benchmark           Benchmark            @relation(fields: [benchmarkId], references: [id])
+  misconception       Misconception?       @relation("RemediationMisconception", fields: [misconceptionId], references: [id])
+  fixForMisconception Misconception[]      @relation("MisconceptionFix")
   studentRemediations StudentRemediation[]
 
   @@map("remediation_items")
@@ -1278,13 +1391,13 @@ model TeacherOverride {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  actorUserId String?  @map("actor_user_id")
-  action      String
-  entityType  String   @map("entity_type")
-  entityId    String?  @map("entity_id")
-  metadataJson Json?   @map("metadata_json")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String   @id @default(cuid())
+  actorUserId  String?  @map("actor_user_id")
+  action       String
+  entityType   String   @map("entity_type")
+  entityId     String?  @map("entity_id")
+  metadataJson Json?    @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   actor User? @relation(fields: [actorUserId], references: [id])
 
@@ -1344,24 +1457,24 @@ model NarrativeProgress {
 // ============================================================
 
 model StudentActivitySession {
-  id            String    @id @default(cuid())
-  studentId     String    @map("student_id")
-  startedAt     DateTime  @default(now()) @map("started_at")
-  lastActiveAt  DateTime  @default(now()) @map("last_active_at")
+  id             String    @id @default(cuid())
+  studentId      String    @map("student_id")
+  startedAt      DateTime  @default(now()) @map("started_at")
+  lastActiveAt   DateTime  @default(now()) @map("last_active_at")
   /// Set when the session is idle-closed or superseded. Null = still open.
-  endedAt       DateTime? @map("ended_at")
+  endedAt        DateTime? @map("ended_at")
   /// Engaged time in seconds — sum of bounded per-touch deltas, never span.
-  activeSeconds Int       @default(0) @map("active_seconds")
+  activeSeconds  Int       @default(0) @map("active_seconds")
   /// Bucketed area → seconds, e.g. { "mission": 1320, "drill": 480 }.
   /// Area is a validated enum at the API boundary; raw paths are never stored.
-  areaSeconds   Json?     @map("area_seconds")
+  areaSeconds    Json?     @map("area_seconds")
   /// Where the student was on their MOST RECENT touch — what the live panel
   /// shows. Distinct from areaSeconds, which is where time has accumulated:
   /// a student who spent 30m on missions then opened the drill is "on" the
   /// drill, and a student who just arrived has a current area but no tallies.
-  lastArea      String?   @map("last_area")
+  lastArea       String?   @map("last_area")
   /// True when this session was opened by a real sign-in (vs. resumed work).
-  startedByLogin Boolean  @default(false) @map("started_by_login")
+  startedByLogin Boolean   @default(false) @map("started_by_login")
 
   student Student @relation(fields: [studentId], references: [id])
 
@@ -1383,6 +1496,7 @@ model StudentUiSettings {
 
   @@map("student_ui_settings")
 }
+
 // SUGGESTION BOX (ADR 0021)
 // ============================================================
 
@@ -1397,13 +1511,13 @@ model Suggestion {
   /// teacher report page.
   kind     SuggestionKind     @default(COMMENT)
 
-  authorUserId String @map("author_user_id")
+  authorUserId    String   @map("author_user_id")
   /// Role snapshot at submit time. `audience` is derived from THIS at creation,
   /// never from User.role at read time.
-  authorRole   UserRole @map("author_role")
+  authorRole      UserRole @map("author_role")
   /// Set when a student filed it. Powers the roster-union read that surfaces
   /// suggestions filed before the student was enrolled anywhere.
-  authorStudentId String? @map("author_student_id")
+  authorStudentId String?  @map("author_student_id")
 
   /// "The teacher in the loop" — NOT a pure recipient FK. For a student-authored
   /// suggestion this is the recipient teacher, resolved at submit time from the
@@ -1417,9 +1531,9 @@ model Suggestion {
 
   /// Plain text, exactly as typed. Never parsed, never rendered as HTML — read
   /// surfaces render it as text inside `whitespace-pre-wrap`.
-  body String @db.Text
+  body         String @db.Text
   /// The concrete pathname the author was on, e.g. /student/mission/SS.7.CG.1.1.
-  pathname String
+  pathname     String
   /// Server-derived parameterized route, e.g. /student/mission/[benchmarkCode].
   /// The groupable, PII-free dimension — safe to put in a query string.
   routePattern String @map("route_pattern")
@@ -1427,12 +1541,12 @@ model Suggestion {
   pageLabel    String @map("page_label")
   /// Non-identifying triage context only: { viewportWidth, params }.
   /// Deliberately NO user-agent and NO IP — rule #9 (these are minors).
-  contextJson Json? @map("context_json")
+  contextJson  Json?  @map("context_json")
 
   reviewedByUserId String?   @map("reviewed_by_user_id")
   reviewedAt       DateTime? @map("reviewed_at")
   /// Private note from the reviewer. Never shown to the author.
-  reviewerNote     String?   @db.Text @map("reviewer_note")
+  reviewerNote     String?   @map("reviewer_note") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

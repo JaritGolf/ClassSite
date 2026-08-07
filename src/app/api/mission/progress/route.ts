@@ -18,9 +18,15 @@ import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { canOpenMission } from '@/lib/mastery'
 import { recordLastActivity } from '@/lib/student-activity'
+import { fromClassStepViewId, isClassStepViewId } from '@/lib/lesson-content'
 
 const BodySchema = z.object({
   benchmarkCode: z.string().min(1).max(32),
+  // NOTE the `.cuid()` branch is dead — the second alternative accepts any
+  // string of 1..64 chars, so it matches first for anything shaped like an id.
+  // Left as-is rather than tightened: `cstep:<25-char cuid>` is 31 chars and
+  // already passes, and narrowing this is a behaviour change to a hot path
+  // that buys nothing the ownership lookups below don't already enforce.
   stepId: z.string().cuid().nullable().or(z.string().min(1).max(64).nullable()),
 })
 
@@ -62,16 +68,45 @@ export async function POST(req: NextRequest) {
 
   // Validate the step belongs to one of this benchmark's lessons (guards the FK
   // and prevents pointing progress at another benchmark's content).
-  let currentStepId: string | null = null
+  //
+  // `undefined` means "leave whatever pointer is already there alone", which is
+  // distinct from `null` ("clear it").
+  let currentStepId: string | null | undefined = null
   if (parsed.data.stepId) {
-    const step = await prisma.lessonStep.findFirst({
-      where: { id: parsed.data.stepId, lesson: { benchmarkId: benchmark.id } },
-      select: { id: true },
-    })
-    if (!step) {
-      return NextResponse.json({ error: 'Step not found for this benchmark' }, { status: 404 })
+    if (isClassStepViewId(parsed.data.stepId)) {
+      // A teacher-added module (ADR 0023). It can never be written to this FK,
+      // which targets LessonStep.
+      //
+      // The current client resolves the nearest preceding built-in step before
+      // calling, so this branch is only reachable from a client left over from
+      // before that shipped. It must NOT 404: the early return would skip the
+      // upsert below, and a student whose first training module is
+      // teacher-added would end up with no StudentProgress row at all — no
+      // IN_PROGRESS status and no recordLastActivity, so their dashboard would
+      // stop offering to resume. The client's .catch(() => {}) would hide it
+      // completely. So verify ownership, keep the existing pointer, and let the
+      // rest of the request proceed.
+      const classStep = await prisma.classLessonStep.findFirst({
+        where: {
+          id: fromClassStepViewId(parsed.data.stepId),
+          lesson: { benchmarkId: benchmark.id },
+        },
+        select: { id: true },
+      })
+      if (!classStep) {
+        return NextResponse.json({ error: 'Step not found for this benchmark' }, { status: 404 })
+      }
+      currentStepId = undefined
+    } else {
+      const step = await prisma.lessonStep.findFirst({
+        where: { id: parsed.data.stepId, lesson: { benchmarkId: benchmark.id } },
+        select: { id: true },
+      })
+      if (!step) {
+        return NextResponse.json({ error: 'Step not found for this benchmark' }, { status: 404 })
+      }
+      currentStepId = step.id
     }
-    currentStepId = step.id
   }
 
   // Permission is checked ONLY when this write would CREATE the row.
@@ -112,9 +147,12 @@ export async function POST(req: NextRequest) {
       studentId: student.id,
       benchmarkId: benchmark.id,
       status: 'IN_PROGRESS',
-      currentStepId,
+      currentStepId: currentStepId ?? null,
     },
-    update: { currentStepId },
+    // `{}` when the reported step was a teacher module: the row is still
+    // created/touched and the activity below still records, but the existing
+    // cross-device pointer is left as it was rather than cleared.
+    update: currentStepId === undefined ? {} : { currentStepId },
   })
 
   // Dashboard "pick up where you left off" — non-fatal, display-only.

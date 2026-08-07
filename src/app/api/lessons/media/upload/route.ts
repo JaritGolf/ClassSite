@@ -13,6 +13,7 @@
 
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/auth'
+import { assertNotSubMode, SubModeError } from '@/lib/substitute-mode'
 import { prisma } from '@/lib/db'
 import { detectImageFormat, readImageDimensions, MIME_BY_FORMAT } from '@/lib/media-upload/format'
 
@@ -21,10 +22,27 @@ const MAX_BYTES = 4 * 1024 * 1024 // 4MB
 export async function POST(req: Request) {
   const session = await requireAuth(['TEACHER', 'ADMIN'])
 
+  // This route sits under /api/lessons/, which src/middleware.ts's matcher does
+  // not cover — so without this call a substitute could upload images. Every
+  // mutating API route has to assert this itself.
+  try {
+    await assertNotSubMode()
+  } catch (e) {
+    if (e instanceof SubModeError) {
+      return NextResponse.json({ error: e.code }, { status: 403 })
+    }
+    throw e
+  }
+
   const form = await req.formData()
   const file = form.get('file')
   if (!(file instanceof Blob)) {
     return NextResponse.json({ error: 'INVALID_BODY' }, { status: 422 })
+  }
+  // The UI gates its submit button on a rights checkbox; enforce it server-side
+  // too, so the confirmation is a real record rather than a client-side nicety.
+  if (form.get('rightsConfirmed') !== 'true') {
+    return NextResponse.json({ error: 'RIGHTS_NOT_CONFIRMED' }, { status: 422 })
   }
   if (file.size > MAX_BYTES) {
     return NextResponse.json({ error: 'FILE_TOO_LARGE' }, { status: 422 })
@@ -58,10 +76,12 @@ export async function POST(req: Request) {
       entityType: 'UploadedLessonImage',
       entityId: row.id,
       metadataJson: {
+        source: 'upload',
         mimeType: MIME_BY_FORMAT[format],
         byteSize: buf.byteLength,
         width: dimensions?.width ?? null,
         height: dimensions?.height ?? null,
+        rightsConfirmed: true,
       },
     },
   })

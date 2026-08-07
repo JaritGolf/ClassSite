@@ -1,5 +1,5 @@
 /**
- * Lesson step content editing (global default + per-class override).
+ * Lesson step content editing (global default + per-class override) — ADR 0023.
  *
  * Two independent write paths, mirroring the existing visibility toggle's
  * scope split (src/lib/lesson-media/index.ts):

@@ -1,12 +1,19 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { trainingStepsOf, vocabStepsOf, scenarioStepsOf } from '@/lib/lesson-content'
+import {
+  trainingStepsOf,
+  vocabStepsOf,
+  scenarioStepsOf,
+  withResumeAnchors,
+  type ResolvedStep,
+} from '@/lib/lesson-content'
 import type { GlossaryTerm } from '@/lib/reading-load'
 import { StepIndicator } from './StepIndicator'
 import { StepContextBar } from './StepContextBar'
 import { MissionPlanPanel } from './MissionPlanPanel'
-import { MISSION_STEP_ORDER, estimateMissionMinutes, type MissionStepKey } from './mission-steps'
+import { MISSION_STEP_ORDER, estimateMissionMinutes,
+  countExtraBlocks, type MissionStepKey } from './mission-steps'
 import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
 import { NextStepHandoff } from '@/components/student/NextStepHandoff'
 import { Mascot } from '@/components/ui/Mascot'
@@ -46,7 +53,13 @@ interface MissionData {
   assessmentId: string | null
   practiceAssessmentId: string | null
   vocabCheckAssessmentId: string | null
-  lessonSteps: LessonStepView[]
+  /**
+   * Fully resolved for this student's class: teacher content overrides
+   * applied, hidden modules dropped, teacher-added modules spliced in, in the
+   * class's own order. Carries `origin`, which the resume anchoring below
+   * needs to tell a built-in step from a teacher module.
+   */
+  lessonSteps: ResolvedStep[]
   terms: TermView[]
   /** Tier-2 (global) + tier-3 (benchmark) terms for note glossary popovers. */
   glossaryTerms: GlossaryTerm[]
@@ -63,6 +76,17 @@ interface SavedFlowState {
   step: Step
   completed: Step[]
   trainingIndex: number
+  /**
+   * OPTIONAL, and the version stays 1 on purpose — adding it must not
+   * invalidate saved state a student already has on their Chromebook.
+   *
+   * Resuming by id survives a teacher inserting a module ahead of where the
+   * student was; resuming by index alone silently shifts them back one step
+   * for every module added. That was a rare admin-only event before this
+   * feature and is about to become routine, so prefer the id and keep the
+   * index as the fallback for state written before this field existed.
+   */
+  trainingStepId?: string
 }
 
 function flowStorageKey(progressKey: string, benchmarkCode: string): string {
@@ -97,7 +121,11 @@ export function MissionFlow({ mission }: MissionFlowProps) {
   /** Latest step we tried to save, for the pagehide flush below. */
   const lastSavedStepIdRef = useRef<string | null>(null)
 
-  const trainingSteps = trainingStepsOf(mission.lessonSteps)
+  // Anchors are attached AFTER bucketing, never before: the pointer is looked
+  // up with trainingSteps.findIndex below, so an anchor taken from the whole
+  // lesson could name a step that isn't in this bucket, resolve to -1, and
+  // silently restart the student's training.
+  const trainingSteps = withResumeAnchors(trainingStepsOf(mission.lessonSteps))
   const vocabSteps = vocabStepsOf(mission.lessonSteps)
   const scenarioSteps = scenarioStepsOf(mission.lessonSteps)
 
@@ -119,7 +147,17 @@ export function MissionFlow({ mission }: MissionFlowProps) {
           setCompletedSteps(
             saved.completed.filter((s) => (MISSION_STEP_ORDER as readonly string[]).includes(s))
           )
-          setTrainingIndex(Math.min(Math.max(0, saved.trainingIndex), Math.max(0, trainingSteps.length - 1)))
+          // Prefer the saved step id — it survives a teacher inserting a module
+          // ahead of this student. Fall back to the index for state saved
+          // before `trainingStepId` existed, or if that step is now gone.
+          const byId = saved.trainingStepId
+            ? trainingSteps.findIndex((s) => s.id === saved.trainingStepId)
+            : -1
+          setTrainingIndex(
+            byId >= 0
+              ? byId
+              : Math.min(Math.max(0, saved.trainingIndex), Math.max(0, trainingSteps.length - 1))
+          )
           return
         }
       }
@@ -155,6 +193,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
         step: currentStep,
         completed: completedSteps,
         trainingIndex,
+        trainingStepId: trainingSteps[trainingIndex]?.id,
       }
       localStorage.setItem(
         flowStorageKey(mission.progressKey, mission.benchmarkCode),
@@ -195,16 +234,24 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     return () => window.removeEventListener('pagehide', flushResumePoint)
   }, [mission.benchmarkCode])
 
-  function handleTrainingIndexChange(index: number, stepId: string) {
+  function handleTrainingIndexChange(index: number, _stepId: string) {
     setTrainingIndex(index)
-    lastSavedStepIdRef.current = stepId
+    // StudentProgress.currentStepId is an FK to LessonStep, so a teacher-added
+    // module reports its nearest preceding BUILT-IN step in this same bucket
+    // instead of itself. Null means the student is on a teacher module that
+    // precedes every built-in one — there is simply nothing valid to record,
+    // so don't call at all rather than send an id the server must reject.
+    const progressStepId = trainingSteps[index]?.progressStepId ?? null
+    if (!progressStepId) return
+
+    lastSavedStepIdRef.current = progressStepId
     // Cross-device resume point. Fire and forget — a lost save costs the student
     // their place on a DIFFERENT device, never their work (localStorage above
     // already covers same-device resume, and nothing here is graded).
     fetch('/api/mission/progress', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ benchmarkCode: mission.benchmarkCode, stepId }),
+      body: JSON.stringify({ benchmarkCode: mission.benchmarkCode, stepId: progressStepId }),
       keepalive: true,
     }).catch(() => {})
   }
@@ -250,6 +297,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
             vocabSteps: vocabSteps.length,
             scenarioSteps: scenarioSteps.length,
             assessmentCount,
+            extraTrainingBlocks: countExtraBlocks(trainingSteps),
           })}
           onStart={() => completeStep('plan')}
         />
