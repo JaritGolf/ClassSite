@@ -32,7 +32,6 @@ function BlockFields({ block, update }: { block: Block; update: (patch: Partial<
           type="text"
           className={inputClasses}
           placeholder="Value (max 12 chars, e.g. 13)"
-          maxLength={12}
           value={block.value}
           onChange={(e) => update({ value: e.target.value })}
         />
@@ -136,7 +135,7 @@ export function InfographicStepEditor({
 
       <FormField
         label="Summary"
-        hint="Full-text equivalent, always rendered (read-aloud target) — at least 40 characters."
+        hint="Full-text equivalent, always rendered. This is what read-aloud speaks and what a student gets if the panel can't be seen."
         error={errors?.summary}
       >
         {(props) => (

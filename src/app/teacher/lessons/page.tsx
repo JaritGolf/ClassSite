@@ -38,11 +38,11 @@ export default async function TeacherLessonsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Lesson Media</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Lessons</h1>
         <p className="mt-1 max-w-prose text-sm text-gray-600">
-          Preview each lesson and choose which videos, images, diagrams, and infographics your
-          students see — globally or per class. Core instruction (notes, checks, worked examples,
-          source analyses) always stays on.
+          Open a lesson to shape it for your own classes — add your own modules, reword or hide
+          what&apos;s there, and put it in the order you teach. The original curriculum stays
+          untouched, and each of your classes can be different.
         </p>
       </div>
 
@@ -115,17 +115,13 @@ export default async function TeacherLessonsPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/teacher/lessons/${lesson.benchmark.code}/walkthrough`}
-                        className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
-                      >
-                        ▶ Walkthrough
-                      </Link>
+                      {/* One primary action per row. Previewing is a mode you
+                          reach FROM the lesson, not a competing entry point. */}
                       <Link
                         href={`/teacher/lessons/${lesson.benchmark.code}`}
-                        className="rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50"
+                        className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
                       >
-                        Manage media
+                        Open lesson
                       </Link>
                     </div>
                   </td>

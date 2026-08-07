@@ -35,6 +35,7 @@ let classBId: string
 let foreignClassId: string
 let videoStepId: string
 let noteStepId: string
+let imageStepId: string
 
 const testLessonDef = (steps: LessonSeedDef['steps']): LessonSeedDef => ({
   benchmarkCode: TEST_BENCHMARK_CODE,
@@ -158,6 +159,7 @@ beforeAll(async () => {
   })
   noteStepId = steps[0].id
   videoStepId = steps[1].id
+  imageStepId = steps[2].id
 })
 
 afterAll(async () => {
@@ -240,10 +242,49 @@ describe('per-class override', () => {
     ).rejects.toThrow(RosterError)
   })
 
-  it('refuses per-class toggles on core steps', async () => {
+  // ADR 0023 deliberately widened the CLASS scope to every step type while
+  // leaving the GLOBAL kill-switch media-only (see the sibling assertion in
+  // 'refuses to toggle a core instructional step' above). This test previously
+  // pinned the opposite for the class scope; it now pins the asymmetry, which
+  // is the actual contract.
+  it('ALLOWS per-class toggles on core steps, while global stays media-only', async () => {
+    await setClassStepVisibility(teacherUserId, classAId, noteStepId, 'hide')
+    expect(await visibleIdsFor(classAId)).not.toContain(noteStepId)
+    // Other classes and the global default are untouched.
+    expect(await visibleIdsFor(classBId)).toContain(noteStepId)
+    const note = await prisma.lessonStep.findUniqueOrThrow({ where: { id: noteStepId } })
+    expect(note.enabled).toBe(true)
+
+    await expect(setGlobalStepEnabled(teacherUserId, noteStepId, false)).rejects.toThrow(
+      LessonMediaError
+    )
+  })
+
+  it("'inherit' prunes the row for a core step too", async () => {
+    await setClassStepVisibility(teacherUserId, classAId, noteStepId, 'inherit')
+    const rows = await prisma.classLessonStepVisibility.findMany({
+      where: { classId: classAId, lessonStepId: noteStepId },
+    })
+    expect(rows).toHaveLength(0)
+    expect(await visibleIdsFor(classAId)).toContain(noteStepId)
+  })
+
+  it('refuses the hide that would leave a class with no Guided Training at all', async () => {
+    // The fixture lesson is NOTE + VIDEO + IMAGE — all three are training-bucket
+    // types, so the first two hides succeed and the third must be refused.
+    await setClassStepVisibility(teacherUserId, classAId, noteStepId, 'hide')
+    await setClassStepVisibility(teacherUserId, classAId, videoStepId, 'hide')
+
     await expect(
-      setClassStepVisibility(teacherUserId, classAId, noteStepId, 'hide')
-    ).rejects.toThrow(LessonMediaError)
+      setClassStepVisibility(teacherUserId, classAId, imageStepId, 'hide')
+    ).rejects.toMatchObject({ code: 'WOULD_EMPTY_TRAINING' })
+
+    // Refused means refused — no row was written for the last module.
+    expect(await visibleIdsFor(classAId)).toContain(imageStepId)
+
+    // Restore for any later test in this file.
+    await setClassStepVisibility(teacherUserId, classAId, noteStepId, 'inherit')
+    await setClassStepVisibility(teacherUserId, classAId, videoStepId, 'inherit')
   })
 })
 

@@ -24,6 +24,8 @@ import {
   InteractiveCheckSchema,
   SourceAnalysisSchema,
   TimelineSchema,
+  CompositeSchema,
+  isCompositeCapableStepType,
 } from '@/lib/lesson-content'
 import { assertYoutubeVideoExists } from './youtube'
 
@@ -78,6 +80,29 @@ export async function validateAndSerializeStepContent(
         message: `Unknown or non-editable step type: ${stepType}`,
       } as ZodIssue,
     ])
+  }
+
+  // Composite modules (ADR 0023 addendum): an ordered stack of content pieces.
+  // Checked BEFORE the per-type switch, and only for content-bearing types —
+  // CompositeSchema itself cannot hold a question, and a composite payload on a
+  // question step type therefore falls through to that type's own schema and is
+  // rejected, which is what keeps the two kinds of module separate.
+  if (isCompositeCapableStepType(stepType)) {
+    const composite = CompositeSchema.safeParse(raw)
+    if (composite.success) {
+      // Every YouTube piece is verified, not just the first — one bad id in a
+      // five-piece module must not save.
+      for (const block of composite.data.blocks) {
+        if (block.type === 'video') await assertYoutubeVideoExists(block.data.youtubeId)
+      }
+      return JSON.stringify(composite.data)
+    }
+    // A payload that *claims* to be composite but doesn't validate must not
+    // quietly fall through to the single-shape schema below and produce a
+    // confusing "expected a video" error — report the composite issues.
+    if (raw && typeof raw === 'object' && (raw as { kind?: unknown }).kind === 'composite') {
+      throw new LessonEditorValidationError(composite.error.issues)
+    }
   }
 
   switch (stepType) {

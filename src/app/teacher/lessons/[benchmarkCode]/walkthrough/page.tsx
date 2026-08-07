@@ -58,7 +58,7 @@ export default async function TeacherWalkthroughPage({ params }: PageProps) {
           href={`/teacher/lessons/${benchmark.code}`}
           className="text-sm text-indigo-600 hover:underline"
         >
-          ← Manage view (media toggles)
+          ← Back to editing
         </Link>
         <h1 className="mt-1 text-2xl font-bold text-gray-900">
           {benchmark.code} — {lesson.title}

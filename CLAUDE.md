@@ -150,6 +150,118 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**TEACHER CONTENT AUTHORING — CLASS-SCOPED LESSON MODULES (2026-08-06, ADR 0023) — Tier 1 `tsc`
+GREEN (0 errors) + Tier 2 jest GREEN (173/173 suites, 2,014 passed + 2 intentional skips,
+sharded ×4) + in-browser verification on both roles.** Owner: teachers need full, intuitive
+control over what their own students see — add images/text/video/infographics to every module,
+create modules, and arrange the lesson. Built on branch `worktree-teacher-lesson-authoring`.
+**Baseline pinned by running the untouched main checkout at the same commit: 168 suites / 1,911
+passed. Delta is exactly +5 suites / +103 tests** (the 167/1,907 figure above predates the PR #11
+merge).
+**The gap was narrower than the ask suggested — most of the authoring stack already existed**
+(`src/lib/lesson-editor/`, `LessonEditorWorkspace` + 10 per-type editors, image upload into
+Postgres). The one real blocker was stated in `structure.ts`: *"Structural changes affect every
+class/student … so this stays global by design (no per-class step lists)."* Add/remove/reorder
+existed but were ADMIN-only and GLOBAL. **This build removes that limitation.**
+What shipped:
+(1) **Two additive tables** — `ClassLessonStep` (teacher-authored module, class-owned,
+`required` always false) and `ClassLessonOutline` (one row per class+lesson holding the ordered
+id array). Migration `20260806120000_class_scoped_lesson_authoring`. **Reseed-safe by
+construction** — no seed stage can reach either table.
+(2) **`src/lib/lesson-content/class-outline.ts`** — pure `reconcileClassOutline`. The
+load-bearing requirement is that a newly-seeded **mid-lesson** step lands mid-list, not after the
+debrief. Never writes on a student read.
+(3) **One resolver** — `resolveClassLessonSteps` extends `resolveEffectiveSteps` (kept, identical)
+via a shared `applyOverride`, pinned by an **equivalence-lock test**.
+(4) **Class-scoped hiding widened to every module type** (the global kill-switch stays media-only),
+with one server-side **hard floor**: a class may not hide its last Guided Training module.
+(5) **Write path** — `class-structure.ts` + 4 routes, each calling `assertNotSubMode()` itself
+because middleware does not cover `/api`. New batched `assertClassesOwnedByTeacher`.
+(6) **Paste-an-image-link** — `POST /api/lessons/media/import-url` fetches and **re-hosts**
+server-side. Full SSRF guard set re-applied on every redirect hop, incl. **unwrapping
+IPv4-mapped/NAT64 IPv6** so `::ffff:169.254.169.254` can't reach cloud metadata.
+(7) **The Lesson Builder** — three pages became two. Teacher-facing module names ("Text I write",
+"Quick check"), status chips (icon+text, never colour alone), inline confirms replacing
+`window.confirm`, one live region, focus-follows-the-moved-row.
+**⚠ FOUR DEFECTS CAUGHT THAT WOULD HAVE SHIPPED SILENTLY:** (a) `/api/mission/progress` 404s
+*before* its upsert, so a student whose first training module was teacher-added would have gotten
+**no progress row at all** — no `IN_PROGRESS`, no `recordLastActivity`, broken dashboard resume —
+and the client's `.catch(() => {})` hides it; (b) the resume anchor must be **bucket-local**, or
+`findIndex` returns -1 and silently restarts training; (c) storing order on
+`ClassLessonStepVisibility` would have made **"Reset to original" wipe the teacher's ordering**,
+because `pruneOrUpdateOverrideRow` deletes rows whose axes are all null; (d) `DISCUSSION` renders
+on **no student surface** (zero seed rows, no bucket in `gating.ts`) — omitted from the picker
+rather than shipped as a module type that does nothing.
+**Security fixes in passing:** `/api/lessons/media/upload` never called `assertNotSubMode()` (a
+substitute could upload), and `rightsConfirmed` was client-side only. Both fixed.
+**Verification:** `tsc` 0 errors; jest 173/173 sharded ×4; **mutation-tested** both load-bearing
+claims (breaking the resume anchor fails 3 tests, breaking the visibility predicate fails 4);
+live walk as teacher and student — added a module through the real UI, saw it render as **"Step 1
+of 16"** in the student's Guided Training with read-aloud working, confirmed built-in
+`LessonStep` rows stayed at 17, hid a core NOTE (previously impossible), **zero external request
+origins**, no console errors. All probe rows removed; the pre-existing demo content override was
+identified by timestamp and preserved.
+**NOT committed — awaiting owner review.** Commit message when ready:
+`feat(phase-9): class-scoped lesson authoring — teacher modules, per-class order, image URL import (ADR 0023)`.
+**Deferred with handoff docs written:** `docs/handoffs/multi-teacher-content-scale-out.md` (its
+blocking finding: `readyForStudents` is a global, non-roster-guarded switch — any teacher can open
+or withhold a mission for **every student on the platform**) and
+`docs/handoffs/teacher-question-authoring-engine.md` (its blocking finding: `seed/assessments.ts`
+would **silently rewrite live Mastery Challenge forms** the moment a teacher-authored question
+became APPROVED on a seeded benchmark).
+**Env note:** `preview_start` launches the dev server from the **session's project root, not the
+active worktree** — it served unmodified `main` for several minutes before I noticed via the
+server process's `cwd`. Verify with `lsof -a -p <pid> -d cwd` before trusting a worktree preview;
+I ran `next dev` on port 3210 from the worktree instead.
+
+**ADDENDUM — COMPOSITE MODULES (2026-08-07): a module is now a STACK of content pieces.**
+Tier 1 `tsc` GREEN + Tier 2 jest GREEN (**175 suites, 2,041 passed + 2 skips**, sharded ×4;
++2 suites/+27 tests over the 173/2,014 above) + in-browser verification.
+Owner tested the build above and found the real gap: *"I checked the text based modules and I am
+not able to add any type of media… what happens now if there is a bit of text that would be best
+supported with an image along with it?"* Correct — one module held exactly one kind of content,
+and Guided Training paginates ONE MODULE PER SCREEN, so a paragraph and its picture landed on two
+screens.
+**Owner's rule is what made this small: "content and questions should be treated as two separate
+entities."** A composite holds text/picture/video/timeline/diagram/fact-panel/worked-example and
+**never** a quick check or document study — those stay their own modules. Because a composite can
+never contain something a student must answer, **`gating.ts` needed NO change at all**:
+`stepNeedsAttempt` still reads `kind === 'interactive-check'`, `canAdvance` still keys on one step
+id, ScenarioLab is untouched, and there is no per-block `required` flag to invent. A unit test
+pins that a composite never gates.
+(1) **`{kind:'composite', blocks:[…]}` rides on existing step types** (the `TimelineSchema`
+envelope trick) — **no Prisma enum, no migration**, and no new value to add to the ELEVEN
+step-type allowlists *each of which fails silently if missed*. `z.union` of `{type,data}` wrappers,
+not `z.discriminatedUnion` — `ImageSchema` is a `ZodEffects` and `DiagramSchema` is itself a
+discriminated union.
+(2) **Saving is shape-preserving**: a module still holding one piece saves in its ORIGINAL
+single-shape form, so opening a built-in module and saving it cannot rewrite the seeded curriculum.
+Additivity pinned by `lesson-bank-shape.test.ts` passing untouched.
+(3) **One read-aloud per module**, via a suppression context — six pieces would otherwise render
+six buttons driving one speech queue, and the component cancels `speechSynthesis` globally on
+unmount so any one killed another's playback.
+(4) **Always-visible "+ Add to this module"** opening a box with **every** option shown. The
+`featured`/"More module types" split is gone from BOTH pickers — it hid Timeline, Document study,
+Diagram and Fact panel behind a link. Key term is excluded from the in-module box because
+VOCABULARY is a *placement* (Key Terms panel), not a content shape.
+**⚠ TWO LIVE DEFECTS IN THE BUILD ABOVE, FOUND AND FIXED:** (a) **every newly added module opened
+broken** — `LessonBuilder` passed a blank payload as a serialized string, and a blank payload can
+never satisfy its own schema, so Text/Key term opened showing the literal `{"text":""}`, **Timeline
+opened as a plain textarea of raw JSON with the timeline editor never appearing**, and the other
+seven flew a "content didn't match the expected shape" banner on a brand-new module; (b) both error
+normalizers keyed on `issue.path[0]`, which with blocks files every nested error under the literal
+key `blocks` and keeps only the first — now full dotted paths (plus first-segment fallback so the
+eight per-type editors keep reading flat keys unchanged), with a per-block "Needs attention" chip.
+**Verification:** live walk — opened a BUILT-IN text module, pressed + Add, confirmed all **seven**
+content options with nothing hidden, added a Picture (library prefilled 3 of the 5 required fields),
+saved, and confirmed as a student that **the paragraph and the portrait render on ONE Guided
+Training screen ("Step 1 of 15") with exactly ONE read-aloud button** and glossary popovers still
+working. DB confirmed: override stored as `composite` = `text + image`, **built-in `LessonStep`
+content still plain text, 17 rows unchanged**. Probe override removed by timestamp; the pre-existing
+2026-07-18 demo override preserved.
+
+---
+
 **STUDENT NAVIGATION — THE PLATFORM NOW GUIDES (2026-08-05, ADR 0022) — Tier 1 `tsc` GREEN
 (0 errors, 8.2s) + Tier 2 jest GREEN (1,907 passed + 2 intentional skips, 167/167 suites,
 sharded ×4) + full in-browser verification on both roles.** Owner: student navigation must be
@@ -1790,6 +1902,82 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-08-07 (Composite modules — media and text inside ONE module, ADR 0023
+addendum):** Owner tested the previous build and reported the real gap: text modules could not
+take media, so a paragraph and its supporting picture had to be two modules — which, because
+Guided Training paginates one module per screen, meant two screens. Fair, and a genuine
+shortcoming of what I shipped.
+**The owner's own framing is what kept this small.** Asked how freely content should mix, they
+chose "media and text freely; questions stay separate" — *"content and questions should be treated
+as two separate entities."* That single rule deleted the hardest part of the design: a composite
+can never hold a quick check, so the progression gate needed **no change at all**. No recursion
+into blocks, no per-block `required` flag (there is nowhere to store one), no ambiguity about what
+blocks a student. I had been ready to build all of that.
+Then they corrected the UX twice more — an explicit always-visible **Add** button rather than the
+hover-revealed slot, and **every** option in the box rather than half of them behind "More module
+types". Both were right; the featured/more split was my guess and it hid Timeline, Diagram, Fact
+panel and Document study where a teacher would never look.
+**Two live defects in my previous build surfaced while researching this**, and the owner may well
+have hit them: every newly added module opened either showing raw JSON in its textarea or flying a
+"content didn't match the expected shape" banner, because a blank payload was serialized and then
+parsed back — and a blank payload can never satisfy its own schema. Timeline was worst: its editor
+never appeared at all. Fixed as a prerequisite, along with the error-path collapse that would have
+made multi-piece validation unusable.
+**Verification:** `tsc` 0 errors; jest **175/175 suites, 2,041 passed + 2 skips** sharded ×4. The
+additivity lock is `lesson-bank-shape.test.ts` passing **untouched** — proof that composite changed
+nothing for the 134 seeded steps. Live walk: opened a built-in text module, pressed + Add, saw all
+seven options, added a picture, and confirmed as a student that both render on one screen with one
+read-aloud. DB confirmed the built-in row is still plain text and still 17 steps.
+**Judgment call worth recording:** saving is deliberately shape-preserving — a module holding one
+piece saves in its original single-shape form, so merely opening a built-in module and saving it
+cannot quietly convert the seeded curriculum into composites. Also dropped Key term from the
+in-module box: VOCABULARY is a *placement* (it routes to the Key Terms panel), not a content
+shape, so a key-term piece inside a training module would have been text under a misleading label
+— caught in the browser when the box showed eight options instead of seven.
+**Env note:** `tsc` stalled at **0% CPU for >5 minutes** mid-session with `fileproviderd` at 94%.
+Cause was the worktree dev server continuously rewriting `.next/types` (which `tsconfig.json`
+includes) inside iCloud-synced Documents. Stopping the dev server took `tsc` back to 3.5s. Kill
+the dev server before typechecking in a worktree.
+
+---
+
+**Session of 2026-08-06 (Teacher content authoring — class-scoped lesson modules, ADR 0023):**
+Owner: make the platform modular from the teacher end — full control over what their own classes
+see, starting with everything touching the Mission Map. Explored before planning, which is what
+turned a broad ask into a narrow one: **most of the authoring stack already existed** and was
+invisible from this file. The single blocker was that add/remove/reorder were ADMIN-only and
+GLOBAL. Scoped four forks via AskUserQuestion (class-scoped overlay; modules + images first;
+YouTube-only video; per-class map control deferred to phase 2). Full inventory in Current Build
+Phase. Worked on branch `worktree-teacher-lesson-authoring`.
+**Two design agents disagreed on where per-class order should live, and that disagreement was the
+most valuable thing in the design pass** — the one proposing a column on
+`ClassLessonStepVisibility` independently discovered that `pruneOrUpdateOverrideRow` deletes rows
+whose axes are all null, so *"Reset to original"* on content would have silently wiped a teacher's
+ordering. Order got its own table.
+**I corrected the plan on contact with the code twice.** The plan said to delete `ScopeSwitcher`;
+the admin workspace still uses it, so only the teacher path moved. And replacing the visibility
+page would have **silently removed the site-wide media kill-switch** (that page hosted its only
+UI) — I kept it reachable from the builder rather than dropping a capability quietly.
+**Verification:** `tsc` 0 errors; jest **173/173 suites, 2,014 passed + 2 skips** sharded ×4.
+**Pinned the baseline honestly** by running the untouched main checkout at the same commit —
+168/1,911 — so the delta is provably +5 suites/+103 tests and the 167/1,907 figure in this file
+was simply stale. Mutation-tested the two load-bearing claims. Live walk on both roles: added a
+module through the real UI and watched it render as "Step 1 of 16" in the student's training, with
+built-in `LessonStep` rows unchanged at 17.
+**Env finding worth keeping: `preview_start` starts the dev server in the SESSION'S PROJECT ROOT,
+not the active worktree.** It served unmodified `main` for several minutes and everything looked
+plausible — the giveaway was my new heading not appearing. Diagnosed with
+`lsof -a -p <pid> -d cwd`. Ran `next dev` on port 3210 from the worktree instead. Also:
+`prisma generate` through the shared `node_modules` symlink ENOENT'd on its own engine copy as
+documented; types regenerated fine and hand-copying the `.dylib.node` fixed it. Note this
+regenerated the **shared** client, so the main checkout's Prisma client now carries the two new
+models — harmless (additive, and main's full suite passes) but worth knowing.
+**Cleanup:** all probe rows removed. The demo had a pre-existing content override on a VIDEO step
+(created 2026-07-18) which I identified by timestamp and deliberately preserved; only today's rows
+were deleted. Built-in curriculum verified intact at 17 steps.
+
+---
 
 **Session of 2026-08-05 (Student navigation — the platform as a guide, ADR 0022):** Owner: make
 student navigation seamless and friction-free, and have the platform heavily guide what to do next

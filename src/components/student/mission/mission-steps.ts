@@ -1,3 +1,4 @@
+import { parseStepContent } from '@/lib/lesson-content'
 import type { TrackIconName } from '@/components/ui/TrackIcon'
 
 /**
@@ -130,12 +131,37 @@ export function estimateMissionMinutes(counts: {
   vocabSteps: number
   scenarioSteps: number
   assessmentCount: number
+  /**
+   * Content pieces BEYOND one per module, across all training modules.
+   *
+   * A composite module holds an ordered stack of pieces, so counting modules
+   * alone would advertise a six-piece module as 90 seconds. Only the extras
+   * are counted here — the first piece is already covered by the module's own
+   * 1.5 minutes.
+   */
+  extraTrainingBlocks?: number
 }): number {
   const raw =
     3 + // briefing
     counts.vocabSteps * 1 +
     counts.trainingSteps * 1.5 +
+    (counts.extraTrainingBlocks ?? 0) * 1.5 +
     counts.scenarioSteps * 2 +
     counts.assessmentCount * 4
   return Math.max(5, Math.round(raw / 5) * 5)
+}
+
+/**
+ * How many EXTRA content pieces a set of modules holds beyond one each.
+ * Feeds `extraTrainingBlocks` above.
+ */
+export function countExtraBlocks(
+  steps: readonly { stepType: string; content: string }[]
+): number {
+  let extra = 0
+  for (const step of steps) {
+    const parsed = parseStepContent(step.stepType, step.content)
+    if (parsed.kind === 'composite') extra += Math.max(0, parsed.blocks.length - 1)
+  }
+  return extra
 }

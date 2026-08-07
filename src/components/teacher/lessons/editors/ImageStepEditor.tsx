@@ -43,12 +43,20 @@ export function ImageStepEditor({
         <ImageAssetPicker
           currentAsset={value.asset}
           onClose={() => setPickerOpen(false)}
-          onPick={({ asset, width, height }) => {
+          onPick={({ asset, width, height, caption, credit, license }) => {
+            // Prefill only what the teacher hasn't already written — picking a
+            // different picture must never wipe their own wording. Alt text
+            // and the long description are never prefilled: they are the
+            // accessibility content and have to be written by a human who
+            // looked at the picture.
             onChange({
               ...value,
               asset,
               width: width ?? value.width,
               height: height ?? value.height,
+              caption: value.caption?.trim() ? value.caption : (caption ?? value.caption),
+              credit: value.credit?.trim() ? value.credit : (credit ?? value.credit),
+              license: value.license?.trim() ? value.license : (license ?? value.license),
             })
             setPickerOpen(false)
           }}
@@ -60,7 +68,6 @@ export function ImageStepEditor({
           <input
             {...props}
             type="text"
-            maxLength={300}
             className={inputClasses}
             value={value.alt}
             onChange={(e) => onChange({ ...value, alt: e.target.value })}
@@ -107,7 +114,7 @@ export function ImageStepEditor({
 
       <FormField
         label="Long description"
-        hint="Rich description behind a 'Describe this image' disclosure (read-aloud target) — at least 40 characters."
+        hint="Describe the picture. A student using a screen reader — or one whose picture didn't load — gets this instead."
         error={errors?.longDescription}
       >
         {(props) => (

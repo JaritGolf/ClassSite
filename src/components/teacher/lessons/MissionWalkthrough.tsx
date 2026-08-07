@@ -22,6 +22,7 @@ import { MissionPlanPanel } from '@/components/student/mission/MissionPlanPanel'
 import {
   MISSION_STEP_ORDER,
   estimateMissionMinutes,
+  countExtraBlocks,
   type MissionStepKey,
 } from '@/components/student/mission/mission-steps'
 import { TrainingWalkthrough } from '@/components/student/mission/TrainingWalkthrough'

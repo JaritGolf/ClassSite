@@ -9,6 +9,8 @@ import {
   resolveVisibleSteps,
   isToggleableStepType,
   TOGGLEABLE_STEP_TYPES,
+  isClassHideableStepType,
+  CLASS_HIDEABLE_STEP_TYPES,
 } from '@/lib/lesson-content'
 
 interface Step {
@@ -68,5 +70,28 @@ describe('isToggleableStepType', () => {
     ]) {
       expect(isToggleableStepType(t)).toBe(false)
     }
+  })
+})
+
+describe('class-scoped hideability (ADR 0023)', () => {
+  it('accepts every step type — a class-scoped hide is local and reversible', () => {
+    for (const t of CLASS_HIDEABLE_STEP_TYPES) {
+      expect(isClassHideableStepType(t)).toBe(true)
+    }
+    expect(CLASS_HIDEABLE_STEP_TYPES).toHaveLength(10)
+  })
+
+  it('is strictly wider than the global kill-switch, which stays media-only', () => {
+    for (const t of TOGGLEABLE_STEP_TYPES) {
+      expect(isClassHideableStepType(t)).toBe(true)
+    }
+    // The asymmetry that matters: a NOTE may be hidden for ONE class but never
+    // switched off for every class on the platform.
+    expect(isClassHideableStepType('NOTE')).toBe(true)
+    expect(isToggleableStepType('NOTE')).toBe(false)
+  })
+
+  it('rejects an unknown type', () => {
+    expect(isClassHideableStepType('NOT_A_STEP_TYPE')).toBe(false)
   })
 })

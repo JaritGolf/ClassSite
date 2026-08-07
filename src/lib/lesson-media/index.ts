@@ -1,27 +1,35 @@
 /**
- * Lesson media visibility (ADR 0015) + per-class content overrides (lesson
- * content editor).
+ * Lesson step visibility (ADR 0015) + per-class content overrides (ADR 0023).
  *
- * Teachers toggle MEDIA lesson steps (VIDEO/IMAGE/DIAGRAM/INFOGRAPHIC) in and
- * out of lessons at two scopes:
- *   - global: LessonStep.enabled (site-global kill-switch; audit-logged)
+ * Teachers toggle lesson steps in and out of lessons at two scopes, and the
+ * two scopes deliberately allow DIFFERENT step types:
+ *   - global: LessonStep.enabled — site-wide, so MEDIA ONLY
+ *     (VIDEO/IMAGE/DIAGRAM/INFOGRAPHIC). Enforced server-side by
+ *     getStepForGlobalToggle, not just in the UI.
  *   - class:  ClassLessonStepVisibility tri-state (inherit / show / hide),
- *             roster-guarded via assertClassOwnedByTeacher
- * Core instructional steps are NOT toggleable — enforced here server-side
- * (isToggleableStepType), not just in the UI.
+ *     roster-guarded, and since ADR 0023 accepting ANY step type — a
+ *     class-scoped hide is local, reversible and never mutates shared content.
+ *     Its one hard limit is assertTrainingBucketSurvives.
  *
  * The SAME ClassLessonStepVisibility row also carries an optional per-class
  * content override (overrideTitle/overrideContent, all 10 step types) — see
  * src/lib/lesson-editor/edit.ts for the write path and
- * src/lib/lesson-content/content-resolution.ts for how the two independent
- * axes (visibility, content) are resolved together.
+ * src/lib/lesson-content/content-resolution.ts for how the independent axes
+ * (visibility, content) resolve together with teacher-added modules and the
+ * class's own module order.
  */
 
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { isToggleableStepType } from '@/lib/lesson-content'
+import {
+  isToggleableStepType,
+  resolveClassLessonSteps,
+  toClassStepViewId,
+  trainingStepsOf,
+} from '@/lib/lesson-content'
 import type { StepOverride } from '@/lib/lesson-content'
 import { assertClassOwnedByTeacher } from '@/lib/teacher-roster'
+import { getClassLessonLayer } from './class-steps'
 
 export {
   getAssessmentPreviewsForBenchmark,
@@ -31,13 +39,19 @@ export {
   type PreviewAssessmentType,
 } from './assessment-preview'
 
+export {
+  getClassLessonSteps,
+  getClassLessonOutline,
+  getClassLessonLayer,
+} from './class-steps'
+
 export const LESSON_MEDIA_AUDIT_ACTION = 'LESSON_MEDIA_VISIBILITY_CHANGED'
 
 export type ClassVisibilityState = 'inherit' | 'show' | 'hide'
 
 export class LessonMediaError extends Error {
   constructor(
-    public readonly code: 'NOT_FOUND' | 'NOT_TOGGLEABLE',
+    public readonly code: 'NOT_FOUND' | 'NOT_TOGGLEABLE' | 'WOULD_EMPTY_TRAINING',
     message: string
   ) {
     super(message)
@@ -45,10 +59,24 @@ export class LessonMediaError extends Error {
   }
 }
 
-async function getToggleableStep(lessonStepId: string) {
+const STEP_SELECT = {
+  id: true,
+  stepType: true,
+  title: true,
+  enabled: true,
+  lessonId: true,
+} as const
+
+/**
+ * A step the GLOBAL kill-switch may touch — media only.
+ *
+ * That flag is site-wide: flipping it changes the lesson for every class on
+ * the platform, so core instruction stays off-limits there (ADR 0015).
+ */
+async function getStepForGlobalToggle(lessonStepId: string) {
   const step = await prisma.lessonStep.findUnique({
     where: { id: lessonStepId },
-    select: { id: true, stepType: true, title: true, enabled: true, lessonId: true },
+    select: STEP_SELECT,
   })
   if (!step) {
     throw new LessonMediaError('NOT_FOUND', `Lesson step ${lessonStepId} not found`)
@@ -56,8 +84,28 @@ async function getToggleableStep(lessonStepId: string) {
   if (!isToggleableStepType(step.stepType)) {
     throw new LessonMediaError(
       'NOT_TOGGLEABLE',
-      `${step.stepType} steps are core instruction and cannot be toggled`
+      `${step.stepType} steps are core instruction and cannot be toggled for every class`
     )
+  }
+  return step
+}
+
+/**
+ * A step the PER-CLASS override may touch — any type (ADR 0023).
+ *
+ * Deliberately wider than the global gate. A class-scoped hide is local,
+ * reversible, and never mutates shared content, so "I teach the source
+ * analysis on paper" is a legitimate thing for a teacher to express. The one
+ * thing it may not do is empty Guided Training, which
+ * assertTrainingBucketSurvives enforces separately.
+ */
+async function getStepForClassVisibility(lessonStepId: string) {
+  const step = await prisma.lessonStep.findUnique({
+    where: { id: lessonStepId },
+    select: STEP_SELECT,
+  })
+  if (!step) {
+    throw new LessonMediaError('NOT_FOUND', `Lesson step ${lessonStepId} not found`)
   }
   return step
 }
@@ -68,7 +116,7 @@ export async function setGlobalStepEnabled(
   lessonStepId: string,
   enabled: boolean
 ): Promise<{ enabled: boolean }> {
-  const step = await getToggleableStep(lessonStepId)
+  const step = await getStepForGlobalToggle(lessonStepId)
 
   await prisma.$transaction(async (tx) => {
     await tx.lessonStep.update({ where: { id: step.id }, data: { enabled } })
@@ -93,12 +141,112 @@ export async function setGlobalStepEnabled(
   return { enabled }
 }
 
+/** A change a class is about to make, expressed for the floor check below. */
+export type ProposedVisibilityChange =
+  | { kind: 'builtin'; lessonStepId: string; visible: boolean | null }
+  | { kind: 'class'; classStepId: string; visible: boolean }
+  | { kind: 'delete-class'; classStepIds: readonly string[] }
+
 /**
- * Set (or clear, with 'inherit') a class-scoped visibility override for a
- * media step. Caller must own the class. Uses pruneOrUpdateOverrideRow so a
- * step that ALSO carries a content override for this class keeps that
- * override when visibility is reset to 'inherit' — the two axes are
- * independent facts on the same row.
+ * Refuse a change that would leave a class with NO visible Guided Training
+ * module. A mission with an empty training bucket collapses to pre-check →
+ * quiz: the student is assessed on material the app never showed them.
+ *
+ * The check runs the PROPOSED state through the same pure resolver and the
+ * same `trainingStepsOf` predicate the student path uses, rather than
+ * reimplementing "what counts as training" — the two could otherwise drift,
+ * and a floor that guards the wrong set is worse than none.
+ *
+ * A teacher's OWN modules count toward the floor, so someone who has replaced
+ * every built-in note with their own material is not blocked from hiding the
+ * originals. This is the only hard stop; every other way to thin a lesson
+ * (hiding all vocabulary, all source analysis) is a warning at the UI, because
+ * an empty bucket renders a benign fallback rather than breaking, and a
+ * teacher may legitimately run that part off-platform.
+ */
+export async function assertTrainingBucketSurvives(
+  classId: string,
+  lessonId: string,
+  change: ProposedVisibilityChange
+): Promise<void> {
+  const [builtInSteps, overrides, layer] = await Promise.all([
+    prisma.lessonStep.findMany({
+      where: { lessonId },
+      orderBy: { sequenceOrder: 'asc' },
+      select: {
+        id: true,
+        stepType: true,
+        title: true,
+        content: true,
+        sequenceOrder: true,
+        required: true,
+        enabled: true,
+      },
+    }),
+    prisma.classLessonStepVisibility
+      .findMany({
+        where: { classId, lessonStep: { lessonId } },
+        select: {
+          lessonStepId: true,
+          visible: true,
+          overrideTitle: true,
+          overrideContent: true,
+        },
+      })
+      .then(
+        (rows) =>
+          new Map<string, StepOverride>(
+            rows.map((r) => [
+              r.lessonStepId,
+              {
+                visible: r.visible,
+                overrideTitle: r.overrideTitle,
+                overrideContent: r.overrideContent,
+              },
+            ])
+          )
+      ),
+    getClassLessonLayer(classId, lessonId),
+  ])
+
+  // Apply the proposed change to the in-memory inputs before resolving.
+  let classSteps = layer.classSteps
+  if (change.kind === 'builtin') {
+    const existing = overrides.get(change.lessonStepId)
+    overrides.set(change.lessonStepId, {
+      visible: change.visible,
+      overrideTitle: existing?.overrideTitle ?? null,
+      overrideContent: existing?.overrideContent ?? null,
+    })
+  } else if (change.kind === 'class') {
+    const viewId = toClassStepViewId(change.classStepId)
+    classSteps = classSteps.map((s) => (s.id === viewId ? { ...s, visible: change.visible } : s))
+  } else {
+    const removing = new Set(change.classStepIds.map(toClassStepViewId))
+    classSteps = classSteps.filter((s) => !removing.has(s.id))
+  }
+
+  const resolved = resolveClassLessonSteps({
+    builtInSteps,
+    overrides,
+    classSteps,
+    savedOrder: layer.savedOrder,
+  })
+
+  if (trainingStepsOf(resolved).length === 0) {
+    throw new LessonMediaError(
+      'WOULD_EMPTY_TRAINING',
+      'This would leave the class with no Guided Training content'
+    )
+  }
+}
+
+/**
+ * Set (or clear, with 'inherit') a class-scoped visibility override for ANY
+ * step type (ADR 0023 widened this from media-only). Caller must own the
+ * class. Uses pruneOrUpdateOverrideRow so a step that ALSO carries a content
+ * override for this class keeps that override when visibility is reset to
+ * 'inherit' — the two axes are independent facts on the same row.
  */
 export async function setClassStepVisibility(
   actorUserId: string,
@@ -107,7 +255,15 @@ export async function setClassStepVisibility(
   state: ClassVisibilityState
 ): Promise<{ state: ClassVisibilityState }> {
   await assertClassOwnedByTeacher(actorUserId, classId)
-  const step = await getToggleableStep(lessonStepId)
+  const step = await getStepForClassVisibility(lessonStepId)
+
+  if (state !== 'show') {
+    await assertTrainingBucketSurvives(classId, step.lessonId, {
+      kind: 'builtin',
+      lessonStepId: step.id,
+      visible: state === 'inherit' ? null : false,
+    })
+  }
 
   await prisma.$transaction(async (tx) => {
     const visible = state === 'inherit' ? null : state === 'show'

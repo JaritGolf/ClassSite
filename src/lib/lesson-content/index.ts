@@ -9,6 +9,10 @@ export {
   DiagramSchema,
   InfographicSchema,
   RemediationContentSchema,
+  ContentBlockSchema,
+  CompositeSchema,
+  COMPOSITE_CAPABLE_STEP_TYPES,
+  isCompositeCapableStepType,
   parseStepContent,
   parseRemediationContent,
   type CheckOption,
@@ -22,6 +26,9 @@ export {
   type InfographicContent,
   type RemediationContent,
   type ParsedStepContent,
+  type ContentBlock,
+  type ContentBlockType,
+  type CompositeContent,
 } from './contracts'
 
 export {
@@ -31,9 +38,38 @@ export {
   scenarioStepsOf,
   stepNeedsAttempt,
   canAdvance,
+  withResumeAnchors,
   type LessonStepLike,
+  type WithResumeAnchor,
 } from './gating'
 
-export { TOGGLEABLE_STEP_TYPES, isToggleableStepType, resolveVisibleSteps } from './visibility'
+export {
+  TOGGLEABLE_STEP_TYPES,
+  isToggleableStepType,
+  CLASS_HIDEABLE_STEP_TYPES,
+  isClassHideableStepType,
+  resolveVisibleSteps,
+} from './visibility'
 
-export { resolveEffectiveSteps, type StepOverride } from './content-resolution'
+export {
+  resolveEffectiveSteps,
+  resolveClassLessonSteps,
+  type StepOverride,
+  type BuiltInStepInput,
+  type ClassStepInput,
+  type ResolvedStep,
+  type ResolveClassLessonInput,
+} from './content-resolution'
+
+export {
+  CLASS_STEP_ID_PREFIX,
+  toClassStepViewId,
+  isClassStepViewId,
+  fromClassStepViewId,
+  reconcileClassOutline,
+  type StepOrigin,
+  type ClassStepAnchorInfo,
+  type ClassStepAnchorPosition,
+  type ReconcileOutlineInput,
+  type ReconcileOutlineResult,
+} from './class-outline'

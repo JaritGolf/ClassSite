@@ -106,7 +106,6 @@ export function PlainTextStepEditor({
                       type="text"
                       className={inputClasses}
                       placeholder="Marker (e.g. 1215)"
-                      maxLength={24}
                       value={event.marker}
                       onChange={(e) => update({ marker: e.target.value })}
                     />

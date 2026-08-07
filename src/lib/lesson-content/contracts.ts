@@ -57,7 +57,7 @@ export const TimelineSchema = z.object({
   events: z
     .array(
       z.object({
-        marker: z.string().min(1).max(24),
+        marker: z.string().min(1),
         label: z.string().min(1),
         detail: z.string().optional(),
       })
@@ -102,8 +102,8 @@ export const VideoSchema = z.object({
   youtubeId: z.string().regex(/^[A-Za-z0-9_-]{11}$/, 'must be an 11-char YouTube video id'),
   title: z.string().min(1),
   /** Always-visible text alternative: what the video covers (read-aloud target). */
-  description: z.string().min(20),
-  durationLabel: z.string().max(12).optional(),
+  description: z.string().min(1),
+  durationLabel: z.string().optional(),
   /** Motivation line shown on the facade ("Watch for how the colonists…"). */
   whyWatch: z.string().optional(),
   startSeconds: z.number().int().nonnegative().optional(),
@@ -121,12 +121,12 @@ export const ImageSchema = z
     asset: z
       .string()
       .regex(/^(svg:[a-z0-9-]+|\/media\/[a-z0-9][a-z0-9/._-]*)$/i, 'svg:<key> or /media/<path>'),
-    alt: z.string().min(1).max(300),
+    alt: z.string().min(1),
     caption: z.string().min(1),
     credit: z.string().min(1),
     license: z.string().min(1),
     /** Rich description behind a "Describe this image" disclosure (read-aloud). */
-    longDescription: z.string().min(40),
+    longDescription: z.string().min(1),
     width: z.number().int().positive().optional(),
     height: z.number().int().positive().optional(),
   })
@@ -136,13 +136,13 @@ export const ImageSchema = z
 export type ImageContent = z.infer<typeof ImageSchema>
 
 const DiagramNodeSchema = z.object({
-  label: z.string().min(1).max(60),
+  label: z.string().min(1),
   detail: z.string().optional(),
 })
 const diagramBase = {
   title: z.string().min(1),
   /** Full-text equivalent of the diagram — always rendered, read-aloud target. */
-  summary: z.string().min(40),
+  summary: z.string().min(1),
 }
 
 /** Semantic-HTML concept diagrams: process flow, repeating cycle, venn, 2-column comparison. */
@@ -184,13 +184,13 @@ export const InfographicSchema = z.object({
   title: z.string().min(1),
   intro: z.string().optional(),
   /** Full-text equivalent of the infographic — always rendered, read-aloud target. */
-  summary: z.string().min(40),
+  summary: z.string().min(1),
   blocks: z
     .array(
       z.discriminatedUnion('type', [
         z.object({
           type: z.literal('big-number'),
-          value: z.string().min(1).max(12),
+          value: z.string().min(1),
           label: z.string().min(1),
           detail: z.string().optional(),
         }),
@@ -239,6 +239,62 @@ export type RemediationContent = z.infer<typeof RemediationContentSchema>
 
 // ── Step parsing (discriminated union with plain-text fallback) ──────────────
 
+// ── Composite modules (ADR 0023 addendum) ────────────────────────────────────
+// A module's content as an ORDERED STACK of pieces, so a paragraph and the
+// picture that supports it live in one module and therefore on one screen.
+// Guided Training paginates one module per screen, so before this the only way
+// to pair them was two modules — i.e. two screens.
+//
+// Deliberately EXCLUDES interactive checks and source analysis. Content and
+// questions are separate entities: a composite can never contain something a
+// student must answer, which is exactly why gating.ts needs no knowledge of
+// blocks at all. `stepNeedsAttempt` still reads `kind === 'interactive-check'`,
+// `canAdvance` still keys on one step id, and ScenarioLab's filter is untouched.
+// Teachers still add Quick Check and Document Study as their own MODULES.
+//
+// z.union with a wrapped `data`, NOT z.discriminatedUnion: ImageSchema is a
+// ZodEffects (it carries a .refine) and DiagramSchema is itself a discriminated
+// union, so neither can be a direct member of one.
+export const ContentBlockSchema = z.union([
+  z.object({ type: z.literal('text'), data: z.object({ text: z.string().min(1) }) }),
+  z.object({ type: z.literal('timeline'), data: TimelineSchema }),
+  z.object({ type: z.literal('image'), data: ImageSchema }),
+  z.object({ type: z.literal('video'), data: VideoSchema }),
+  z.object({ type: z.literal('diagram'), data: DiagramSchema }),
+  z.object({ type: z.literal('infographic'), data: InfographicSchema }),
+  z.object({ type: z.literal('worked-example'), data: WorkedExampleSchema }),
+])
+export type ContentBlock = z.infer<typeof ContentBlockSchema>
+export type ContentBlockType = ContentBlock['type']
+
+export const CompositeSchema = z.object({
+  kind: z.literal('composite'),
+  blocks: z.array(ContentBlockSchema).min(1).max(20),
+})
+export type CompositeContent = z.infer<typeof CompositeSchema>
+
+/**
+ * Step types whose content may be a composite stack.
+ *
+ * INTERACTIVE_CHECK and SOURCE_ANALYSIS are absent on purpose — they are the
+ * question types, and keeping composite off them is what guarantees a module
+ * that gates a student holds exactly one question. DISCUSSION is absent
+ * because it renders on no student surface at all.
+ */
+export const COMPOSITE_CAPABLE_STEP_TYPES = [
+  'NOTE',
+  'VOCABULARY',
+  'IMAGE',
+  'VIDEO',
+  'DIAGRAM',
+  'INFOGRAPHIC',
+  'WORKED_EXAMPLE',
+] as const
+
+export function isCompositeCapableStepType(stepType: string): boolean {
+  return (COMPOSITE_CAPABLE_STEP_TYPES as readonly string[]).includes(stepType)
+}
+
 export type ParsedStepContent =
   | { kind: 'text'; text: string }
   | ({ kind: 'worked-example' } & WorkedExampleContent)
@@ -249,6 +305,7 @@ export type ParsedStepContent =
   | ({ kind: 'image' } & ImageContent)
   | { kind: 'diagram'; diagram: DiagramContent }
   | { kind: 'infographic'; infographic: InfographicContent }
+  | { kind: 'composite'; blocks: ContentBlock[] }
 
 function tryJson(content: string): unknown | undefined {
   try {
@@ -270,6 +327,14 @@ function tryJson(content: string): unknown | undefined {
 export function parseStepContent(stepType: string, content: string): ParsedStepContent {
   const json = tryJson(content)
   if (json !== undefined) {
+    // Composite is tried FIRST, and only on content-bearing step types. A
+    // composite payload on INTERACTIVE_CHECK or SOURCE_ANALYSIS falls through
+    // to the text fallback exactly like any other wrong-shape content — that
+    // rejection is what keeps questions out of content modules.
+    if (isCompositeCapableStepType(stepType)) {
+      const r = CompositeSchema.safeParse(json)
+      if (r.success) return { kind: 'composite', blocks: r.data.blocks }
+    }
     if (stepType === 'WORKED_EXAMPLE') {
       const r = WorkedExampleSchema.safeParse(json)
       if (r.success) return { kind: 'worked-example', ...r.data }

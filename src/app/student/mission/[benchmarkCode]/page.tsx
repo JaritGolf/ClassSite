@@ -3,8 +3,8 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getStudentAccommodations } from '@/lib/reading-load'
 import { resolveL1Language, getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
-import { resolveEffectiveSteps } from '@/lib/lesson-content'
-import { getClassStepOverrideMap } from '@/lib/lesson-media'
+import { resolveClassLessonSteps, type ResolvedStep } from '@/lib/lesson-content'
+import { getClassStepOverrideMap, getClassLessonLayer } from '@/lib/lesson-media'
 import { getAttemptReviewsForStudent } from '@/lib/assessment'
 import { MissionFlow } from '@/components/student/mission/MissionFlow'
 import { MissionReview } from '@/components/student/mission/MissionReview'
@@ -105,13 +105,18 @@ export default async function MissionPage({ params }: PageProps) {
 
   const lesson = benchmark.lessons[0]
 
-  // Teacher media visibility (ADR 0015) + per-class content overrides
-  // (lesson content editor): resolve steps server-side — a class's content
-  // override wins over the global default, and its visibility override wins
-  // over the step's global enabled flag; the two axes are independent. First
-  // ACTIVE class, same convention as strategy-track requirements.
-  let visibleSteps = lesson?.steps ?? []
-  if (visibleSteps.length > 0) {
+  // The class authoring layer, resolved server-side in one pure pass
+  // (ADR 0015 media visibility + ADR 0023 content overrides, teacher-added
+  // modules and per-class order). A class's content override wins over the
+  // global default and its visibility override wins over the step's global
+  // enabled flag; the two axes are independent. First ACTIVE class, same
+  // convention as strategy-track requirements.
+  //
+  // NOT gated on the built-in step count any more: a lesson can now consist
+  // entirely of modules the teacher added.
+  const builtInSteps = lesson?.steps ?? []
+  let visibleSteps: ResolvedStep[] = []
+  if (lesson) {
     let classId: string | null = null
     if (student) {
       const enrollment = await prisma.classEnrollment.findFirst({
@@ -121,11 +126,19 @@ export default async function MissionPage({ params }: PageProps) {
       })
       classId = enrollment?.classId ?? null
     }
-    const overrides = await getClassStepOverrideMap(
-      classId,
-      visibleSteps.map((s) => s.id)
-    )
-    visibleSteps = resolveEffectiveSteps(visibleSteps, overrides)
+    const [overrides, layer] = await Promise.all([
+      getClassStepOverrideMap(
+        classId,
+        builtInSteps.map((s) => s.id)
+      ),
+      getClassLessonLayer(classId, lesson.id),
+    ])
+    visibleSteps = resolveClassLessonSteps({
+      builtInSteps,
+      overrides,
+      classSteps: layer.classSteps,
+      savedOrder: layer.savedOrder,
+    })
   }
 
   const idForType = (t: string) =>
