@@ -30,7 +30,13 @@ import { fetchRemoteImage, RemoteImageError } from '@/lib/media-upload/fetch-rem
  */
 export const runtime = 'nodejs'
 
-export const IMPORT_URL_AUDIT_ACTION = 'LESSON_MEDIA_IMPORTED_FROM_URL'
+/**
+ * NOT exported. A route module may only export HTTP handlers and Next's own
+ * config fields (`runtime` here); anything else fails `next build` with
+ * "is not a valid Route export field" — a check `tsc` does not perform, so it
+ * only surfaces at deploy time.
+ */
+const IMPORT_URL_AUDIT_ACTION = 'LESSON_MEDIA_IMPORTED_FROM_URL'
 
 /** Cheap abuse ceiling, counted from the audit log — no new table, no new dep. */
 const MAX_IMPORTS_PER_HOUR = 20
