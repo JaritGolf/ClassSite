@@ -277,6 +277,17 @@ model Student {
   districtStudentId String? @unique @map("district_student_id")
   gradeLevel        Int     @default(7) @map("grade_level")
   active            Boolean @default(true)
+  /// When the district notified us this student is no longer enrolled.
+  ///
+  /// Starts the deletion clock in Fla. Stat. § 1006.1494(3)(c) — covered
+  /// information must be deleted "no later than 90 days after a student is no
+  /// longer enrolled in a school within the district, upon notice by the school
+  /// district." The statute's trigger is that notice, which software cannot
+  /// observe, so an administrator records it here and the purge computes 90 days
+  /// from this timestamp. Null = still enrolled; no clock is running.
+  ///
+  /// See src/lib/retention/student-records.ts.
+  deactivatedAt     DateTime? @map("deactivated_at")
   l1Language        String? @map("l1_language")
   ellStatus         String? @map("ell_status")
   readingLevelFlag  Boolean @default(false) @map("reading_level_flag")

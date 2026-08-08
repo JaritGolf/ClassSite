@@ -7,6 +7,7 @@
  */
 
 import { requireAuth } from '@/lib/auth'
+import { SignOutButton } from '@/components/ui/SignOutButton'
 
 export default async function AdminUsersPage() {
   const session = await requireAuth(['ADMIN'])
@@ -24,14 +25,7 @@ export default async function AdminUsersPage() {
           <p className="font-mono">Role: {session.user.role}</p>
           <p className="font-mono">User ID: {session.user.userId}</p>
         </div>
-        <form action="/api/auth/signout" method="POST">
-          <button
-            type="submit"
-            className="text-sm text-gray-500 underline hover:text-gray-700"
-          >
-            Sign out
-          </button>
-        </form>
+        <SignOutButton className="text-sm text-gray-500 underline hover:text-gray-700" />
       </div>
     </main>
   )

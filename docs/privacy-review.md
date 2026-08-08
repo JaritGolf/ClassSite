@@ -104,7 +104,38 @@
 ## 5. Outstanding for district sign-off (spec §37)
 
 - [ ] District privacy/vendor agreement executed.
-- [ ] Hosting & at-rest encryption approved (`docs/hosting-plan.md`).
+- [ ] Hosting & at-rest encryption approved (`docs/hosting-plan.md` §6).
 - [ ] Clever/Google OAuth scopes approved (`docs/oauth-scopes.md`).
 - [ ] Retention windows set per district policy (`AUDIT_LOG_RETENTION_DAYS`, etc.).
 - [ ] Parent identity-verification policy confirmed before Phase 18.
+- [ ] **Sub-processor agreements with Vercel and Neon** — required by Fla. Stat.
+      § 1006.1494(2)(d)6, which obliges an operator to contractually bar a third party from any
+      use beyond the contracted service, bar re-disclosure, and require reasonable security.
+      Standard provider terms are not a substitute. **Not executed.**
+- [ ] **Technology Clearinghouse submission** (PBSD 2199, and PBSD 2220 if required) — prepared
+      and deliberately unfiled. See `docs/tch-submission-mapping.md`.
+
+## 6. Florida operator obligations (Fla. Stat. § 1006.1494)
+
+This application meets the statutory definition of an **operator** — an online service "used
+primarily for K-12 school purposes" — so § 1006.1494 places duties on it directly, independent of
+any district agreement. A full duty-by-duty mapping is in
+[`docs/florida-operator-compliance.md`](./florida-operator-compliance.md). The two additions made
+2026-08-07:
+
+- **§ 1006.1494(3)(c) deletion.** Covered information must be deleted no later than 90 days after
+  a student is no longer enrolled, upon district notice. An administrator records the notice
+  (`Student.deactivatedAt`) and `purgeDisenrolledStudents()` removes every record belonging to
+  that student, then the student and user rows, writing a `STUDENT_RECORDS_PURGED` audit entry
+  that deliberately does not name the students removed. `STUDENT_RECORD_RETENTION_DAYS` defaults
+  to 90 and cannot be configured higher.
+- **§ 1006.1494(3)(a) minimisation.** Clever scope narrowed to `read:user_id`; the previously
+  requested `read:students` / `read:teachers` were never exercised by any code path. No student
+  name or email now reaches the database from Clever.
+
+**§ 1002.222(1)(a)** separately bars collecting a student's political affiliation, voting
+history, or religious affiliation. No such field exists. Note the distinction a reviewer needs:
+this application *teaches about* religion and political parties as SS.7.CG subject matter, which
+a keyword scan will surface — that is curriculum, not collection. The only free-text student
+input is the suggestion box, which now carries a reminder not to include personal details and is
+bounded by `SUGGESTION_RETENTION_DAYS`.

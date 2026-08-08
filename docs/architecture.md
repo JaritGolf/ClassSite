@@ -35,8 +35,14 @@ This document is updated at each phase boundary per spec Section 35.5.
 - **Retention** (`src/lib/retention/`): env-configurable thresholds (`policy.ts`) + purge
   runner (`purge.ts`) for aged audit logs and voided attempts. Admin UI `/admin/retention`,
   API `POST /api/admin/retention/purge`, script `npm run retention:purge`. No cron deployed.
-- **Audit-log catalog additions**: `REPORT_EXPORTED`, `AUDIT_LOG_EXPORTED`, `RETENTION_PURGE`.
-- See ADR 0011 and `docs/{privacy-review,hosting-plan,oauth-scopes,data-retention}.md`.
+- **Audit-log catalog additions**: `REPORT_EXPORTED`, `AUDIT_LOG_EXPORTED`, `RETENTION_PURGE`,
+  and (ADR 0024) `STUDENT_DISENROLLED`, `STUDENT_RECORDS_PURGED`.
+- **Statutory deletion (ADR 0024)**: `src/lib/retention/student-records.ts` implements
+  Fla. Stat. § 1006.1494(3)(c) — an administrator records district notice of disenrollment
+  (`Student.deactivatedAt`), and the purge deletes that student's records within 90 days.
+  Capped at 90; cannot be configured longer.
+- See ADR 0011, ADR 0024, and
+  `docs/{privacy-review,hosting-plan,oauth-scopes,data-retention,florida-operator-compliance,tch-contingency}.md`.
 
 ### Phase 18 — Parent Login
 

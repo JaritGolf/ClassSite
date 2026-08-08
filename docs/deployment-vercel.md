@@ -3,7 +3,7 @@
 > Target for the **first** deployment: a demo/preview site running seed data only —
 > Alex Student, Ms Teacher, the fake roster. **No real student PII.**
 > Real rosters are gated behind the district sign-offs in
-> [`hosting-plan.md`](./hosting-plan.md) §5 and [`privacy-review.md`](./privacy-review.md).
+> [`hosting-plan.md`](./hosting-plan.md) §6 and [`privacy-review.md`](./privacy-review.md).
 
 ## Topology
 

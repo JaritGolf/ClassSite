@@ -51,6 +51,8 @@ interface LoginButtonsProps {
 const ERROR_MESSAGES: Record<string, string> = {
   'pending-approval':
     'Your account is pending administrator approval. Contact your school administrator to activate your account.',
+  'domain-not-allowed':
+    'That Google account is not from an approved district domain. Sign in with your school account, or contact your school administrator.',
   OAuthSignin:
     'Could not start the sign-in process. Please try again.',
   OAuthCallback:

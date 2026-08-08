@@ -62,6 +62,6 @@ delete it when you're done — it is plaintext on disk.
 
 Everything above assumes the demo dataset. Real rosters mean student PII on Vercel
 and Neon, both outside the district perimeter — see
-[`hosting-plan.md`](./hosting-plan.md) §5 and
+[`hosting-plan.md`](./hosting-plan.md) §6 and
 [`privacy-review.md`](./privacy-review.md). Signed DPAs with both vendors and PBCSD
 hosting sign-off come first.

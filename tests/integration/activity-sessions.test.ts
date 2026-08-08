@@ -283,6 +283,8 @@ describe('retention purge — activity sessions', () => {
     auditLogRetentionDays: 0,
     voidedAttemptRetentionDays: 0,
     activitySessionRetentionDays: 30,
+    suggestionRetentionDays: 0,
+    studentRecordRetentionDays: 0,
   }
 
   it('reports aged sessions in a dry run without deleting them', async () => {

@@ -16,6 +16,11 @@
 import { prisma } from '@/lib/db'
 import { seededShuffle } from '@/lib/shuffle'
 import {
+  ACC_REDUCED_CHOICES_CODE,
+  isReducedChoicesEligibleType,
+  reduceChoices,
+} from '@/lib/reading-load/reduced-choices'
+import {
   getEffectiveReadingLevel,
   getStudentAccommodations,
   fetchStimulusForQuestion,
@@ -108,6 +113,7 @@ export async function fetchAssessmentForStudent(
   // Resolve effective reading level + L1 gloss language if studentId provided
   let effectiveLevel = 2 // default
   let glossaryByBenchmark = new Map<string | null, GlossaryTerm[]>()
+  let reduceChoiceCount = false
   if (studentId) {
     const levelResult = await getEffectiveReadingLevel(
       studentId,
@@ -124,6 +130,12 @@ export async function fetchAssessmentForStudent(
     const activeCodes = accommodations.filter((a) => a.active).map((a) => a.code)
     const languageCode = resolveL1Language(student?.l1Language ?? null, activeCodes)
 
+    // ACC-REDUCED-CHOICES. Gated on the assessment type as well as the grant:
+    // never on anything that decides mastery (see ./reduced-choices).
+    reduceChoiceCount =
+      activeCodes.includes(ACC_REDUCED_CHOICES_CODE) &&
+      isReducedChoicesEligibleType(assessment.assessmentType)
+
     // Prefetch glossary terms once per distinct benchmark (with L1 glosses attached).
     const benchmarkIds = [...new Set(assessment.questions.map((aq) => aq.question.benchmarkId))]
     glossaryByBenchmark = new Map(
@@ -135,6 +147,14 @@ export async function fetchAssessmentForStudent(
       )
     )
   }
+
+  // Correct-option ids, fetched ONLY to decide which distractors may be dropped
+  // for ACC-REDUCED-CHOICES. They are never returned to the caller — the shape
+  // below is unchanged, and the surviving options are shuffled afterwards so
+  // position leaks nothing (rule #2).
+  const correctByQuestion = reduceChoiceCount
+    ? await fetchCorrectOptions(assessment.questions.map((aq) => aq.question.id))
+    : new Map<string, string>()
 
   // Attach stimulus content to each question (parallel fetch)
   const questions = await Promise.all(
@@ -154,7 +174,17 @@ export async function fetchAssessmentForStudent(
         // (seeded: stable across refreshes, different across students).
         // Grading matches by optionId, so order carries no meaning server-side.
         options: seededShuffle(
-          aq.question.options,
+          reduceChoiceCount
+            ? reduceChoices(
+                aq.question.options,
+                new Set(
+                  [correctByQuestion.get(aq.question.id)].filter(
+                    (id): id is string => Boolean(id)
+                  )
+                ),
+                `${studentId ?? 'anon'}:${aq.question.id}`
+              )
+            : aq.question.options,
           `${studentId ?? 'anon'}:${aq.question.id}`
         ),
         stimulus,

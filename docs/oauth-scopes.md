@@ -10,9 +10,18 @@ Config: `src/lib/auth/providers/clever.ts`.
 
 | Scope | Why requested | Data accessed |
 |---|---|---|
-| `read:user_id` | Identify the authenticated user to link the account | The Clever user id only |
-| `read:students` | Resolve student roster identity (name) for STUDENT logins | Student profile (name) |
-| `read:teachers` | Resolve teacher identity for TEACHER logins | Teacher profile (name) |
+| `read:user_id` | Identify the authenticated user to link the account | The Clever user id, user type, and district id — nothing else |
+
+**This is the complete list. One scope.**
+
+> **Changed 2026-08-07 — narrowed.** The app previously requested `read:students` and
+> `read:teachers` as well, for a name lookup that was never implemented. The only Clever
+> endpoint this app calls is `/v3.0/me`, which returns `{ id, type, district }` and is covered
+> by `read:user_id` alone; user names are currently written as the literal `"Clever User"`
+> (`src/lib/auth/options.ts`). Requesting scope that is never exercised conflicts with
+> Fla. Stat. § 1006.1494(3)(a) ("collect no more covered information than is reasonably
+> necessary") and is the kind of mismatch a district Legal review looks for. **If the name
+> lookup is built, restore the scope in the same commit as the API call — not before.**
 
 Production redirect URI: `https://mycivicsclass.com/api/auth/callback/clever`. This must be
 registered as an allowed redirect in the Clever app settings and match
@@ -20,8 +29,10 @@ registered as an allowed redirect in the Clever app settings and match
 
 Notes:
 - Clever does **not** support PKCE; the flow uses `state` only (`checks: ['state']`).
-- The app reads identity from `/v3.0/me` and the matching students/teachers endpoint. It
-  does **not** request sections/courses/contacts/financials.
+- The app reads identity from `/v3.0/me` only. It does **not** call the students/teachers
+  detail endpoints, and does **not** request sections/courses/contacts/financials.
+- Net effect: **no student name or email reaches the database via Clever.** The only
+  Clever-derived identifiers stored are the opaque `cleverId` and the role implied by `type`.
 
 ## Google (staff fallback)
 
@@ -41,7 +52,7 @@ Notes:
 
 ## District verification checklist (owner action)
 
-- [ ] Confirm Clever app is approved by the district and the three scopes above are within the
+- [ ] Confirm Clever app is approved by the district and that `read:user_id` is within the
       district-allowed set.
 - [ ] Confirm whether Google OAuth is permitted for staff, and that no broader scopes are
       required/forbidden.

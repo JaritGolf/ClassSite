@@ -150,6 +150,86 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**TECHNOLOGY CLEARINGHOUSE CONTINGENCY + FLORIDA OPERATOR COMPLIANCE (2026-08-07, ADR 0024) —
+Tier 1 `tsc` GREEN (0 errors) + Tier 2 jest GREEN (180/180 suites, 2,098 passed + 2 intentional
+skips, sharded ×4) + in-browser verification.** Owner asked what the platform could still do if
+PBCSD's Technology Clearinghouse declines approval, under the constraint *"do everything within
+the existing rules — I do not want to jeopardize future approval."*
+**THE RESEARCH CHANGED THE ANSWER, AND THAT IS THE HEADLINE.** SDPBC **Board Policy 3.29**
+(active; adopted 2024-11-06, rev. 2025-10-21) is categorical: *"Use of non-District approved
+products whether on-prem or cloud-based services is prohibited unless approved by the District's
+Technology Clearinghouse (TCH)."* **No cost threshold, no purchase trigger, and — searched for
+specifically — NO written exemption** for free tools, no-login tools, teacher-side prep,
+projected-only use, or optional use. Enforcement reaches termination. Policy 5.50 §12(k) does
+acknowledge services *"referred to … but are not required to use"*, but its duty runs to the
+**School Board, not the teacher**, and nothing published reconciles the two. So there is no
+compliant way to put students on the platform pre-approval, and this work is (a) what retains
+value with zero student use and (b) removing every avoidable reason a reviewer says no.
+⚠️ **Two currency traps:** the Policy 3.29 that ranks first in Google is the **archived** 2016
+version — do not cite it; and BoardDocs 403s ordinary fetching, so the current text was
+retrieved via its API by an agent and has **not** been read by the owner in the BoardDocs UI.
+**A statute nobody had accounted for:** **Fla. Stat. § 1006.1494** (Florida's SOPIPA) regulates
+the **operator** directly — this app meets the definition, so its duties attach whether or not a
+district agreement exists. Verified firsthand from leg.state.fl.us. `Student.eseStatus` /
+`ellStatus` / accommodations are explicitly *"special education data"* and *"disabilities"* under
+(1)(a)3. Favourable: **(6)(b) expressly preserves use "for adaptive learning or customized
+student learning purposes"** — direct cover for the mastery and SM-2 engines.
+What shipped:
+(1) **Printable materials — the fallback** (`/teacher/lessons/[code]/print`): a **student
+packet** and a **teacher answer key** from the authored curriculum. Defensible because paper is a
+different question — Florida has **no separate category of "supplemental materials" and no state
+pre-approval requirement** (verified negative: the word appears in neither § 1006.28 nor
+§ 1006.283); governance is content standards + a 5-day objection process, not a technology
+review. **The two documents are separate server-rendered URLs, not a client toggle** — a student
+packet must not carry answers in its markup at all. Proven in-browser: packet HTML has **0 filled
+markers, 0 feedback spans, and 0 bold-marked options** across 66 option rows; the key has 34
+filled + 131 feedback spans. Mastery Challenge deliberately excluded (forms rotate per student;
+it decides unlock).
+(2) **§ 1006.1494(3)(c) deletion** — new `Student.deactivatedAt` (additive migration),
+`markStudentDisenrolled()` + `purgeDisenrolledStudents()`. **Defaults ON at 90 and is CAPPED at
+90** — the inverse of every other retention window, because here *retaining* past 90 days is the
+violation. Unparseable ⇒ falls back to 90, not 0, so a typo can't disable a statutory duty. Safe
+to ship enabled because the clock only starts on a human act. **Every delete is explicit: none of
+Student's ~21 child relations cascade**, so `CHILD_DELETION_ORDER` is hand-maintained — and
+**mutation-tested** (removing one table produced exactly the expected FK failure in 3 tests).
+Audit logs survive: `AuditLog.actor` is optional ⇒ SetNull, and the purge record deliberately
+**does not name the students it removed**.
+(3) **Clever scope narrowed to `read:user_id`** — `read:students`/`read:teachers` were requested
+for a name lookup **never implemented** (`/v3.0/me` returns only `{id,type,district}`; names are
+hardcoded `'Clever User'`). Unused scope conflicts with § 1006.1494(3)(a) and is exactly what a
+Legal review tests. **Net effect: no student name or email reaches the DB from Clever at all.**
+(4) **The three fake IEP accommodations resolved** — `ACC-REDUCED-CHOICES` **implemented** (3
+choices on practice-style types only; **never** where mastery is decided, since 25%→33% guess
+odds would change what the 80% threshold means — an **allowlist** so new types fail closed);
+`ACC-EXT-TIME` is **inapplicable by design** (verified: no time limit exists anywhere — the
+platform is untimed for everyone, which *exceeds* the accommodation); `ACC-SCREEN-READER` is
+application-wide, not per-student. Neither deleted — an IEP may name the code. New seed comment:
+**an accommodation description is a promise to a teacher reading an IEP.**
+(5) **`SUGGESTION_RETENTION_DAYS`** + a plain reminder in the box, because it is the only free
+prose a student can enter and **§ 1002.222(1)(a)** bars retaining political/religious affiliation.
+Audited every student input path: the only other hits are **curriculum** (First Amendment items,
+POLITICAL_CARTOON stimuli) — teaching *about* religion is not collecting a student's affiliation,
+and that distinction is now stated for a reviewer who keyword-scans.
+(6) **`GOOGLE_ALLOWED_DOMAINS`** (ADR 0003, never built) — checked **before** the upsert so a
+rejected sign-in leaves no `User` row. **Deliberately permissive by default:** the prod admin was
+bootstrapped by attaching a Google address to a seeded row, and a hard-coded default would lock
+it out with DB access as the recovery path. Exact match, not suffix — a suffix match on
+`palmbeachschools.org` would accept `evilpalmbeachschools.org`.
+(7) **Docs:** `tch-contingency.md`, `florida-operator-compliance.md`, `tch-submission-mapping.md`,
+`district-questions-draft.md`, ADR 0024; packet §3.2/§9.6/§9.9 corrected; stale
+`hosting-plan.md §5`→`§6` refs fixed in 3 files.
+**⚠ NOTHING FILED OR SENT.** Owner directive: *"I do not want any form submitted to the district
+at this point, we can prepare for them but not actually filed."* No PBSD 2199, no PBSD 2220, no
+email to Ed Tech.
+**⛔ THE ONE ITEM CODE CANNOT CLOSE: `DEMO_OPEN_LOGIN=true` is still set in production** — any
+visitor signs in as ADMIN. One env var + redeploy, and it must go before the URL reaches a
+reviewer.
+**Honest accounting stated plainly rather than glossed: the content survives on paper; the engine
+does not** — server-side grading, the 80% mastery unlock, SM-2, adaptive difficulty, and every
+analytic are lost, which is most of what distinguishes this from a worksheet packet.
+
+---
+
 **TEACHER CONTENT AUTHORING — CLASS-SCOPED LESSON MODULES (2026-08-06, ADR 0023) — Tier 1 `tsc`
 GREEN (0 errors) + Tier 2 jest GREEN (173/173 suites, 2,014 passed + 2 intentional skips,
 sharded ×4) + in-browser verification on both roles.** Owner: teachers need full, intuitive
@@ -736,7 +816,7 @@ worth the district-IT cost.
 **DEPLOYED TO PRODUCTION — https://mycivicsclass.com (2026-08-02) — `tsc` GREEN +
 `next build` GREEN + live verification.** The app is publicly reachable for the first
 time. **Demo/seed data only — no real student PII** (owner's explicit choice; the
-district gates in `hosting-plan.md` §5 are unchanged and still block real rosters).
+district gates in `hosting-plan.md` §6 are unchanged and still block real rosters).
 Full runbook: **`docs/deployment-vercel.md`**; credential inventory (names and
 rotation only, never values): **`docs/deployment-credentials.md`**.
 **Topology:** Cloudflare registrar + DNS (grey-cloud, DNS-only) → Vercel (Next.js
@@ -1902,6 +1982,81 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-08-07 (SIGN OUT WAS BROKEN EVERYWHERE — pre-existing, live in production):**
+Owner reported they could not sign out of the student account to reach the teacher account —
+"I click on the sign out button but nothing happens." Reproduced exactly, and the cause is worth
+remembering because it is silent by design. **All five sign-out controls** (student, teacher,
+admin, parent navs + `/admin/users`) were a bare `<form action="/api/auth/signout" method="POST">`
+**with no CSRF token**. NextAuth v4 does not error on an unverified sign-out POST — **it redirects
+back** — so the page reloaded looking identical, the session survived, and there was **no console
+error, no failed request, and nothing in the server log**. Proven both directions live: that POST
+left the session alive; the identical POST carrying a `csrfToken` signed out instantly.
+**Pre-existing** — the form is in committed `HEAD`, and it is live on mycivicsclass.com.
+Fixed with one shared **`src/components/ui/SignOutButton.tsx`** calling `signOut()` from
+`next-auth/react`, which obtains the CSRF token itself. Two deliberate choices:
+(a) **never name the CSRF cookie** — it is `next-auth.csrf-token` over http but
+`__Host-next-auth.csrf-token` over https, so a hand-rolled hidden input would have worked locally
+and failed in production; (b) **`redirect: false` then navigate client-side** — hit live: the
+first version signed out correctly but threw the browser at **`localhost:3000`**, because NextAuth
+resolves a relative `callbackUrl` **server-side against `NEXTAUTH_URL`**, which `.env.local` pins
+to `:3000`. Navigating ourselves keeps the user on whatever origin they are actually on. The
+button also shows "Signing out…", because the reported symptom was "nothing happens".
+**Verified:** clicked the real button as Alex Student and as Ms Teacher — both land on `/login`,
+right origin, session gone; `tsc` 0 errors; **181 suites, 2,102 passed + 2 skips** (baseline
+180/2,098 — the delta is exactly the new guard). New **`tests/unit/auth/signout-guard.test.ts`**
+static-scans `src/` for the bare form, because this failure mode is invisible and a plain form is
+the obvious way to rewrite it; **mutation-tested** (restoring the old form to the parent layout
+failed 2 of its 4 assertions), then restored.
+**Two gotchas confirmed:** NextAuth's own built-in `/api/auth/signout` page works **in production**
+(verified — its form action is `https://mycivicsclass.com/...`) but **not** on a local dev server
+off port 3000, for the same `NEXTAUTH_URL` reason — worth fixing in `.env.local` regardless. And
+in the Browser pane, a click immediately after `navigate` silently no-ops; take a screenshot
+first (cost two false "the fix didn't work" readings this session).
+
+**Session of 2026-08-07 (Technology Clearinghouse contingency + Florida operator compliance,
+ADR 0024):** Owner asked what the platform could still do if the district's Technology
+Clearinghouse does not approve it, with a hard constraint about not jeopardizing future approval.
+**Researched the actual policy before planning, and it inverted the question.** Board Policy 3.29
+is categorical and has no exemption for any of the workarounds one would reach for — free,
+no-login, prep-only, projected, optional. I said that plainly rather than constructing a clever
+reading of a policy whose enforcement clause reaches termination. The deliverable became "what
+retains value with zero student use" plus "remove every avoidable reason a reviewer says no."
+**The most useful thing found was a statute nobody had accounted for.** Fla. Stat. § 1006.1494
+regulates the *operator* directly, so its duties attach to this app whether or not a district
+agreement is ever signed — including a **90-day deletion duty** the app had no mechanism for.
+Verified it firsthand from leg.state.fl.us rather than trusting the research summary, which is
+also how I found the favourable (6)(b) carve-out for adaptive learning.
+**Three judgment calls worth recording.** (a) Student-record retention **defaults ON at 90 and is
+capped there** — the inverse of every other window in the module, because retaining past 90 days
+is the violation rather than the safe choice; an unparseable value falls back to 90, not 0, so a
+typo can't switch off a statutory duty. (b) The Google domain allowlist ships **permissive by
+default** — a hard-coded `palmbeachschools.org` would have locked out the production admin
+account, and a control that removes the owner's own access isn't a control. (c) `ACC-EXT-TIME`
+was **not** implemented: verifying first showed the platform has no time limits at all, so every
+student already has unlimited time, which exceeds the accommodation. Describing that honestly is
+a better answer than inventing a multiplier.
+**Caught while writing tests:** I had written a test documenting that a garbage
+`STUDENT_RECORD_RETENTION_DAYS` silently means "retain forever." That's the wrong direction for a
+statutory duty, so I fixed the implementation instead of shipping the test that blessed it.
+**Verification:** `tsc` 0 errors; jest **180/180 suites, 2,098 passed + 2 intentional skips**
+across all four shards (baseline 175/2,041). **Mutation-tested** the load-bearing claim —
+removing one table from `CHILD_DELETION_ORDER` produced exactly the expected FK failure in 3
+tests, then restored. Live browser walk as teacher: the student packet's HTML contains **0 filled
+markers, 0 feedback spans, 0 bold-marked options** across 66 option rows while the answer key has
+34 and 131 — i.e. the answers are genuinely absent from the packet's markup, not hidden by CSS.
+Unauthenticated access → 307 to /login. **Zero `AssessmentAttempt` rows created** (76 before and
+after). Fixed one layout bug found in the screenshot: the correct answer's marker and its letter
+wrapped onto separate lines, because the row is bold precisely where it matters most.
+**Nothing was filed or sent** — owner directive. `docs/district-questions-draft.md` is a draft
+held locally.
+**Env notes:** this worktree had **no `node_modules` and no `.env.local`** — applied the
+documented convention (symlink to the shared `node_modules.nosync`, copy `.env.local`). The
+`prisma generate` engine self-copy ENOENT recurred as documented and **deleted the shared engine
+binary**; restored it by hand from `@prisma/engines` immediately, since another worktree's dev
+server was running against the same shared tree. `preview_start` with a `url` is safe (it only
+opens a tab); ran `next dev` on port 3311 from the worktree and confirmed with
+`lsof -a -p <pid> -d cwd` before trusting anything I saw.
 
 **Session of 2026-08-07 (Composite modules — media and text inside ONE module, ADR 0023
 addendum):** Owner tested the previous build and reported the real gap: text modules could not

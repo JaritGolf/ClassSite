@@ -6,6 +6,7 @@ import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import { SuggestionBox } from '@/components/ui/SuggestionBox'
+import { SignOutButton } from '@/components/ui/SignOutButton'
 
 interface NavItem {
   href: string
@@ -160,14 +161,7 @@ export function StudentNav({ badges = {} }: { badges?: StudentNavBadges }) {
             of the teacher report page. `mr-2` keeps the icon off Sign out. */}
         <SuggestionBox allowKindToggle recipient="teacher" className="mr-2" />
         {/* Settings moved into the scrollable row above — see the NAV_ITEMS note. */}
-        <form action="/api/auth/signout" method="POST">
-          <button
-            type="submit"
-            className="rounded-xl px-3 py-2 text-sm font-display font-semibold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-          >
-            Sign out
-          </button>
-        </form>
+        <SignOutButton className="rounded-xl px-3 py-2 text-sm font-display font-semibold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors" />
       </div>
     </nav>
   )

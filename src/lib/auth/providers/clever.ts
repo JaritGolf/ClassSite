@@ -17,7 +17,7 @@
  * Setup steps (for district onboarding — see docs/runbook.md):
  *   1. Create an app at https://dev.clever.com
  *   2. Set redirect URI to: https://your-domain/api/auth/callback/clever
- *   3. Request scopes: read:user_id, read:students, read:teachers
+ *   3. Request scope: read:user_id  (only — see the note on `scope` below)
  *   4. Copy Client ID and Secret to CLEVER_CLIENT_ID / CLEVER_CLIENT_SECRET
  *
  * TODO (Phase 17 — district production wiring):
@@ -57,7 +57,21 @@ export function cleverProvider(): OAuthConfig<CleverProfile> {
     authorization: {
       url: 'https://clever.com/oauth/authorize',
       params: {
-        scope: 'read:user_id read:students read:teachers',
+        // MINIMISED DELIBERATELY — do not widen without implementing the reader.
+        //
+        // This app only ever calls /v3.0/me, which returns { id, type, district }
+        // and needs `read:user_id` alone. `read:students` and `read:teachers` were
+        // requested here for a name lookup that was never built (see the Phase 17
+        // TODO above), so they were scope we asked for and never exercised.
+        //
+        // Two reasons that had to go: Fla. Stat. § 1006.1494(3)(a) requires an
+        // operator to "collect no more covered information than is reasonably
+        // necessary", and SDPBC routes anything touching student data through a
+        // Legal review that reads the scope string against actual use.
+        //
+        // If the name lookup is implemented, add the scope back in the SAME commit
+        // that adds the API call — never ahead of it.
+        scope: 'read:user_id',
         response_type: 'code',
       },
     },
