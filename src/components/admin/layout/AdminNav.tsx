@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { SuggestionBox } from '@/components/ui/SuggestionBox'
+import { SignOutButton } from '@/components/ui/SignOutButton'
 
 const NAV_ITEMS = [
   // Reports leads: there is no /admin index, so this is the de facto landing page.
@@ -39,11 +40,7 @@ export function AdminNav() {
       </div>
       <div className="ml-4 flex items-center gap-4 shrink-0">
         <SuggestionBox className="mr-3" />
-        <form action="/api/auth/signout" method="POST">
-          <button type="submit" className="text-sm text-gray-600 hover:text-gray-900">
-            Sign out
-          </button>
-        </form>
+        <SignOutButton className="text-sm text-gray-600 hover:text-gray-900" />
       </div>
     </nav>
   )

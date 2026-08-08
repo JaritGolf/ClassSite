@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import { SuggestionBox } from '@/components/ui/SuggestionBox'
+import { SignOutButton } from '@/components/ui/SignOutButton'
 
 const NAV_ITEMS = [
   {
@@ -82,7 +83,10 @@ export function TeacherNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-0 overflow-x-auto">
+    // print:hidden — navigation is dead ink on paper. This matters for the
+    // printable lesson materials and for the parent progress summary, which has
+    // always printed with the nav bar across the top of page 1.
+    <nav className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-0 overflow-x-auto print:hidden">
       <span className="font-bold text-indigo-700 text-lg mr-4 shrink-0">My Civics Class</span>
       <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto">
         {NAV_ITEMS.map((item) => (
@@ -108,11 +112,7 @@ export function TeacherNav() {
         {/* mr-3 keeps the icon clear of Sign out — an accidental sign-out while
             reaching for the suggestion box is a bad trade. */}
         <SuggestionBox className="mr-3" />
-        <form action="/api/auth/signout" method="POST">
-          <button type="submit" className="text-sm text-gray-600 hover:text-gray-900">
-            Sign out
-          </button>
-        </form>
+        <SignOutButton className="text-sm text-gray-600 hover:text-gray-900" />
       </div>
     </nav>
   )
