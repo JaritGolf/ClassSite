@@ -26,6 +26,9 @@ const CONFIG = {
   auditLogRetentionDays: 3650,
   voidedAttemptRetentionDays: 3650,
   activitySessionRetentionDays: 0,
+  suggestionRetentionDays: 0,
+  // Off: this suite exercises the shared-table purge, not student deletion.
+  studentRecordRetentionDays: 0,
 }
 const AUDIT_MARKER = 'TEST_AUDIT17_03_ANCIENT'
 
@@ -157,6 +160,8 @@ describe('Audit 17 — Item 8: retention purge', () => {
         auditLogRetentionDays: 0,
         voidedAttemptRetentionDays: 0,
         activitySessionRetentionDays: 0,
+        suggestionRetentionDays: 0,
+        studentRecordRetentionDays: 0,
       },
     })
     expect(result.auditLogsDeleted).toBe(0)

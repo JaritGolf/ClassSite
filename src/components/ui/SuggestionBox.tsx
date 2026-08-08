@@ -590,6 +590,22 @@ export function SuggestionBox({
               </p>
             )}
 
+            {/* This box is the ONLY place a student can type free prose, which
+                makes it the only place data nobody designed for can arrive.
+                Fla. Stat. § 1002.222(1)(a) forbids an education agency from
+                retaining information on a student's political affiliation,
+                voting history, or religious affiliation — the app collects none
+                of those by design, but it cannot un-know something a student
+                volunteers here. Asking first is cheaper than purging after, and
+                for 7th-graders a plain reminder is a reasonable support. Paired
+                with SUGGESTION_RETENTION_DAYS, which bounds how long anything
+                unexpected can persist. */}
+            {expanded && recipient === 'teacher' && (
+              <p className="text-xs text-gray-600">
+                Tell us about the app, not about yourself — no personal details please.
+              </p>
+            )}
+
             <textarea
               ref={textareaRef}
               value={draft}

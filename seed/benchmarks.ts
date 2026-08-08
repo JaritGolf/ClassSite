@@ -1015,15 +1015,47 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
   }
 
   // ── Seed default accommodations ───────────────────────────────────────
+  //
+  // ⚠ A description here is a PROMISE TO A TEACHER READING AN IEP. If the code
+  // does not do what the text says, a teacher grants the support, believes it
+  // took effect, and the student does not get it. Three entries below were in
+  // exactly that state until 2026-08-07 (ACC-EXT-TIME, ACC-REDUCED-CHOICES,
+  // ACC-SCREEN-READER); each is now either implemented or described accurately.
+  // Do not add an aspirational description. Describe what ships today.
   const accommodations = [
-    { code: 'ACC-EXT-TIME', name: 'Extended Time', description: 'Adds configurable time multiplier (1.5x, 2x) to timed activities.' },
-    { code: 'ACC-READ-ALOUD', name: 'Read-Aloud', description: 'Auto-enables read-aloud control on all stimulus passages.' },
-    { code: 'ACC-CHUNK', name: 'Sentence Chunking', description: 'Visual chunking of long passages into shorter units.' },
+    {
+      code: 'ACC-EXT-TIME',
+      name: 'Extended Time',
+      // Not implemented, and deliberately so: there is nothing to extend. No
+      // assessment, drill, or lesson in this platform has a time limit — no
+      // countdown, no expiry, no timed field in the schema. Every student
+      // already has unlimited time, which meets or exceeds what this
+      // accommodation asks for. Recorded so the grant appears on the student's
+      // profile for IEP documentation.
+      description:
+        'No action needed — this platform is untimed for every student. Nothing here has a time limit or countdown, so extended time is already met. Recorded for IEP documentation.',
+    },
+    { code: 'ACC-READ-ALOUD', name: 'Read-Aloud', description: 'Read-aloud is available to every student on all passages; this grant records the IEP requirement.' },
+    { code: 'ACC-CHUNK', name: 'Sentence Chunking', description: 'Sentence chunking is available to every student on all passages; this grant records the IEP requirement.' },
     { code: 'ACC-SIMPLE-LANG', name: 'Simplified Language', description: 'Defaults stimulus to reading-load level 1 where available.' },
     { code: 'ACC-T2-VOCAB', name: 'Tier-2 Vocabulary Popovers Always On', description: 'Tier-2 academic words always show glossary popover.' },
-    { code: 'ACC-REDUCED-CHOICES', name: 'Reduced Answer Choices', description: '3 instead of 4 answer choices on practice (not Mastery). Phase 9+.' },
+    {
+      code: 'ACC-REDUCED-CHOICES',
+      name: 'Reduced Answer Choices',
+      description:
+        'Serves 3 answer choices instead of 4 on Practice, Pre-Check, Word Builder, and Unit Review. Never on the Mastery Challenge, Readiness Check, or Republic Challenge — changing the odds of a guess there would change what mastery means.',
+    },
     { code: 'ACC-BREAKS', name: 'Frequent Breaks', description: 'Auto-suggests a pause every 10 minutes across all sessions.' },
-    { code: 'ACC-SCREEN-READER', name: 'Screen Reader Optimized', description: 'Ensures all controls have ARIA labels and a logical tab order.' },
+    {
+      code: 'ACC-SCREEN-READER',
+      name: 'Screen Reader Optimized',
+      // Not a per-student toggle and should never have been one: ARIA labelling
+      // and tab order are properties of the whole application, applied to every
+      // page for every student. There is no code that could key off this grant
+      // without implying the app is less accessible when it is absent.
+      description:
+        'No action needed — ARIA labelling and keyboard tab order apply to every page for every student, not per account. Recorded for IEP documentation. Note that manual screen-reader testing is still outstanding (see the district packet, §9.3).',
+    },
     { code: 'ACC-HIGH-CONTRAST', name: 'High Contrast Mode', description: 'Switches the color palette to a high-contrast scheme.' },
     { code: 'ACC-LARGE-TEXT', name: 'Large Text', description: 'Bumps the base font size; layout reflows.' },
     { code: 'ACC-CONTEXT-BOOST', name: 'Background Context Cards', description: 'Optional 30-60s context cards before unfamiliar references. (Cards wired in a later phase.)' },

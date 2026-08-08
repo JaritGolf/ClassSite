@@ -31,6 +31,7 @@ export interface PurgeResult {
   voidedAttemptsDeleted: number
   attemptResponsesDeleted: number
   activitySessionsDeleted: number
+  suggestionsDeleted: number
   config: RetentionConfig
 }
 
@@ -46,6 +47,7 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
   const auditCutoff = cutoffDate(config.auditLogRetentionDays, now)
   const voidedCutoff = cutoffDate(config.voidedAttemptRetentionDays, now)
   const activityCutoff = cutoffDate(config.activitySessionRetentionDays, now)
+  const suggestionCutoff = cutoffDate(config.suggestionRetentionDays, now)
 
   // ── Identify eligible rows ──────────────────────────────────────────────────
   const auditWhere = auditCutoff ? { createdAt: { lt: auditCutoff } } : null
@@ -53,6 +55,13 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
   // Activity sessions have no children, so they age out on startedAt alone.
   const activityWhere = activityCutoff
     ? { startedAt: { lt: activityCutoff } }
+    : null
+
+  // Suggestions likewise have no children. Aged on createdAt, not updatedAt — a
+  // teacher revisiting an old suggestion to add a reviewer note should not
+  // restart the retention clock on a student's prose.
+  const suggestionWhere = suggestionCutoff
+    ? { createdAt: { lt: suggestionCutoff } }
     : null
 
   const eligibleAttemptIds: string[] = voidedCutoff
@@ -79,6 +88,10 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
     ? await prisma.studentActivitySession.count({ where: activityWhere })
     : 0
 
+  const suggestionsEligible = suggestionWhere
+    ? await prisma.suggestion.count({ where: suggestionWhere })
+    : 0
+
   if (dryRun) {
     return {
       dryRun: true,
@@ -86,6 +99,7 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
       voidedAttemptsDeleted: eligibleAttemptIds.length,
       attemptResponsesDeleted: responsesEligible,
       activitySessionsDeleted: activitySessionsEligible,
+      suggestionsDeleted: suggestionsEligible,
       config,
     }
   }
@@ -96,6 +110,7 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
     let attemptResponsesDeleted = 0
     let voidedAttemptsDeleted = 0
     let activitySessionsDeleted = 0
+    let suggestionsDeleted = 0
 
     if (eligibleAttemptIds.length > 0) {
       const resp = await tx.attemptResponse.deleteMany({
@@ -128,6 +143,11 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
       activitySessionsDeleted = sessions.count
     }
 
+    if (suggestionWhere) {
+      const sugs = await tx.suggestion.deleteMany({ where: suggestionWhere })
+      suggestionsDeleted = sugs.count
+    }
+
     if (auditWhere) {
       const logs = await tx.auditLog.deleteMany({ where: auditWhere })
       auditLogsDeleted = logs.count
@@ -138,6 +158,7 @@ export async function purgeExpiredData(opts: PurgeOptions = {}): Promise<PurgeRe
       attemptResponsesDeleted,
       voidedAttemptsDeleted,
       activitySessionsDeleted,
+      suggestionsDeleted,
     }
   })
 

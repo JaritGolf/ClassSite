@@ -7,8 +7,10 @@
 import {
   parseRetentionDays,
   resolveRetentionConfig,
+  resolveStudentRecordRetentionDays,
   cutoffDate,
   DEFAULT_RETENTION_CONFIG,
+  STATUTORY_MAX_STUDENT_RETENTION_DAYS,
 } from '@/lib/retention/policy'
 
 describe('parseRetentionDays', () => {
@@ -38,11 +40,15 @@ describe('resolveRetentionConfig', () => {
       AUDIT_LOG_RETENTION_DAYS: '365',
       VOIDED_ATTEMPT_RETENTION_DAYS: '180',
       ACTIVITY_SESSION_RETENTION_DAYS: '90',
+      SUGGESTION_RETENTION_DAYS: '365',
+      STUDENT_RECORD_RETENTION_DAYS: '30',
     })
     expect(cfg).toEqual({
       auditLogRetentionDays: 365,
       voidedAttemptRetentionDays: 180,
       activitySessionRetentionDays: 90,
+      suggestionRetentionDays: 365,
+      studentRecordRetentionDays: 30,
     })
   })
 
@@ -51,6 +57,48 @@ describe('resolveRetentionConfig', () => {
     const cfg = resolveRetentionConfig({ AUDIT_LOG_RETENTION_DAYS: '365' })
     expect(cfg.activitySessionRetentionDays).toBe(0)
     expect(cfg.voidedAttemptRetentionDays).toBe(0)
+    expect(cfg.suggestionRetentionDays).toBe(0)
+  })
+
+  // The one exception to retain-forever, and the reason is statutory.
+  it('defaults student-record retention to the 90-day statutory ceiling', () => {
+    expect(resolveRetentionConfig({}).studentRecordRetentionDays).toBe(
+      STATUTORY_MAX_STUDENT_RETENTION_DAYS
+    )
+  })
+})
+
+describe('resolveStudentRecordRetentionDays — Fla. Stat. § 1006.1494(3)(c)', () => {
+  it('defaults to 90 when unset', () => {
+    expect(resolveStudentRecordRetentionDays(undefined)).toBe(90)
+    expect(resolveStudentRecordRetentionDays('')).toBe(90)
+  })
+
+  it('honours a shorter window', () => {
+    expect(resolveStudentRecordRetentionDays('30')).toBe(30)
+    expect(resolveStudentRecordRetentionDays('1')).toBe(1)
+  })
+
+  // A district may shorten the window. It cannot lengthen it past the statute,
+  // and a config typo must not be the thing that breaks the law.
+  it('clamps anything above 90 DOWN to 90 rather than honouring it', () => {
+    expect(resolveStudentRecordRetentionDays('365')).toBe(90)
+    expect(resolveStudentRecordRetentionDays('91')).toBe(90)
+    expect(resolveStudentRecordRetentionDays('99999')).toBe(90)
+  })
+
+  it('allows an explicit 0 opt-out (documented district arrangement)', () => {
+    expect(resolveStudentRecordRetentionDays('0')).toBe(0)
+    expect(resolveStudentRecordRetentionDays(' 0 ')).toBe(0)
+  })
+
+  // The asymmetry that matters: for every other window an unparseable value
+  // means "retain forever", which is the safe direction. Here it would mean
+  // silently switching off a statutory duty, so garbage falls back to 90.
+  it('falls back to 90 — not 0 — for an unparseable or negative value', () => {
+    expect(resolveStudentRecordRetentionDays('abc')).toBe(90)
+    expect(resolveStudentRecordRetentionDays('-5')).toBe(90)
+    expect(resolveStudentRecordRetentionDays('ninety')).toBe(90)
   })
 })
 

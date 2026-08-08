@@ -23,6 +23,7 @@ import type { UserRole } from '@prisma/client'
 import { UserRole as UserRoleEnum } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { cleverProvider } from './providers/clever'
+import { isGoogleEmailAllowed } from './google-domain'
 import { recordParentLoginEvent } from '@/lib/parent-portal/login'
 import { recordStudentLoginEvent } from '@/lib/activity-sessions/login'
 import { isMockAuthEnabled } from './demo-mode'
@@ -198,6 +199,15 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       try {
+        // Domain allowlist for Google (ADR 0003). Checked BEFORE the upsert on
+        // purpose: a rejected sign-in must not leave a `User` row behind, which
+        // is what made the unrestricted case a (minor) problem rather than a
+        // non-issue. No-op unless GOOGLE_ALLOWED_DOMAINS is set — see
+        // ./google-domain for why the default is permissive.
+        if (account?.provider === 'google' && !isGoogleEmailAllowed(user.email)) {
+          return '/login?error=domain-not-allowed'
+        }
+
         const dbId = await upsertUserFromSignIn(user as User, account)
         ;(user as User).userId = dbId
 

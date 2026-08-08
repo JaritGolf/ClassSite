@@ -100,12 +100,20 @@ export default async function TeacherLessonBuilderPage({ params }: PageProps) {
           <h1 className="text-2xl font-bold text-gray-900">
             {benchmark.code} — {lesson.title}
           </h1>
-          <Link
-            href={`/teacher/lessons/${benchmark.code}/walkthrough`}
-            className="rounded-lg border-2 border-b-4 border-indigo-800 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:translate-y-[1px] active:border-b-2"
-          >
-            ▶ Preview as a student
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/teacher/lessons/${benchmark.code}/print`}
+              className="rounded-lg border-2 border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              🖨 Print materials
+            </Link>
+            <Link
+              href={`/teacher/lessons/${benchmark.code}/walkthrough`}
+              className="rounded-lg border-2 border-b-4 border-indigo-800 bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 active:translate-y-[1px] active:border-b-2"
+            >
+              ▶ Preview as a student
+            </Link>
+          </div>
         </div>
         <p className="mt-1 max-w-prose text-sm text-gray-600">
           This is your copy of the lesson. Anything you change here affects only the classes you

@@ -254,7 +254,7 @@ systems rather than being set in this application, the developer will change the
 | Health, behavior, or discipline notes | Not modeled anywhere in the database. |
 | IP addresses | Login audit records are written with empty metadata by design — no address, no user agent, no device fingerprint. |
 | Keystrokes, screenshots, screen recording, webcam or microphone access | Not modeled, not requested. As of this packet the browser is instructed at the HTTP header level to deny camera, microphone, geolocation, and USB access to this application entirely. |
-| Browsing history or visited URLs | The time-on-task feature records a coarse category, never a path. See §3.3. |
+| Browsing history or visited URLs | No browsing trail is recorded. The time-on-task feature stores a coarse category, never a path — see §3.3. **One disclosed exception:** when a student voluntarily submits feedback, that single submission stores the app page they were on (for example `/student/mission/SS.7.CG.1.1`) so the teacher can tell what the report refers to. It is one page per submission the student chose to send, the page is displayed to the student in the form before they submit, it is never placed in a query string, and it records only pages within this application. |
 | Location data | Not collected. |
 | Student personal information in URLs | A standing prohibition. Reports are delivered in the response body, never as query-string parameters, and the referrer policy withholds even the path from any external site. |
 | External gradebook data | No integration. |
@@ -334,10 +334,12 @@ The district sets these windows (§10, item 6). Two current gaps are disclosed i
 | **Google OAuth** | Staff only | Fallback. A new Google sign-in is created INACTIVE and cannot proceed until an administrator activates it — so an arbitrary Google account cannot self-provision access. |
 | Demo role login | Nobody, in production | Present only when explicitly enabled for evaluation. See §1.3. |
 
-**Clever scopes requested are minimal and read-only:** `read:user_id`, `read:students`,
-`read:teachers`. No Google Classroom, Drive, or Directory scope is requested. Google
-requests only `openid`, `email`, and `profile`. The full scope rationale is in the project's
-OAuth scope document, which the district can review against its own policy (§10, item 3).
+**Clever requests exactly one scope, read-only:** `read:user_id`. The application calls only
+Clever's `/v3.0/me` endpoint, which returns a user id, a user type, and a district id. **No
+student name and no student email is retrieved from Clever at all.** No Google Classroom,
+Drive, or Directory scope is requested. Google requests only `openid`, `email`, and `profile`,
+and is staff-only. The full scope rationale is in the project's OAuth scope document, which
+the district can review against its own policy (§10, item 3).
 
 No password is ever stored, transmitted to, or seen by this application.
 
@@ -793,29 +795,40 @@ WCAG violations" in fact navigates to the student dashboard and scans that inste
 navigation into a live assessment was never implemented. The test passes, but it does not
 test what its name says. The assessment player is therefore unscanned.
 
-### 9.6 Seven accommodation codes have no enforcement code
+### 9.6 Accommodation codes without distinct enforcement code — resolved August 7, 2026
 
-All fifteen codes in §7.2 can be granted by a teacher and are audit-logged, but only eight
-have implementing code.
+**This item previously disclosed three accommodations that were IEP-style labels with no
+implementation behind them.** All three are now resolved, and the resolution differed by code.
 
-Three of the remaining seven are **redundant rather than broken**: read-aloud, sentence
-chunking, and academic vocabulary popovers are available to every student unconditionally, so
-granting the code adds nothing because the support is already present. Background context
-cards are documented as a deferred feature.
+- **ACC-REDUCED-CHOICES — now implemented.** A student holding this accommodation is served
+  three answer choices instead of four on Practice, Pre-Check, Word Builder, and Unit Review.
+  It is deliberately **never** applied to the Mastery Challenge, Readiness Check, Republic
+  Challenge, or Final Trial: removing a distractor raises the floor on a random guess from 25%
+  to 33%, which would change what the 80% mastery threshold means and make one student's
+  mastery non-comparable to another's. The eligible list is an allowlist, so a future
+  assessment type is excluded until someone decides otherwise.
 
-**Three are genuinely unimplemented behavior behind an IEP-style label**, and must not be
-read as working:
+- **ACC-EXT-TIME — inapplicable by design, and now described that way.** There is no time
+  limit anywhere in this application: no countdown, no expiry, no timed field in the schema.
+  Every student already has unlimited time on every activity, which meets or exceeds what
+  extended time provides. The catalog entry previously promised "a configurable time
+  multiplier (1.5x, 2x)"; it now states that the platform is untimed for everyone and that the
+  grant is recorded for IEP documentation.
 
-- **ACC-EXT-TIME (extended time)** — no time multiplier is implemented anywhere.
-- **ACC-REDUCED-CHOICES (reduced answer choices)** — items always present four options.
-- **ACC-SCREEN-READER** — no code keys off this grant; screen-reader support depends on the
-  application's general markup quality, which is partially verified (§9.3).
+- **ACC-SCREEN-READER — not a per-student setting, and now described that way.** ARIA labelling
+  and keyboard tab order are properties of the application applied to every page for every
+  student. There is no code that could key off this grant without implying the application is
+  less accessible in its absence. The entry now says so, and points to §9.3 — manual
+  screen-reader testing remains outstanding.
 
-This matters beyond documentation accuracy: a teacher could grant extended time to a student
-whose IEP requires it and reasonably believe it had taken effect. The developer regards this
-as the highest-priority functional gap in the application and will address it before pilot
-use with any student holding those accommodations. It is disclosed here rather than after the
-fact.
+The other codes are unchanged. Read-aloud, sentence chunking, and academic vocabulary popovers
+are **redundant rather than broken** — available to every student unconditionally, so the grant
+records an IEP requirement rather than switching a feature on. Background context cards remain
+a documented deferred feature.
+
+The principle now enforced by a comment in the seed file: an accommodation description is a
+promise to a teacher reading an IEP. If the code does not do what the text says, a teacher
+grants the support, believes it took effect, and the student does not receive it.
 
 ### 9.7 Translation review status
 
@@ -839,16 +852,25 @@ Separately, the integration test that runs the validator across the live bank is
 strand 1 only**. As strands 2 and 3 are authored, that scope needs to widen or new content
 will not be covered by the check.
 
-### 9.9 Two retention gaps
+### 9.9 Retention — one gap closed August 7, 2026, one still open
 
-**Student- and teacher-submitted suggestion text is covered by no retention window** and is
-currently retained indefinitely. This is flagged as an open decision in the project's
-retention document. It is free text authored by minors and should have a defined window; the
-developer will add one, and welcomes a district-specified duration.
+**Suggestion text now has a retention window.** `SUGGESTION_RETENTION_DAYS` covers the free
+text students and teachers can submit. The default remains "retain forever" so that adding the
+setting changed no existing behaviour, and the district is invited to specify a duration — one
+school year is the developer's suggestion. The box now also carries a plain reminder to
+students not to include personal details, because it is the only place in the application where
+free prose can be entered and therefore the only place data nobody designed for can arrive.
 
-**There is no scheduler.** The retention purge is run manually or from the command line. A
-retention window that is set but never executed does not delete anything. Automating this is
-open work.
+**Disenrolled-student deletion was added at the same time**, under Fla. Stat.
+§ 1006.1494(3)(c) — see §3.5 and the project's operator-compliance document. Unlike every other
+retention setting, it defaults to the 90-day statutory ceiling rather than to "retain forever",
+and it cannot be configured above 90 days.
+
+**Still open: there is no scheduler.** Both purges are run manually or from the command line. A
+retention window that is set but never executed does not delete anything. For the statutory
+90-day deletion this matters more than for the others, and the developer would welcome
+direction on whether the district expects an automated job, a documented manual procedure on
+receipt of a disenrollment notice, or both.
 
 ### 9.10 The Content-Security-Policy is not maximally strict
 
@@ -914,7 +936,7 @@ this review.
 | # | Question | Completes |
 |---|---|---|
 | 1 | What is the approval process for a custom instructional application developed by a district employee? Is a vendor review required for software with no vendor? | This packet's disposition |
-| 2 | May Clever integration be used, and at what data scopes? The application requests `read:user_id`, `read:students`, `read:teachers` only. | `docs/oauth-scopes.md`; unblocks the Clever credential |
+| 2 | May Clever integration be used, and at what data scopes? The application requests `read:user_id` only, and retrieves no name or email from Clever. | `docs/oauth-scopes.md`; unblocks the Clever credential |
 | 3 | Is Google OAuth acceptable as a staff fallback, at `openid`/`email`/`profile` scope? | `docs/oauth-scopes.md` |
 | 4 | Is external parent or guardian login permitted, and what identity verification is required? Who is authorized to verify a guardian relationship? | `docs/parent-identity-policy.md`; unblocks the parent portal |
 | 5 | What hosting and data-storage arrangement is acceptable for student progress and assessment data? Is the current managed arrangement acceptable, or is district-owned tenancy required? | `docs/hosting-plan.md` |

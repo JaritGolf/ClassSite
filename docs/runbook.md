@@ -93,6 +93,9 @@ Copy `.env.example` to `.env.local` for local development. Full inventory:
 | `AUDIT_LOG_RETENTION_DAYS` | No | Retention threshold for audit logs; `0`/unset = keep forever (Phase 17) |
 | `VOIDED_ATTEMPT_RETENTION_DAYS` | No | Retention threshold for voided attempts; `0`/unset = keep forever (Phase 17) |
 | `ACTIVITY_SESSION_RETENTION_DAYS` | No | Retention threshold for student activity/session monitoring rows; `0`/unset = keep forever (ADR 0019) |
+| `SUGGESTION_RETENTION_DAYS` | No | Retention threshold for suggestion-box free text; `0`/unset = keep forever. One school year (`365`) suggested (ADR 0024) |
+| `STUDENT_RECORD_RETENTION_DAYS` | No | Days after a student is marked disenrolled before their records are deleted. **Defaults to `90` and is capped at `90`** — the ceiling in Fla. Stat. § 1006.1494(3)(c). Deletes nobody until an admin records a disenrollment (ADR 0024) |
+| `GOOGLE_ALLOWED_DOMAINS` | No | Comma-separated domain allowlist for Google sign-in. Unset = any domain may attempt (still lands INACTIVE). ⚠ Confirm your own admin address matches before setting (ADR 0003, ADR 0024) |
 | `MOCK_AUTH` | Dev only | Enables mock auth; **never** in production |
 | `DEMO_OPEN_LOGIN` | Demo deploy only | Forces the one-click role panel on even when `NODE_ENV=production`. Owner-directed override of rule #8 for the public demo site; safe only while the DB holds demo/seed data. Delete the variable and redeploy to close the site. Do **not** set in `.env.local` |
 
@@ -156,7 +159,9 @@ Clever is the primary SSO provider for students and teachers.
 1. Create a developer account at https://dev.clever.com
 2. Create a new application
 3. Set **Redirect URI** to: `http://localhost:3000/api/auth/callback/clever`
-4. Under **OAuth Scopes**, enable: `read:user_id`, `read:students`, `read:teachers`
+4. Under **OAuth Scopes**, enable **`read:user_id` only** — see `docs/oauth-scopes.md`. Do not
+   enable `read:students` / `read:teachers`: the app never calls those endpoints, and unused
+   scope is a data-minimisation finding under Fla. Stat. § 1006.1494(3)(a).
 5. Copy **Client ID** → `CLEVER_CLIENT_ID` in `.env.local`
 6. Copy **Client Secret** → `CLEVER_CLIENT_SECRET` in `.env.local`
 
