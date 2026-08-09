@@ -1018,10 +1018,11 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
   //
   // ⚠ A description here is a PROMISE TO A TEACHER READING AN IEP. If the code
   // does not do what the text says, a teacher grants the support, believes it
-  // took effect, and the student does not get it. Three entries below were in
-  // exactly that state until 2026-08-07 (ACC-EXT-TIME, ACC-REDUCED-CHOICES,
-  // ACC-SCREEN-READER); each is now either implemented or described accurately.
-  // Do not add an aspirational description. Describe what ships today.
+  // took effect, and the student does not get it. Several entries below were in
+  // exactly that state until 2026-08-07/08; each is now either implemented or
+  // described accurately, and `src/lib/accommodations/registry.ts` records which
+  // is which. Do not add an aspirational description — describe what ships, and
+  // add a matching registry entry (a test fails if the two lists disagree).
   const accommodations = [
     {
       code: 'ACC-EXT-TIME',
@@ -1035,10 +1036,28 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
       description:
         'No action needed — this platform is untimed for every student. Nothing here has a time limit or countdown, so extended time is already met. Recorded for IEP documentation.',
     },
-    { code: 'ACC-READ-ALOUD', name: 'Read-Aloud', description: 'Read-aloud is available to every student on all passages; this grant records the IEP requirement.' },
-    { code: 'ACC-CHUNK', name: 'Sentence Chunking', description: 'Sentence chunking is available to every student on all passages; this grant records the IEP requirement.' },
+    { code: 'ACC-READ-ALOUD', name: 'Read-Aloud', description: 'No action needed — the read-aloud button is on every passage for every student already. Recorded for IEP documentation.' },
+    {
+      code: 'ACC-CHUNK',
+      name: 'Sentence Chunking',
+      // Implemented 2026-08-08: the toggle was always available to everyone, but
+      // that is not the same as the accommodation doing something. It now sets
+      // the starting position so the student does not have to find and press the
+      // button on every passage. Their own toggle still wins once used.
+      description:
+        'Passages open already split one sentence per line. The student can still switch it off for themselves, and that choice is remembered.',
+    },
     { code: 'ACC-SIMPLE-LANG', name: 'Simplified Language', description: 'Defaults stimulus to reading-load level 1 where available.' },
-    { code: 'ACC-T2-VOCAB', name: 'Tier-2 Vocabulary Popovers Always On', description: 'Tier-2 academic words always show glossary popover.' },
+    {
+      code: 'ACC-T2-VOCAB',
+      name: 'Tier-2 Vocabulary Popovers Always On',
+      // Implemented 2026-08-08. Levels 1 and 2 already gloss tier-2 words for
+      // everyone, so the only state this can change is level 3 — the raw source
+      // passage, which deliberately carries no scaffolding. Tier-3 civics terms
+      // stay hidden there; this grant is scoped to academic vocabulary.
+      description:
+        'Academic (tier-2) vocabulary keeps its tap-for-definition underline even on original-source passages, which normally carry no glossary help at all.',
+    },
     {
       code: 'ACC-REDUCED-CHOICES',
       name: 'Reduced Answer Choices',

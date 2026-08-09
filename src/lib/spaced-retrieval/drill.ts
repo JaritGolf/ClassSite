@@ -21,6 +21,11 @@
 
 import { prisma } from '@/lib/db'
 import { seededShuffle } from '@/lib/shuffle'
+import {
+  ACC_REDUCED_CHOICES_CODE,
+  hasActiveAccommodation,
+  reduceChoices,
+} from '@/lib/reading-load'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -102,6 +107,22 @@ export async function getDrillQueue(
     masteryIdsByBenchmark.get(bid)!.add(mq.questionId)
   }
 
+  // ACC-REDUCED-CHOICES. The drill is not an Assessment, so there is no
+  // assessmentType to run through isReducedChoicesEligibleType — the Daily
+  // Drill is an eligible surface by decision, not by type: it is retrieval
+  // practice and never decides mastery. Recorded here because the accommodation
+  // module is otherwise a strict allowlist, and this is the one caller that
+  // opts a surface in without a type check.
+  //
+  // Known trade-off, accepted: a 1-in-3 rather than 1-in-4 guess floor slightly
+  // inflates the SM-2 recall signal (and therefore the decay/spike analytics)
+  // for students holding this grant. Under-accommodating on the surface a
+  // student uses most often is the worse error.
+  const reduceChoiceCount = await hasActiveAccommodation(
+    studentId,
+    ACC_REDUCED_CHOICES_CODE
+  )
+
   // 3. For each due benchmark, pick one alternate question
   const rawItems: Array<DrillItem | null> = await Promise.all(
     dueStates.map(async (state) => {
@@ -110,7 +131,8 @@ export async function getDrillQueue(
         seenQuestionIds,
         masteryIdsByBenchmark.get(state.benchmarkId) ?? new Set(),
         studentId,
-        now
+        now,
+        reduceChoiceCount
       )
       if (!question) return null
 
@@ -156,14 +178,14 @@ async function pickAlternateQuestion(
   seenQuestionIds: Set<string>,
   masteryQuestionIds: Set<string>,
   studentId: string,
-  now: Date
+  now: Date,
+  reduceChoiceCount: boolean = false
 ): Promise<{
   id: string
   prompt: string
   itemType: string
   options: Array<{ id: string; optionText: string }>
 } | null> {
-  // Fetch all approved questions for this benchmark (exclude isCorrect — safe delivery)
   const questions = await prisma.question.findMany({
     where: {
       benchmarkId,
@@ -174,8 +196,11 @@ async function pickAlternateQuestion(
       prompt: true,
       itemType: true,
       options: {
-        select: { id: true, optionText: true },
-        // isCorrect: DELIBERATELY OMITTED
+        // `isCorrect` is read ONLY to decide which distractors may be dropped
+        // for ACC-REDUCED-CHOICES. It is stripped in the explicit mapping at
+        // the end of this function, and the declared return type above has no
+        // such field, so it cannot reach a caller.
+        select: { id: true, optionText: true, isCorrect: true },
         orderBy: { id: 'asc' }, // stable shuffle input (authored order)
       },
     },
@@ -192,10 +217,23 @@ async function pickAlternateQuestion(
   const daySeed = now.toISOString().slice(0, 10)
   const picked = seededShuffle(pool, `${studentId}:${benchmarkId}:${daySeed}`)[0]
 
+  const visibleOptions = reduceChoiceCount
+    ? reduceChoices(
+        picked.options,
+        new Set(picked.options.filter((o) => o.isCorrect).map((o) => o.id)),
+        `${studentId}:${picked.id}`
+      )
+    : picked.options
+
   return {
-    ...picked,
+    id: picked.id,
+    prompt: picked.prompt,
+    itemType: picked.itemType,
     // Authored banks list the correct option first — shuffle at serve time.
-    options: seededShuffle(picked.options, `${studentId}:${picked.id}`),
+    options: seededShuffle(
+      visibleOptions.map((o) => ({ id: o.id, optionText: o.optionText })),
+      `${studentId}:${picked.id}`
+    ),
   }
 }
 

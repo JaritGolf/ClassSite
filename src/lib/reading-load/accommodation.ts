@@ -65,6 +65,27 @@ export async function getStudentAccommodations(
   }))
 }
 
+// ── hasActiveAccommodation ─────────────────────────────────────────────────
+
+/**
+ * Whether a student currently holds a given accommodation as ACTIVE.
+ *
+ * Exists so serving paths that need one specific grant (e.g. ACC-REDUCED-CHOICES
+ * in the drill / practice / remediation question pickers) can ask that question
+ * with one indexed lookup instead of loading the student's whole accommodation
+ * list and filtering it at every call site.
+ */
+export async function hasActiveAccommodation(
+  studentId: string,
+  code: string
+): Promise<boolean> {
+  const row = await prisma.studentAccommodation.findFirst({
+    where: { studentId, active: true, accommodation: { code } },
+    select: { id: true },
+  })
+  return row !== null
+}
+
 // ── getEffectiveReadingLevel ───────────────────────────────────────────────
 
 /**

@@ -25,10 +25,20 @@ export type {
 export {
   getStudentAccommodations,
   getEffectiveReadingLevel,
+  hasActiveAccommodation,
   setAccommodation,
   AccommodationError,
 } from './accommodation'
 export type { AccommodationRecord, EffectiveReadingLevel } from './accommodation'
+
+// ── Reduced answer choices (ACC-REDUCED-CHOICES) ───────────────────────────
+export {
+  reduceChoices,
+  isReducedChoicesEligibleType,
+  ACC_REDUCED_CHOICES_CODE,
+  REDUCED_CHOICE_COUNT,
+  REDUCED_CHOICES_ELIGIBLE_TYPES,
+} from './reduced-choices'
 
 // ── Question filter & stimulus (DB) ────────────────────────────────────────
 export {
