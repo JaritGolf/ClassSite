@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { GlossaryPopover } from './GlossaryPopover'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
+import { useAccommodationPrefs } from '@/components/student/AccommodationPrefsProvider'
 import type { GlossaryAnnotation } from '@/lib/reading-load'
 
 interface StimulusDisplayProps {
@@ -58,26 +59,44 @@ export function StimulusDisplay({
   onLevelChange,
   mediaUrl,
 }: StimulusDisplayProps) {
-  const [chunkingEnabled, setChunkingEnabled] = useState(false)
+  // ACC-CHUNK / ACC-T2-VOCAB. All-false outside the student layout (e.g. the
+  // teacher lesson walkthrough), which is the correct unaccommodated view.
+  const { chunkByDefault, tier2GlossesAlways } = useAccommodationPrefs()
+
+  const [chunkingEnabled, setChunkingEnabled] = useState(chunkByDefault)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [hasSpeechSupport, setHasSpeechSupport] = useState(false)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
-  // Load chunking preference from localStorage on mount
+  // Load the stored chunking preference on mount.
+  //
+  // Tri-state on purpose: NO stored key means the student has never expressed a
+  // preference, so ACC-CHUNK decides the starting position. A stored key means
+  // they have, and their own choice wins over the accommodation default — the
+  // toggle sits directly on the passage, and a button that visibly refused to
+  // work would be worse than the accommodation setting where it starts.
+  //
+  // Read-only. The write lives in the toggle handler rather than in an effect on
+  // `chunkingEnabled`, because "the key exists" must mean "the student chose
+  // this" — an effect would also fire on the accommodation-driven initial value
+  // and record a preference the student never expressed, permanently freezing
+  // out the accommodation.
   useEffect(() => {
     try {
-      setChunkingEnabled(localStorage.getItem(CHUNKING_KEY) === 'true')
+      const stored = localStorage.getItem(CHUNKING_KEY)
+      if (stored !== null) setChunkingEnabled(stored === 'true')
     } catch {
       // localStorage may be unavailable (private browsing, etc.)
     }
   }, [])
 
-  // Persist chunking preference
-  useEffect(() => {
+  const toggleChunking = useCallback(() => {
+    const next = !chunkingEnabled
+    setChunkingEnabled(next)
     try {
-      localStorage.setItem(CHUNKING_KEY, String(chunkingEnabled))
+      localStorage.setItem(CHUNKING_KEY, String(next))
     } catch {
-      // Silently ignore
+      // Silently ignore — the toggle still works for this session.
     }
   }, [chunkingEnabled])
 
@@ -119,10 +138,19 @@ export function StimulusDisplay({
   // ── Render content with glossary popovers (levels 1 & 2) ──────────────
 
   function renderContent(): React.ReactNode {
-    const textToRender = chunkingEnabled ? chunkContent(content) : content
+    // Level 3 is the raw historical passage and carries no glossary scaffolding
+    // (spec 16.2) — EXCEPT under ACC-T2-VOCAB, which keeps the tier-2 academic
+    // vocabulary help. Tier-3 civics terms stay hidden at level 3 either way:
+    // the accommodation is scoped to academic vocabulary, matching its name, and
+    // glossing the civics terms is the scaffolding level 3 exists to withhold.
+    const activeAnnotations =
+      resolvedLevel >= 3
+        ? tier2GlossesAlways
+          ? glossaryAnnotations.filter((a) => a.tier === 'TIER_2')
+          : []
+        : glossaryAnnotations
 
-    // Level 3 = raw passage, no glossary popovers
-    if (resolvedLevel >= 3 || glossaryAnnotations.length === 0) {
+    if (activeAnnotations.length === 0) {
       if (chunkingEnabled) {
         return (
           <div className="space-y-1">
@@ -143,7 +171,7 @@ export function StimulusDisplay({
         <div className="space-y-1">
           {chunkContent(content).map((sentence, i) => (
             <span key={i} className="block">
-              {renderAnnotatedText(sentence, glossaryAnnotations)}
+              {renderAnnotatedText(sentence, activeAnnotations)}
             </span>
           ))}
         </div>
@@ -152,7 +180,7 @@ export function StimulusDisplay({
 
     return (
       <p className="whitespace-pre-wrap">
-        {renderAnnotatedText(content, glossaryAnnotations)}
+        {renderAnnotatedText(content, activeAnnotations)}
       </p>
     )
   }
@@ -211,7 +239,7 @@ export function StimulusDisplay({
               type="button"
               aria-pressed={chunkingEnabled}
               aria-label={chunkingEnabled ? 'Disable sentence chunking' : 'Enable sentence chunking'}
-              onClick={() => setChunkingEnabled((v) => !v)}
+              onClick={toggleChunking}
               className={[
                 'rounded-full border-2 px-2.5 py-1 text-sm font-semibold transition-colors',
                 chunkingEnabled

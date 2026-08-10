@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { StudentNav, type StudentNavBadges } from '@/components/student/layout/StudentNav'
 import { PauseBanner } from '@/components/student/layout/PauseBanner'
 import { ActivityHeartbeat } from '@/components/student/layout/ActivityHeartbeat'
+import { AccommodationPrefsProvider } from '@/components/student/AccommodationPrefsProvider'
+import { resolveDisplayPrefs, NO_DISPLAY_PREFS, type DisplayPrefs } from '@/lib/accommodations'
 
 export default async function StudentLayout({ children }: { children: React.ReactNode }) {
   await requireAuth(['STUDENT'])
@@ -16,6 +18,10 @@ export default async function StudentLayout({ children }: { children: React.Reac
   // only: this layout runs on EVERY student page, so it must not pull in the
   // next-step resolver's availability queries just to decorate a tab.
   let navBadges: StudentNavBadges = {}
+  // Display accommodations (ACC-CHUNK, ACC-T2-VOCAB) — resolved here because the
+  // active codes are already being loaded below, and passed to a client provider
+  // so passages render accommodated on the very first paint.
+  let displayPrefs: DisplayPrefs = NO_DISPLAY_PREFS
 
   const session = await getSession()
   if (session) {
@@ -67,6 +73,7 @@ export default async function StudentLayout({ children }: { children: React.Reac
       if (codes.has('ACC-HIGH-CONTRAST')) highContrast = true
       if (codes.has('ACC-LARGE-TEXT')) largeText = true
       if (codes.has('ACC-BREAKS')) pausePointMinutes = Math.min(pausePointMinutes, 10)
+      displayPrefs = resolveDisplayPrefs(codes)
     }
   }
 
@@ -81,7 +88,9 @@ export default async function StudentLayout({ children }: { children: React.Reac
   return (
     <div className={themeClass}>
       <StudentNav badges={navBadges} />
-      <main className="min-h-screen bg-indigo-50 bg-dots bg-[length:26px_26px]">{children}</main>
+      <main className="min-h-screen bg-indigo-50 bg-dots bg-[length:26px_26px]">
+        <AccommodationPrefsProvider prefs={displayPrefs}>{children}</AccommodationPrefsProvider>
+      </main>
       <PauseBanner pausePointMinutes={pausePointMinutes} />
       {/* Invisible — records session start/duration. Renders nothing. */}
       <ActivityHeartbeat />

@@ -12,6 +12,11 @@
 
 import { prisma } from '@/lib/db'
 import { seededShuffle } from '@/lib/shuffle'
+import {
+  ACC_REDUCED_CHOICES_CODE,
+  hasActiveAccommodation,
+  reduceChoices,
+} from '@/lib/reading-load'
 
 // ── Result Types ──────────────────────────────────────────────────────────────
 
@@ -89,7 +94,11 @@ export async function fetchAlternateQuestions(
           select: {
             id: true,
             optionText: true,
-            // isCorrect deliberately OMITTED — never sent to student before submission
+            // `isCorrect` is read ONLY to decide which distractors may be
+            // dropped for ACC-REDUCED-CHOICES, and is stripped in the explicit
+            // mapping below. AlternateQuestion has no such field, so it can
+            // never be sent to a student before submission.
+            isCorrect: true,
           },
           orderBy: { id: 'asc' }, // stable shuffle input (authored order)
         },
@@ -106,9 +115,35 @@ export async function fetchAlternateQuestions(
     questions = await buildQuery([])
   }
 
+  // ACC-REDUCED-CHOICES. Remediation is reteaching, never a mastery decision,
+  // so it is an eligible surface — the reassessment that follows is not.
+  const reduceChoiceCount = await hasActiveAccommodation(
+    studentId,
+    ACC_REDUCED_CHOICES_CODE
+  )
+
   // Authored banks list the correct option first — shuffle at serve time.
-  return questions.map((q) => ({
-    ...q,
-    options: seededShuffle(q.options, `${studentId}:${q.id}`),
-  }))
+  // Mapped field-by-field rather than spread, so `isCorrect` cannot ride along.
+  return questions.map((q) => {
+    const visibleOptions = reduceChoiceCount
+      ? reduceChoices(
+          q.options,
+          new Set(q.options.filter((o) => o.isCorrect).map((o) => o.id)),
+          `${studentId}:${q.id}`
+        )
+      : q.options
+
+    return {
+      id: q.id,
+      prompt: q.prompt,
+      itemType: q.itemType,
+      cognitiveComplexity: q.cognitiveComplexity,
+      readingLoadLevel: q.readingLoadLevel,
+      skillTag: q.skillTag,
+      options: seededShuffle(
+        visibleOptions.map((o) => ({ id: o.id, optionText: o.optionText })),
+        `${studentId}:${q.id}`
+      ),
+    }
+  })
 }

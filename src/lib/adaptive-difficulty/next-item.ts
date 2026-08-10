@@ -15,6 +15,12 @@
 
 import { prisma } from '@/lib/db'
 import { seededShuffle } from '@/lib/shuffle'
+import {
+  ACC_REDUCED_CHOICES_CODE,
+  hasActiveAccommodation,
+  isReducedChoicesEligibleType,
+  reduceChoices,
+} from '@/lib/reading-load'
 import type { CognitiveComplexity } from '@prisma/client'
 import type { AdaptiveState } from './transitions'
 import { acknowledgeWorkedExample } from './transitions'
@@ -67,9 +73,20 @@ export async function getNextItem(
 ): Promise<NextItemPayload> {
   const state = await getSessionState(attemptId)
 
+  // ACC-REDUCED-CHOICES, resolved once per request rather than per item.
+  // Gated on the attempt's assessment type as well as the grant, so this can
+  // never reach a mastery-deciding form (see reading-load/reduced-choices).
+  const reduceChoiceCount = await resolveReducedChoices(attemptId, studentId)
+
   if (!state) {
     // No adaptive state → this is a fixed-form assessment; return raw next question
-    return getNextRegularQuestion(attemptId, null, null, effectiveReadingLevel)
+    return getNextRegularQuestion(
+      attemptId,
+      null,
+      null,
+      effectiveReadingLevel,
+      reduceChoiceCount
+    )
   }
 
   // ── Pending worked example ─────────────────────────────────────────────
@@ -77,7 +94,8 @@ export async function getNextItem(
     const payload = await buildWorkedExamplePayload(
       attemptId,
       state,
-      state.workedExampleQuestionId
+      state.workedExampleQuestionId,
+      reduceChoiceCount
     )
 
     // Transition to pendingNearTransfer now that we're delivering the example
@@ -103,14 +121,21 @@ export async function getNextItem(
       excludeIds,
       null, // no skill-tag filter — any same-complexity question works
       attemptId,
-      effectiveReadingLevel
+      effectiveReadingLevel,
+      reduceChoiceCount
     )
     if (!nearTransfer) return { type: 'NO_ITEMS_AVAILABLE' }
     return { type: 'NEAR_TRANSFER', question: nearTransfer }
   }
 
   // ── Regular next question at currentComplexity ─────────────────────────
-  return getNextRegularQuestion(attemptId, state.currentComplexity, null, effectiveReadingLevel)
+  return getNextRegularQuestion(
+    attemptId,
+    state.currentComplexity,
+    null,
+    effectiveReadingLevel,
+    reduceChoiceCount
+  )
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -119,7 +144,8 @@ async function getNextRegularQuestion(
   attemptId: string,
   complexity: CognitiveComplexity | null,
   skillTag: string | null,
-  effectiveReadingLevel?: number
+  effectiveReadingLevel?: number,
+  reduceChoiceCount: boolean = false
 ): Promise<NextItemPayload> {
   const benchmarkId = await getBenchmarkId(attemptId)
   const seenIds = await getSeenQuestionIds(attemptId)
@@ -130,7 +156,8 @@ async function getNextRegularQuestion(
     seenIds,
     skillTag,
     attemptId,
-    effectiveReadingLevel
+    effectiveReadingLevel,
+    reduceChoiceCount
   )
   if (!question) return { type: 'NO_ITEMS_AVAILABLE' }
   return { type: 'QUESTION', question }
@@ -139,7 +166,8 @@ async function getNextRegularQuestion(
 async function buildWorkedExamplePayload(
   attemptId: string,
   state: AdaptiveState,
-  workedExampleQuestionId: string
+  workedExampleQuestionId: string,
+  reduceChoiceCount: boolean = false
 ): Promise<NextItemPayload> {
   // Load the question that triggered the worked example (including correct option)
   const question = await prisma.question.findUnique({
@@ -160,6 +188,17 @@ async function buildWorkedExamplePayload(
 
   const correctOpt = question.options.find((o) => o.isCorrect)
 
+  // ACC-REDUCED-CHOICES applies here too. `correctOpt` is always retained by
+  // reduceChoices, so the `correctOptionId` returned below still names an
+  // option the student can actually see.
+  const visibleOptions = reduceChoiceCount
+    ? reduceChoices(
+        question.options,
+        new Set(correctOpt ? [correctOpt.id] : []),
+        `${attemptId}:${question.id}`
+      )
+    : question.options
+
   // Safe question (no isCorrect on options for the payload)
   const safeQuestion: SafeQuestion = {
     id: question.id,
@@ -167,7 +206,7 @@ async function buildWorkedExamplePayload(
     cognitiveComplexity: question.cognitiveComplexity,
     skillTag: question.skillTag,
     options: seededShuffle(
-      question.options.map((o) => ({ id: o.id, optionText: o.optionText })),
+      visibleOptions.map((o) => ({ id: o.id, optionText: o.optionText })),
       `${attemptId}:${question.id}`
     ),
   }
@@ -180,7 +219,9 @@ async function buildWorkedExamplePayload(
     state.currentComplexity, // near-transfer is at the (already-bumped-down) complexity
     [...seenIds, workedExampleQuestionId],
     null,
-    attemptId
+    attemptId,
+    undefined,
+    reduceChoiceCount
   )
 
   return {
@@ -203,7 +244,8 @@ async function selectQuestion(
   seenIds: string[],
   skillTag: string | null,
   shuffleSeedPrefix: string,
-  effectiveReadingLevel?: number
+  effectiveReadingLevel?: number,
+  reduceChoiceCount: boolean = false
 ): Promise<SafeQuestion | null> {
   const question = await prisma.question.findFirst({
     where: {
@@ -223,8 +265,11 @@ async function selectQuestion(
       cognitiveComplexity: true,
       skillTag: true,
       options: {
-        select: { id: true, optionText: true },
-        // isCorrect deliberately omitted
+        // `isCorrect` is selected ONLY to decide which distractors may be
+        // dropped for ACC-REDUCED-CHOICES, and is stripped in the explicit
+        // mapping below — the returned SafeQuestion never carries it. Same
+        // pattern buildWorkedExamplePayload already uses.
+        select: { id: true, optionText: true, isCorrect: true },
         orderBy: { id: 'asc' }, // stable shuffle input (authored order)
       },
     },
@@ -232,11 +277,50 @@ async function selectQuestion(
 
   if (!question) return null
 
+  const visibleOptions = reduceChoiceCount
+    ? reduceChoices(
+        question.options,
+        new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id)),
+        `${shuffleSeedPrefix}:${question.id}`
+      )
+    : question.options
+
   // Authored banks list the correct option first — shuffle at serve time.
+  // Built field-by-field rather than spread + cast, so `isCorrect` cannot ride
+  // along into the payload if this select changes later.
   return {
-    ...question,
-    options: seededShuffle(question.options, `${shuffleSeedPrefix}:${question.id}`),
-  } as SafeQuestion
+    id: question.id,
+    prompt: question.prompt,
+    cognitiveComplexity: question.cognitiveComplexity,
+    skillTag: question.skillTag,
+    options: seededShuffle(
+      visibleOptions.map((o) => ({ id: o.id, optionText: o.optionText })),
+      `${shuffleSeedPrefix}:${question.id}`
+    ),
+  }
+}
+
+/**
+ * Whether this practice session should serve reduced answer choices: the
+ * student must hold ACC-REDUCED-CHOICES *and* the attempt's assessment must be
+ * an eligible (non-mastery-deciding) type.
+ *
+ * The type check matters even though the Practice Arena is normally driven by a
+ * PRACTICE assessment — `getNextItem` also serves attempts with no adaptive
+ * state, so it must not assume the caller's context.
+ */
+async function resolveReducedChoices(
+  attemptId: string,
+  studentId: string
+): Promise<boolean> {
+  const attempt = await prisma.assessmentAttempt.findUnique({
+    where: { id: attemptId, voided: false },
+    select: { assessment: { select: { assessmentType: true } } },
+  })
+  if (!attempt || !isReducedChoicesEligibleType(attempt.assessment.assessmentType)) {
+    return false
+  }
+  return hasActiveAccommodation(studentId, ACC_REDUCED_CHOICES_CODE)
 }
 
 async function getBenchmarkId(attemptId: string): Promise<string> {

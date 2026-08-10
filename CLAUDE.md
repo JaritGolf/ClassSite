@@ -150,6 +150,80 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 
 ## Current Build Phase
 
+**ACCOMMODATION ENFORCEMENT — EVERY CODE IS NOW IMPLEMENTED OR HONESTLY LABELLED (2026-08-08,
+ADR 0025) — Tier 1 `tsc` GREEN (0 errors, 9.1s) + Tier 2 jest GREEN (186/186 suites, 2,137
+passed + 2 intentional skips, sharded ×4) + live in-browser verification on both roles.**
+Owner asked to close the equity gap the district packet §9 discloses: **7 of 15 accommodation
+codes had no enforcement code**, and a teacher transcribing an IEP got a green "✓ Granted" chip
+and an audit row for supports that did nothing.
+**A parallel session had already shipped part of this** (PR #14, `ff3b97e`): the
+`reading-load/reduced-choices.ts` module, its wiring into `question-fetcher.ts`, and reworded
+catalog descriptions. That work was **adopted, not rebuilt** — their eligibility set is an
+*allowlist* so a new `AssessmentType` fails **closed**, which is better than the
+complement-of-secure-types approach this plan had specified.
+What shipped on top:
+(1) **`reduceChoices` reached only ONE call site.** Now also wired into the **Practice Arena**
+(`next-item.ts`, both branches), the **Daily Drill** (`drill.ts`), and **remediation alternates**
+(`questions.ts`) — between them where a student spends most practice time. Every path reads
+`isCorrect` server-side only to decide what may be dropped and strips it by explicit
+field-by-field mapping (never a spread), so it cannot reach a payload. The **Daily Drill is
+opted in by decision, not by type** (it is not an `Assessment`), documented at the call site
+because it is the one place bypassing the allowlist.
+(2) **`src/lib/accommodations/`** — the structural fix. The catalog and the enforcement sites
+were two unrelated lists with nothing forcing agreement; that is how seven codes drifted into
+being labels. `registry.ts` maps all 15 codes to `enforced | satisfied-by-design |
+not-implemented` with teacher-facing copy, and an integration test compares it against the
+**seeded rows** (what a teacher actually sees) in both directions.
+(3) **`ACC-EXT-TIME` cannot be implemented, and that is the finding.** Nothing in the platform
+is timed — no time-limit column, no countdown, `timeSeconds` recorded but never enforced, and
+Republic Challenge "stamina length" is a *question count*. Every student already has unlimited
+time, which exceeds the accommodation. Marked `satisfied-by-design`; a registry test now fails
+if a timed activity is ever introduced. Same for `ACC-READ-ALOUD` and `ACC-SCREEN-READER`.
+(4) **`ACC-CHUNK` and `ACC-T2-VOCAB` implemented.** Chunking now defaults **on** (a default, not
+a lock — the toggle sits on the passage, and the student's own choice persists and wins);
+tier-2 glosses survive on level-3 original-source passages, where tier-3 civics terms stay
+hidden. Delivered via a client context seeded by the RSC student layout, defaulting to "no
+accommodations" so the teacher walkthrough still shows the unaccommodated view.
+(5) **Teacher UI tells the truth** — status chip + explainer per row, so granting
+`ACC-CONTEXT-BOOST` now visibly says it changes nothing yet.
+(6) **`ExplainerHover` a11y (closes ADR 0016's deferred item)**: `aria-describedby` was set
+**only while open**, so screen-reader users could not reach any of ~150 explainers.
+**Three real defects were found and fixed during verification, none caught by typecheck:**
+(a) the description duplicated the `title`, making a screen reader say it twice — found by a
+component test seeing the string twice in the DOM; (b) TeacherNav renders
+`<Link><ExplainerHover/></Link>`, so the always-present description became part of **every nav
+link's accessible name** — fixed with `aria-hidden` on the description node (accname §2A still
+reads directly-referenced hidden nodes), pinned by a `toHaveAccessibleName` test; (c) the id came
+from `Math.random()`, which was invisible while it only rendered client-side but now produced a
+**hydration mismatch on every explainer** — fixed with `useId`. Focus handling uses a document
+`focusin`/`focusout` pair rather than React's `onFocus`, because call sites nest the component
+**both ways round** and `onFocus` only ever sees wrapper→child.
+**Verification:** `tsc` 0 errors; jest **186/186 suites, 2,137 passed + 2 skips** ×4 shards;
+mutation-tested (`reduceChoices` made to drop the correct option → 7 failures across all three
+suites, including upstream's own; restored). Live: **same student, Mastery Challenge 4/4/4/4/4
+vs Practice 3/3/3/3/3**, neither leaking `isCorrect` — the allowlist proven, not argued; Daily
+Drill 3 items × 3 options over the real student HTTP path; accommodation granted through the
+**real teacher button**, not a DB write; chunking on by default with no stored pref, then the
+student's "off" surviving a reload; all 15 chips rendering with correct status. The full
+focus matrix was verified on the nav shape jsdom cannot reach. **Demo restored to baseline
+field-by-field** (2 rows: ACC-CHUNK active, ACC-HIGH-CONTRAST inactive), probe audit row deleted,
+localStorage pref cleared.
+**NOT committed — awaiting owner review.** Commit message when ready:
+`feat(phase-9/12): accommodation enforcement — reduced choices on all practice surfaces, chunking and tier-2 defaults, enforcement registry, ExplainerHover a11y (ADR 0025)`.
+**⚠ Env trap that cost most of the verification time and WILL recur:** `preview_start` launches
+`npm run dev` from the **session's original launch directory, not the worktree entered via
+EnterWorktree** — so it served a *different worktree's* code on port 3000 while reporting
+success. That produced a phantom 500 and stale markup which I twice misdiagnosed (once as my
+own regression, once as a stale build). Confirm with
+`lsof -a -p <pid> -d cwd -Fn` before trusting anything in the pane; start the server with
+`npx next dev --port <free>` from the worktree instead. Also: the Browser pane's document never
+holds system focus, so **programmatic `.focus()` fires no `focusin` at all** — dispatch
+`new FocusEvent('focusin', {bubbles:true})`; React synthesises `onMouseEnter` only from a
+`mouseover` carrying a `relatedTarget`; and React state does not flush within one
+`javascript_tool` eval, so **every DOM read needs an `await` after the dispatch** or it reports
+the pre-update state (this alone produced three contradictory readings).
+
+
 **TECHNOLOGY CLEARINGHOUSE CONTINGENCY + FLORIDA OPERATOR COMPLIANCE (2026-08-07, ADR 0024) —
 Tier 1 `tsc` GREEN (0 errors) + Tier 2 jest GREEN (180/180 suites, 2,098 passed + 2 intentional
 skips, sharded ×4) + in-browser verification.** Owner asked what the platform could still do if
@@ -1982,6 +2056,46 @@ the **district sign-offs** remain owner-pending.
 ## Last Action
 
 _(Update this at the end of every session.)_
+
+**Session of 2026-08-08 (Accommodation enforcement, ADR 0025):** Owner asked which CLAUDE.md
+items were still outstanding, then chose the accommodation-enforcement gap from the resulting
+list. Worked in a fresh worktree (`claude/accommodation-enforcement`) off `origin/main` at the
+owner's instruction.
+**Branching off `origin/main` rather than the session's tree is what made this session correct.**
+It surfaced that a parallel session had already merged half the approved plan (PR #14) — the
+reduced-choices module and the reworded catalog. Adopted their version rather than rebuilding:
+their eligibility allowlist fails **closed** on a new `AssessmentType`, which is better than what
+I had planned, and they handle multi-select correct options. Rewrote the plan's revision section
+before touching code, and took ADR **0025** because 0023 and 0024 were taken by that work.
+**The most valuable findings came from the browser, not the typechecker.** Three genuine defects
+in my own ExplainerHover change — title duplicated into the description, the description
+polluting every nav link's accessible name (TeacherNav nests the component *inside* the Link),
+and `Math.random()` ids causing a hydration mismatch now that the id renders server-side. All
+three pass `tsc` happily. Each is now pinned by a test, including a real `toHaveAccessibleName`
+assertion.
+**I misdiagnosed the same symptom twice and want that recorded.** A phantom 500 and stale markup
+led me to conclude first "my regression" (after a `git stash` test) and then "stale build" —
+both wrong. `preview_start` had launched the dev server from the session's *original* worktree,
+so I was never looking at my own code; the stash test was meaningless because it compared two
+copies of someone else's tree. Root-caused with `lsof -a -p <pid> -d cwd`. The lesson is to
+verify *which* code the server is serving before drawing any conclusion from what the page does.
+**Verification:** `tsc` 0 errors; jest 186/186 suites, 2,137 passed + 2 intentional skips,
+sharded ×4; mutation-tested the safety property (make `reduceChoices` drop the correct answer →
+7 failures across all three suites, then restored). The check that mattered most was live and
+comparative: the **same student** holding ACC-REDUCED-CHOICES gets 3 options on Practice and
+**4 on the Mastery Challenge**, with no `isCorrect` in either payload. Granted the accommodation
+by clicking the real teacher button rather than writing to the DB, per the earlier
+high-contrast lesson that injected state does not reproduce the real path.
+**Deliberately did NOT add `@testing-library/user-event`** when a test needed it — a new
+dependency needs the owner's say-so, and `npm install` in a worktree replaces the `node_modules`
+symlink with a real directory back under iCloud sync. Rewrote the tests with `fireEvent` instead.
+**Demo restored to baseline** field-by-field and verified (2 accommodation rows, unchanged),
+probe audit row removed, localStorage pref cleared, my dev server stopped while the concurrent
+session's was left running. **NOT committed — awaiting owner review.**
+**Still open on this feature:** `ACC-CONTEXT-BOOST` remains genuinely unbuilt (now visibly
+labelled rather than silently inert), and manual screen-reader testing is still outstanding —
+this change removes a hard blocker but does not substitute for that testing.
+
 
 **Session of 2026-08-07 (SIGN OUT WAS BROKEN EVERYWHERE — pre-existing, live in production):**
 Owner reported they could not sign out of the student account to reach the teacher account —
