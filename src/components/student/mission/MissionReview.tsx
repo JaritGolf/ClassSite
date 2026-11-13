@@ -23,12 +23,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { trainingStepsOf, vocabStepsOf, scenarioStepsOf } from '@/lib/lesson-content'
 import type { GlossaryTerm } from '@/lib/reading-load'
-import type { AttemptReview } from '@/lib/assessment'
 import { StepIndicator } from './StepIndicator'
 import { TrainingWalkthrough } from './TrainingWalkthrough'
 import { VocabPanel, type TermView } from './VocabPanel'
 import { ScenarioLab } from './ScenarioLab'
-import { AssessmentAttemptReview } from './AssessmentAttemptReview'
+import { CompletionCodeCard } from './CompletionCodeCard'
+import type { MasteryAttemptRecord } from '@/lib/local-progress/types'
 import type { LessonStepView } from './LessonStepRenderer'
 
 const STEP_ORDER = [
@@ -53,12 +53,9 @@ export interface MissionReviewData {
   lessonSteps: LessonStepView[]
   terms: TermView[]
   glossaryTerms: GlossaryTerm[]
-  attemptReviews: {
-    preCheck: AttemptReview[]
-    vocabCheck: AttemptReview[]
-    readinessCheck: AttemptReview[]
-    masteryChallenge: AttemptReview[]
-  }
+  /** This device's record of Mastery Challenge attempts (date, score, pass). */
+  masteryAttempts: MasteryAttemptRecord[]
+  completionCode: string | null
 }
 
 export function MissionReview({ mission }: { mission: MissionReviewData }) {
@@ -94,10 +91,9 @@ export function MissionReview({ mission }: { mission: MissionReviewData }) {
 
       {currentStep === 'pre-check' && (
         <PhasePanel title="Mission Pre-Check" note="Ungraded — it never counted toward your score.">
-          <AssessmentAttemptReview
-            attempts={mission.attemptReviews.preCheck}
-            emptyMessage="No pre-check on record for this mission."
-          />
+          <p className="text-base text-gray-700">
+            The pre-check was a warm-up. Its answers are not kept.
+          </p>
         </PhasePanel>
       )}
 
@@ -119,12 +115,6 @@ export function MissionReview({ mission }: { mission: MissionReviewData }) {
             vocabCheckAssessmentId={null}
             onContinue={() => setCurrentStep('training')}
           />
-          <PhasePanel title="Word Builder" note="Your past Word Builder results.">
-            <AssessmentAttemptReview
-              attempts={mission.attemptReviews.vocabCheck}
-              emptyMessage="No Word Builder attempts on record for this mission."
-            />
-          </PhasePanel>
         </div>
       )}
 
@@ -151,22 +141,44 @@ export function MissionReview({ mission }: { mission: MissionReviewData }) {
 
       {currentStep === 'readiness-check' && (
         <PhasePanel title="Readiness Check" note="Passing this unlocked the Mastery Challenge.">
-          <AssessmentAttemptReview
-            attempts={mission.attemptReviews.readinessCheck}
-            emptyMessage="No readiness check on record for this mission."
-          />
+          <p className="text-base text-gray-700">You passed the Readiness Check for this mission.</p>
         </PhasePanel>
       )}
 
       {currentStep === 'mastery-challenge' && (
-        <PhasePanel
-          title="Mastery Challenge"
-          note="Every attempt you've submitted, across every form you were served."
-        >
-          <AssessmentAttemptReview
-            attempts={mission.attemptReviews.masteryChallenge}
-            emptyMessage="No Mastery Challenge attempt on record for this mission."
-          />
+        <PhasePanel title="Mastery Challenge" note="Every attempt saved on this device.">
+          {mission.completionCode && <CompletionCodeCard code={mission.completionCode} compact />}
+          {mission.masteryAttempts.length === 0 ? (
+            <p className="text-base text-gray-700">No attempts are saved on this device.</p>
+          ) : (
+            <ul className="space-y-2">
+              {mission.masteryAttempts.map((a, i) => (
+                <li
+                  key={`${a.at}-${i}`}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-indigo-100 bg-white px-3 py-2"
+                >
+                  <span className="font-display text-sm font-bold text-gray-900">Attempt {i + 1}</span>
+                  <span className="text-sm text-gray-700">
+                    {new Date(a.at).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                  <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-800">
+                    Score {Math.round(a.score * 100)}%
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                      a.passed ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                    }`}
+                  >
+                    {a.passed ? 'Passed' : 'Not passed'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </PhasePanel>
       )}
     </div>

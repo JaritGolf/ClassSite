@@ -1,44 +1,36 @@
 /**
  * POST /api/assessment/[assessmentId]/submit
  *
- * Grades a student's assessment submission server-side.
+ * Grades a submission against the server-side answer key and returns the
+ * score and feedback.
+ *
+ * Stateless and anonymous: this handler reads no session and writes nothing.
+ * The request holds question ids, chosen options and confidence ratings; the
+ * response holds the result. Neither says who the student is, and nothing is
+ * kept afterwards.
  *
  * SECURITY:
- *   - Request body is validated + stripped by Zod (SubmitSchema)
- *   - isCorrect and pointsAwarded are NEVER read from the client payload
- *   - gradeAndSubmit() recomputes correctness from the DB answer key
- *   - Ownership verified inside gradeAndSubmit (attempt must belong to student)
- *
- * Response modes:
- *   - PRACTICE: returns score + per-item feedback
- *   - All secure types (MASTERY_CHALLENGE, etc.): returns score only, no feedback
+ *   - The body is validated and stripped by zod; `isCorrect`, a score, or any
+ *     other field a tampered client adds is dropped before grading.
+ *   - Correctness, score and pass/fail are computed from the database key.
+ *   - Secure assessment types return right/wrong only — no key, no feedback.
  */
 
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { gradeAndSubmit, SubmitSchema, AssessmentError } from '@/lib/assessment'
-import { updateProgressAfterAttempt } from '@/lib/mastery'
-import { recordActivity } from '@/lib/streak'
-import { evaluateAndAwardBadges } from '@/lib/badges'
-import { touchActivitySafe } from '@/lib/activity-sessions'
-import { recordLastActivity } from '@/lib/student-activity'
+import {
+  gradeSubmission,
+  AssessmentError,
+  ASSESSMENT_ERROR_STATUS,
+  AssessmentSubmitSchema,
+  type AssessmentSubmitResult,
+} from '@/lib/assessment'
 
 interface RouteParams {
   params: { assessmentId: string }
 }
 
 export async function POST(req: NextRequest, { params }: RouteParams) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  if (session.user.role !== 'STUDENT') {
-    return NextResponse.json({ error: 'Forbidden: students only' }, { status: 403 })
-  }
-
-  // Parse and validate request body (Zod strips unknown fields)
   let body: unknown
   try {
     body = await req.json()
@@ -46,70 +38,37 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
 
-  const parsed = SubmitSchema.safeParse(body)
+  const parsed = AssessmentSubmitSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: 'Invalid request body', details: parsed.error.flatten() },
-      { status: 400 }
-    )
-  }
-
-  // Resolve Student record
-  const student = await prisma.student.findUnique({
-    where: { userId: session.user.userId },
-    select: { id: true },
-  })
-  if (!student) {
-    return NextResponse.json(
-      { error: 'Student profile not found for this user' },
-      { status: 404 }
-    )
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
   try {
-    const result = await gradeAndSubmit(parsed.data, student.id)
+    const outcome = await gradeSubmission(params.assessmentId, {
+      responses: parsed.data.responses,
+      readinessToken: parsed.data.readinessToken ?? null,
+    })
 
-    // Phase 4: update mastery state after grading.
-    // Non-fatal — the student's submission is already persisted regardless.
-    try {
-      await updateProgressAfterAttempt(result.attemptId, student.id)
-    } catch (masteryErr) {
-      console.error(
-        '[mastery/updateProgress]',
-        masteryErr instanceof Error ? masteryErr.message : masteryErr
-      )
+    const result: AssessmentSubmitResult = {
+      assessmentType: outcome.assessmentType,
+      benchmarkCode: outcome.benchmarkCode,
+      score: outcome.score,
+      passed: outcome.passed,
+      totalQuestions: outcome.totalQuestions,
+      correctCount: outcome.correctCount,
+      results: outcome.results,
+      calibration: outcome.calibration,
+      reviewTopics: outcome.reviewTopics,
+      readinessToken: outcome.readinessToken,
+      remediation: outcome.remediation,
+      completionCode: null,
     }
-
-    // Streak credit for real academic work (not just dashboard visits), then
-    // badge evaluation (streak badges may depend on the updated streak).
-    // Non-fatal; recordActivity is idempotent for same-day repeats and
-    // evaluateAndAwardBadges upserts on (studentId, badgeId).
-    try {
-      await recordActivity(student.id, new Date())
-      await evaluateAndAwardBadges(student.id)
-      await recordLastActivity(student.id, 'ASSESSMENT', params.assessmentId)
-    } catch (hookErr) {
-      console.error('[streak+badges]', hookErr instanceof Error ? hookErr.message : hookErr)
-    }
-
-    // Guarantees an activity session exists around graded work even if the
-    // client heartbeat never ran. Self-wrapped; write-debounced server-side.
-    await touchActivitySafe(student.id, { area: 'assessment' })
-
-    return NextResponse.json(result)
+    return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
     if (err instanceof AssessmentError) {
-      const statusMap = {
-        NOT_FOUND: 404,
-        FORBIDDEN: 403,
-        ALREADY_SUBMITTED: 409,
-        CONFIDENCE_REQUIRED: 422,
-        INVALID_CONTENT: 422,
-        READINESS_REQUIRED: 409,
-      } as const
       return NextResponse.json(
         { error: err.message, code: err.code },
-        { status: statusMap[err.code] }
+        { status: ASSESSMENT_ERROR_STATUS[err.code] }
       )
     }
     console.error('[assessment/submit]', err instanceof Error ? err.message : err)

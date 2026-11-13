@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react'
 import { BenchmarkNode } from '@/components/student/map/BenchmarkNode'
-import type { MissionNodeState } from '@/lib/mastery'
+import type { MissionNodeState } from '@/lib/mastery/availability-core'
 
 function renderNode(overrides: Partial<Parameters<typeof BenchmarkNode>[0]> = {}) {
   return render(
@@ -106,8 +106,6 @@ describe('BenchmarkNode — labels', () => {
     ['NEEDS_REMEDIATION', 'Needs Remediation'],
     ['REMEDIATION_COMPLETE', 'Remediation Complete'],
     ['EXPOSURE_COMPLETE', 'Exposure Complete'],
-    ['TEACHER_OVERRIDE', 'Override'],
-    ['INTERVENTION_REQUIRED', 'Intervention Required'],
     ['AVAILABLE', 'Ready to Start'],
     ['LOCKED', 'Locked'],
     ['COMING_SOON', 'Coming Soon'],
@@ -127,22 +125,5 @@ describe('BenchmarkNode — labels', () => {
   it('does not show a score on a mission that is merely available', () => {
     renderNode({ state: 'AVAILABLE', openable: true, masteryScore: 0.86 })
     expect(screen.queryByText('86%')).not.toBeInTheDocument()
-  })
-})
-
-describe('BenchmarkNode — checkpoint flag', () => {
-  it('renders the nine-week checkpoint flag when one lands here', () => {
-    renderNode({ checkpoint: { checkpointNumber: 2, level: 3 } })
-    expect(screen.getByText(/Q2 · Level 3/)).toBeInTheDocument()
-  })
-
-  it('never lets a checkpoint change whether the mission opens', () => {
-    // Levels describe progress; they must not gate it.
-    renderNode({
-      state: 'LOCKED',
-      openable: false,
-      checkpoint: { checkpointNumber: 1, level: 1 },
-    })
-    expect(missionLink()).toBeNull()
   })
 })

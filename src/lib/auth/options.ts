@@ -69,13 +69,28 @@ export async function resolveTeacherSignIn(
     return { ok: false, redirect: '/login?error=not-allowed' }
   }
 
-  // Lesson authoring is class-scoped, so a teacher needs a Teacher row.
+  // Lesson authoring is class-scoped, so a teacher needs a Teacher row and at
+  // least one class to arrange lessons for. A class is only a label for a
+  // lesson arrangement — it has no roster and nobody is ever enrolled in it.
   if (dbUser.role === 'TEACHER') {
-    await prisma.teacher.upsert({
+    const teacher = await prisma.teacher.upsert({
       where: { userId: dbUser.id },
       update: {},
       create: { userId: dbUser.id },
+      select: { id: true },
     })
+    const classCount = await prisma.class.count({ where: { teacherId: teacher.id } })
+    if (classCount === 0) {
+      const now = new Date()
+      const startYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1
+      await prisma.class.create({
+        data: {
+          teacherId: teacher.id,
+          name: 'Civics',
+          schoolYear: `${startYear}-${startYear + 1}`,
+        },
+      })
+    }
   }
 
   return { ok: true, userId: dbUser.id, role: dbUser.role }

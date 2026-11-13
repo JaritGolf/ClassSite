@@ -22,7 +22,18 @@ import { TrainingWalkthrough } from './TrainingWalkthrough'
 import { VocabPanel, type TermView } from './VocabPanel'
 import { ScenarioLab } from './ScenarioLab'
 import { PracticeArena } from './PracticeArena'
-import type { LessonStepView } from './LessonStepRenderer'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
+import {
+  markMissionOpened,
+  pickMasteryForm,
+  recordMasteryAttempt,
+  recordReadinessPassed,
+  saveMissionFlow,
+  setLastActivity,
+  type MasteryOutcome,
+} from '@/lib/local-progress/engine'
+import { missionLabel } from '@/lib/student-next-step'
+import { CompletionCodeCard } from './CompletionCodeCard'
 
 /**
  * The mission arc.
@@ -41,7 +52,7 @@ import type { LessonStepView } from './LessonStepRenderer'
 
 type Step = MissionStepKey
 
-interface MissionData {
+export interface MissionData {
   benchmarkCode: string
   benchmarkTitle: string
   lessonSummary: string | null
@@ -50,47 +61,18 @@ interface MissionData {
   studentFriendlyTarget: string
   preCheckAssessmentId: string | null
   readinessAssessmentId: string | null
-  assessmentId: string | null
+  /** Rotating Mastery Challenge forms, in a stable order. */
+  masteryFormIds: string[]
   practiceAssessmentId: string | null
   vocabCheckAssessmentId: string | null
   /**
-   * Fully resolved for this student's class: teacher content overrides
-   * applied, hidden modules dropped, teacher-added modules spliced in, in the
-   * class's own order. Carries `origin`, which the resume anchoring below
-   * needs to tell a built-in step from a teacher module.
+   * Resolved for the published class: teacher content overrides applied,
+   * hidden modules dropped, teacher-added modules spliced in, in order.
    */
   lessonSteps: ResolvedStep[]
   terms: TermView[]
   /** Tier-2 (global) + tier-3 (benchmark) terms for note glossary popovers. */
   glossaryTerms: GlossaryTerm[]
-  /** Server-side resume point (StudentProgress.currentStepId), if any. */
-  resumeStepId: string | null
-  /** DB-derived resume: readiness already passed / benchmark mastered. */
-  derivedResumeStep: 'mastery-challenge' | null
-  /** Scopes device-local resume state to this student (shared Chromebooks). */
-  progressKey: string
-}
-
-interface SavedFlowState {
-  v: 1
-  step: Step
-  completed: Step[]
-  trainingIndex: number
-  /**
-   * OPTIONAL, and the version stays 1 on purpose — adding it must not
-   * invalidate saved state a student already has on their Chromebook.
-   *
-   * Resuming by id survives a teacher inserting a module ahead of where the
-   * student was; resuming by index alone silently shifts them back one step
-   * for every module added. That was a rare admin-only event before this
-   * feature and is about to become routine, so prefer the id and keep the
-   * index as the fallback for state written before this field existed.
-   */
-  trainingStepId?: string
-}
-
-function flowStorageKey(progressKey: string, benchmarkCode: string): string {
-  return `cq:mission:${progressKey}:${benchmarkCode}`
 }
 
 interface MissionFlowProps {
@@ -98,6 +80,10 @@ interface MissionFlowProps {
 }
 
 export function MissionFlow({ mission }: MissionFlowProps) {
+  const { progress, hydrated: storeReady, update } = useLocalProgress()
+  const code = mission.benchmarkCode
+  const record = progress.missions[code]
+
   const [currentStep, setCurrentStep] = useState<Step>('plan')
   const [completedSteps, setCompletedSteps] = useState<Step[]>([])
   const [preCheckDone, setPreCheckDone] = useState(false)
@@ -108,18 +94,20 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     reviewTopics?: string[] | null
   } | null>(null)
   const [readinessAttempt, setReadinessAttempt] = useState(0)
-  // Mastery Challenge, taken in place. `started` is a deliberate gate: mounting
-  // AssessmentPlayer POSTs /start and creates an AssessmentAttempt row, so it
-  // must follow an explicit choice rather than merely arriving at this step.
-  const [masteryStarted, setMasteryStarted] = useState(false)
-  const [masteryResult, setMasteryResult] = useState<{ passed: boolean } | null>(null)
+  // Mastery Challenge, taken in place. The form is chosen once, when the
+  // student presses Begin, so recording the attempt cannot swap the questions
+  // out from under them mid-challenge.
+  const [masteryFormId, setMasteryFormId] = useState<string | null>(null)
+  const [masteryResult, setMasteryResult] = useState<{
+    passed: boolean
+    outcome: MasteryOutcome
+    completionCode: string | null
+  } | null>(null)
   // Set when the student jumps back from a failed readiness check — completing
   // the review returns them to the readiness check instead of marching forward.
   const [reviewingFrom, setReviewingFrom] = useState<Step | null>(null)
   const [trainingIndex, setTrainingIndex] = useState(0)
   const hydrated = useRef(false)
-  /** Latest step we tried to save, for the pagehide flush below. */
-  const lastSavedStepIdRef = useRef<string | null>(null)
 
   // Anchors are attached AFTER bucketing, never before: the pointer is looked
   // up with trainingSteps.findIndex below, so an anchor taken from the whole
@@ -130,130 +118,71 @@ export function MissionFlow({ mission }: MissionFlowProps) {
   const scenarioSteps = scenarioStepsOf(mission.lessonSteps)
 
   // ── Resume (spec §21.3 "continue from last saved step") ──────────────────
-  // Device-local flow state first; else the server-side training step pointer.
-  //
-  // Adding `plan` at the FRONT of the order is resume-safe because saved steps
-  // are validated by membership, not by index — a student mid-mission keeps
-  // their place and never sees the plan screen again.
+  // Everything comes from this device's saved progress. Saved steps are
+  // validated by membership, not by index, so adding a step to the order never
+  // strands a student mid-mission.
   useEffect(() => {
-    if (hydrated.current) return
+    if (!storeReady || hydrated.current) return
     hydrated.current = true
-    try {
-      const raw = localStorage.getItem(flowStorageKey(mission.progressKey, mission.benchmarkCode))
-      if (raw) {
-        const saved = JSON.parse(raw) as SavedFlowState
-        if (saved.v === 1 && (MISSION_STEP_ORDER as readonly string[]).includes(saved.step)) {
-          setCurrentStep(saved.step)
-          setCompletedSteps(
-            saved.completed.filter((s) => (MISSION_STEP_ORDER as readonly string[]).includes(s))
-          )
-          // Prefer the saved step id — it survives a teacher inserting a module
-          // ahead of this student. Fall back to the index for state saved
-          // before `trainingStepId` existed, or if that step is now gone.
-          const byId = saved.trainingStepId
-            ? trainingSteps.findIndex((s) => s.id === saved.trainingStepId)
-            : -1
-          setTrainingIndex(
-            byId >= 0
-              ? byId
-              : Math.min(Math.max(0, saved.trainingIndex), Math.max(0, trainingSteps.length - 1))
-          )
-          return
-        }
-      }
-    } catch {
-      /* localStorage unavailable — fall through */
-    }
-    // DB truth outranks the training-step pointer: a student who already
-    // passed the Readiness Check (or mastered) resumes at the Mastery
-    // Challenge on a fresh device instead of being dumped back into training.
-    if (mission.derivedResumeStep) {
-      const idx = MISSION_STEP_ORDER.indexOf(mission.derivedResumeStep)
-      setCurrentStep(mission.derivedResumeStep)
-      setCompletedSteps(MISSION_STEP_ORDER.slice(0, idx) as Step[])
+
+    update((p) =>
+      setLastActivity(
+        markMissionOpened(p, code),
+        {
+          label: missionLabel(code, mission.benchmarkTitle),
+          subLabel: 'Pick up where you left off',
+          href: `/student/mission/${code}`,
+          icon: 'sparkle',
+        },
+        new Date()
+      )
+    )
+
+    const saved = record?.flow
+    if (saved && (MISSION_STEP_ORDER as readonly string[]).includes(saved.step)) {
+      setCurrentStep(saved.step as Step)
+      setCompletedSteps(
+        saved.completed.filter((s) => (MISSION_STEP_ORDER as readonly string[]).includes(s)) as Step[]
+      )
+      // Prefer the saved step id — it survives a teacher inserting a module
+      // ahead of this student. Fall back to the index if that step is gone.
+      const byId = saved.trainingStepId
+        ? trainingSteps.findIndex((s) => s.id === saved.trainingStepId)
+        : -1
+      setTrainingIndex(
+        byId >= 0
+          ? byId
+          : Math.min(Math.max(0, saved.trainingIndex), Math.max(0, trainingSteps.length - 1))
+      )
       return
     }
-    if (mission.resumeStepId) {
-      const idx = trainingSteps.findIndex((s) => s.id === mission.resumeStepId)
-      if (idx >= 0) {
-        setCurrentStep('training')
-        setCompletedSteps(['plan', 'pre-check', 'briefing', 'vocab'])
-        setTrainingIndex(idx)
-      }
+    // No saved place (e.g. progress loaded from a file made before this
+    // mission was opened), but the Readiness Check is already passed: resume
+    // at the Mastery Challenge instead of sending the student back to training.
+    if (record?.readinessPassedAt) {
+      const idx = MISSION_STEP_ORDER.indexOf('mastery-challenge')
+      setCurrentStep('mastery-challenge')
+      setCompletedSteps(MISSION_STEP_ORDER.slice(0, idx) as Step[])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [storeReady])
 
   // Persist flow state so a student can leave mid-mission and pick up here.
   useEffect(() => {
     if (!hydrated.current) return
-    try {
-      const state: SavedFlowState = {
-        v: 1,
+    update((p) =>
+      saveMissionFlow(p, code, {
         step: currentStep,
         completed: completedSteps,
         trainingIndex,
         trainingStepId: trainingSteps[trainingIndex]?.id,
-      }
-      localStorage.setItem(
-        flowStorageKey(mission.progressKey, mission.benchmarkCode),
-        JSON.stringify(state)
-      )
-    } catch {
-      /* non-fatal */
-    }
-  }, [currentStep, completedSteps, trainingIndex, mission.progressKey, mission.benchmarkCode])
-
-  // Last-chance save of the cross-device resume point.
-  //
-  // The per-step `fetch` above can be cut off mid-flight when the tab closes,
-  // the laptop lid shuts, or the network drops — exactly the moments a student
-  // most needs their place kept. `sendBeacon` is queued by the browser and
-  // survives unload, where a fetch is simply cancelled. Same pattern as
-  // ActivityHeartbeat.
-  //
-  // `pagehide` rather than `beforeunload`: it is the event that actually fires
-  // on mobile Safari, and it also covers the back/forward cache.
-  useEffect(() => {
-    function flushResumePoint() {
-      const stepId = lastSavedStepIdRef.current
-      if (!stepId) return
-      try {
-        navigator.sendBeacon?.(
-          '/api/mission/progress',
-          new Blob([JSON.stringify({ benchmarkCode: mission.benchmarkCode, stepId })], {
-            type: 'application/json',
-          })
-        )
-      } catch {
-        /* nothing useful to do during unload */
-      }
-    }
-
-    window.addEventListener('pagehide', flushResumePoint)
-    return () => window.removeEventListener('pagehide', flushResumePoint)
-  }, [mission.benchmarkCode])
+      })
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, completedSteps, trainingIndex, code])
 
   function handleTrainingIndexChange(index: number, _stepId: string) {
     setTrainingIndex(index)
-    // StudentProgress.currentStepId is an FK to LessonStep, so a teacher-added
-    // module reports its nearest preceding BUILT-IN step in this same bucket
-    // instead of itself. Null means the student is on a teacher module that
-    // precedes every built-in one — there is simply nothing valid to record,
-    // so don't call at all rather than send an id the server must reject.
-    const progressStepId = trainingSteps[index]?.progressStepId ?? null
-    if (!progressStepId) return
-
-    lastSavedStepIdRef.current = progressStepId
-    // Cross-device resume point. Fire and forget — a lost save costs the student
-    // their place on a DIFFERENT device, never their work (localStorage above
-    // already covers same-device resume, and nothing here is graded).
-    fetch('/api/mission/progress', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ benchmarkCode: mission.benchmarkCode, stepId: progressStepId }),
-      keepalive: true,
-    }).catch(() => {})
   }
 
   function completeStep(step: Step) {
@@ -281,8 +210,12 @@ export function MissionFlow({ mission }: MissionFlowProps) {
     mission.vocabCheckAssessmentId,
     mission.practiceAssessmentId,
     mission.readinessAssessmentId,
-    mission.assessmentId,
+    mission.masteryFormIds[0] ?? null,
   ].filter(Boolean).length
+
+  if (!storeReady) {
+    return <p className="py-12 text-center text-base text-gray-600">Loading your mission…</p>
+  }
 
   return (
     <div className="space-y-6">
@@ -473,9 +406,13 @@ export function MissionFlow({ mission }: MissionFlowProps) {
             <AssessmentPlayer
               key={readinessAttempt}
               assessmentId={mission.readinessAssessmentId}
-              onComplete={(r) =>
+              onComplete={(r) => {
                 setReadinessResult({ passed: r.passed, reviewTopics: r.reviewTopics ?? null })
-              }
+                // A skipped (empty) check is not a pass and unlocks nothing.
+                if (r.passed && !r.skipped) {
+                  update((p) => recordReadinessPassed(p, code, r.readinessToken, new Date()))
+                }
+              }}
             />
             {readinessResult?.passed && (
               <button
@@ -556,7 +493,7 @@ export function MissionFlow({ mission }: MissionFlowProps) {
           <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
             <StepContextBar stepKey="mastery-challenge" />
           </div>
-          {!masteryStarted ? (
+          {!masteryFormId ? (
             <div className="relative space-y-4 overflow-hidden rounded-3xl border-b-4 border-indigo-950 bg-gradient-to-br from-indigo-700 to-indigo-900 p-8 text-center text-white">
               <svg
                 aria-hidden="true"
@@ -574,14 +511,10 @@ export function MissionFlow({ mission }: MissionFlowProps) {
                 This is the final assessment. You need 80% or higher to master this benchmark and
                 unlock the next mission. You&apos;ll rate how sure you are on each question.
               </p>
-              {mission.assessmentId ? (
-                // Stays in the mission (this used to navigate away to
-                // /student/assessment/[id], which threw away the mission context
-                // at the exact moment the student needed to be told what's next).
-                // Still gated on a click: mounting the player creates an attempt.
+              {mission.masteryFormIds.length > 0 ? (
                 <button
                   type="button"
-                  onClick={() => setMasteryStarted(true)}
+                  onClick={() => setMasteryFormId(pickMasteryForm(mission.masteryFormIds, progress, code))}
                   className="relative inline-block rounded-2xl border-b-4 border-amber-600 bg-amber-400 px-7 py-3 font-display text-base font-bold text-amber-950 transition-colors hover:bg-amber-300 active:translate-y-[3px] active:border-b-0"
                 >
                   Begin Mastery Challenge →
@@ -593,14 +526,56 @@ export function MissionFlow({ mission }: MissionFlowProps) {
               )}
             </div>
           ) : (
-            mission.assessmentId && (
-              <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
-                <AssessmentPlayer
-                  assessmentId={mission.assessmentId}
-                  onComplete={(r) => setMasteryResult({ passed: r.passed })}
-                />
-              </div>
-            )
+            <div className="rounded-2xl border-2 border-indigo-100 bg-white p-5 shadow-card">
+              <AssessmentPlayer
+                key={masteryFormId}
+                assessmentId={masteryFormId}
+                readinessToken={record?.readinessToken ?? null}
+                onComplete={(r) => {
+                  if (r.skipped) return
+                  const now = new Date()
+                  let outcome: MasteryOutcome = 'NEEDS_REMEDIATION'
+                  update((p) => {
+                    const recorded = recordMasteryAttempt(p, {
+                      code,
+                      formId: masteryFormId,
+                      score: r.score,
+                      passed: r.passed,
+                      completionCode: r.completionCode,
+                      remediation: r.remediation,
+                      now,
+                    })
+                    outcome = recorded.outcome
+                    return recorded.progress
+                  })
+                  setMasteryResult({ passed: r.passed, outcome, completionCode: r.completionCode })
+                }}
+              />
+            </div>
+          )}
+
+          {masteryResult?.passed && masteryResult.completionCode && (
+            <CompletionCodeCard code={masteryResult.completionCode} missionTitle={mission.benchmarkTitle} />
+          )}
+
+          {masteryResult && !masteryResult.passed && (
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-amber-200 bg-amber-50 p-4">
+              <p className="flex-1 text-base font-semibold text-amber-900">
+                {masteryResult.outcome === 'OFF_RAMP'
+                  ? 'You have given this mission real effort. It will come back in your Daily Drill, and the next mission is now open.'
+                  : 'When you are ready for another try, you will get a different set of questions.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setMasteryResult(null)
+                  setMasteryFormId(null)
+                }}
+                className="rounded-2xl border-2 border-b-4 border-gray-300 bg-white px-4 py-2 font-display text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50 active:translate-y-[2px] active:border-b-2"
+              >
+                Back to the challenge start
+              </button>
+            </div>
           )}
 
           {/* The mission debrief. The player above already shows the score, the

@@ -18,7 +18,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { GlossaryPopover } from './GlossaryPopover'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
-import { useAccommodationPrefs } from '@/components/student/AccommodationPrefsProvider'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
+import { updateSettings } from '@/lib/local-progress/engine'
 import type { GlossaryAnnotation } from '@/lib/reading-load'
 
 interface StimulusDisplayProps {
@@ -59,36 +60,30 @@ export function StimulusDisplay({
   onLevelChange,
   mediaUrl,
 }: StimulusDisplayProps) {
-  // ACC-CHUNK / ACC-T2-VOCAB. All-false outside the student layout (e.g. the
-  // teacher lesson walkthrough), which is the correct unaccommodated view.
-  const { chunkByDefault, tier2GlossesAlways } = useAccommodationPrefs()
+  // Display options come from this device's own settings (Settings page).
+  // They are choices any student can make — nobody grants them and the server
+  // never learns which are on.
+  const { progress, hydrated, update } = useLocalProgress()
+  const chunkByDefault = progress.settings.sentenceChunking
+  const showReadAloudLabel = progress.settings.readAloud
 
-  const [chunkingEnabled, setChunkingEnabled] = useState(chunkByDefault)
+  const [chunkingEnabled, setChunkingEnabled] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [hasSpeechSupport, setHasSpeechSupport] = useState(false)
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null)
 
-  // Load the stored chunking preference on mount.
-  //
-  // Tri-state on purpose: NO stored key means the student has never expressed a
-  // preference, so ACC-CHUNK decides the starting position. A stored key means
-  // they have, and their own choice wins over the accommodation default — the
-  // toggle sits directly on the passage, and a button that visibly refused to
-  // work would be worse than the accommodation setting where it starts.
-  //
-  // Read-only. The write lives in the toggle handler rather than in an effect on
-  // `chunkingEnabled`, because "the key exists" must mean "the student chose
-  // this" — an effect would also fire on the accommodation-driven initial value
-  // and record a preference the student never expressed, permanently freezing
-  // out the accommodation.
+  // Starting position: the choice saved on this device. The legacy key is
+  // still honoured so a preference set before Settings existed is not lost.
   useEffect(() => {
+    if (!hydrated) return
+    let legacy: string | null = null
     try {
-      const stored = localStorage.getItem(CHUNKING_KEY)
-      if (stored !== null) setChunkingEnabled(stored === 'true')
+      legacy = localStorage.getItem(CHUNKING_KEY)
     } catch {
       // localStorage may be unavailable (private browsing, etc.)
     }
-  }, [])
+    setChunkingEnabled(legacy !== null ? legacy === 'true' : chunkByDefault)
+  }, [hydrated, chunkByDefault])
 
   const toggleChunking = useCallback(() => {
     const next = !chunkingEnabled
@@ -98,7 +93,8 @@ export function StimulusDisplay({
     } catch {
       // Silently ignore — the toggle still works for this session.
     }
-  }, [chunkingEnabled])
+    update((p) => updateSettings(p, { sentenceChunking: next }))
+  }, [chunkingEnabled, update])
 
   // Detect Web Speech API availability (client-side only)
   useEffect(() => {
@@ -138,17 +134,9 @@ export function StimulusDisplay({
   // ── Render content with glossary popovers (levels 1 & 2) ──────────────
 
   function renderContent(): React.ReactNode {
-    // Level 3 is the raw historical passage and carries no glossary scaffolding
-    // (spec 16.2) — EXCEPT under ACC-T2-VOCAB, which keeps the tier-2 academic
-    // vocabulary help. Tier-3 civics terms stay hidden at level 3 either way:
-    // the accommodation is scoped to academic vocabulary, matching its name, and
-    // glossing the civics terms is the scaffolding level 3 exists to withhold.
-    const activeAnnotations =
-      resolvedLevel >= 3
-        ? tier2GlossesAlways
-          ? glossaryAnnotations.filter((a) => a.tier === 'TIER_2')
-          : []
-        : glossaryAnnotations
+    // Level 3 is the raw historical passage and carries no glossary
+    // scaffolding (spec 16.2).
+    const activeAnnotations = resolvedLevel >= 3 ? [] : glossaryAnnotations
 
     if (activeAnnotations.length === 0) {
       if (chunkingEnabled) {
@@ -224,7 +212,10 @@ export function StimulusDisplay({
                     : 'border-amber-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50',
                 ].join(' ')}
               >
-                {isSpeaking ? '⏹' : '🔊'}
+                <span aria-hidden="true">{isSpeaking ? '⏹' : '🔊'}</span>
+                {showReadAloudLabel && (
+                  <span className="ml-1.5">{isSpeaking ? 'Stop' : 'Read aloud'}</span>
+                )}
               </button>
             </ExplainerHover>
           )}
@@ -346,8 +337,7 @@ export function renderAnnotatedText(
           key={i}
           definition={annotation.definition}
           tier={annotation.tier}
-          l1Definition={annotation.l1Definition}
-          l1Language={annotation.l1Language}
+          l1Definitions={annotation.l1Definitions}
         >
           {part}
         </GlossaryPopover>

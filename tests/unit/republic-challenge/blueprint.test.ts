@@ -6,7 +6,7 @@
  */
 
 import { allocateByBlueprint, isWithinTolerance } from '@/lib/republic-challenge/blueprint'
-import { REPORTING_CATEGORY_WEIGHTS } from '@/lib/eoc-analytics/readiness'
+import { REPORTING_CATEGORY_WEIGHTS } from '@/lib/republic-challenge/weights'
 
 describe('allocateByBlueprint', () => {
   it('returns empty allocation for totalQuestions = 0', () => {

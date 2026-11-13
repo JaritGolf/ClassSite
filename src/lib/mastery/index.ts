@@ -1,38 +1,28 @@
 /**
- * Mastery Engine — Public API
+ * Mastery — public API (server side).
  *
- * All consumers should import from here, not from internal module files.
+ * The server no longer holds any student's mastery state. What remains here is
+ * curriculum-level: which missions are playable, and the teacher's switch for
+ * opening a mission. The mastery / unlock / off-ramp RULES are pure and live in
+ * ./availability-core, where the student's own device applies them.
  */
 
-export { updateProgressAfterAttempt, MasteryError } from './status'
-export type { ProgressUpdateResult } from './status'
-
-export { unlockNextBenchmark, findNextReachableBenchmark } from './unlock'
+export { getPlayableBenchmarkIds, PLAYABLE_BENCHMARK_WHERE } from './availability'
 
 export {
   computeAvailability,
-  loadAvailabilityInputs,
-  getMissionAvailability,
-  canOpenMission,
   pickCurrentMissionId,
-  getPlayableBenchmarkIds,
-  PLAYABLE_BENCHMARK_WHERE,
-} from './availability'
-
-export {
-  setBenchmarkReadiness,
-  getBenchmarkReadiness,
-  ReadinessFlagError,
-} from './readiness-flag'
-export type { BenchmarkReadiness } from './readiness-flag'
+  isOffRampConditionMet,
+  pickMasteryFormIndex,
+  TERMINAL_STATUSES,
+} from './availability-core'
 export type {
+  MissionProgressStatus,
   MissionNodeState,
   MissionAvailability,
   AvailabilityBenchmark,
   AvailabilityInputs,
-} from './availability'
+} from './availability-core'
 
-export { checkOffRamp, isOffRampConditionMet } from './off-ramp'
-
-export { applyTeacherOverride, OverrideError } from './override'
-export type { TeacherOverrideResult } from './override'
+export { setBenchmarkReadiness, getBenchmarkReadiness, ReadinessFlagError } from './readiness-flag'
+export type { BenchmarkReadiness } from './readiness-flag'

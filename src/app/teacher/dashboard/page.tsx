@@ -1,162 +1,86 @@
 /**
- * Teacher Dashboard — Phase 9a rewrite.
- * Renders all §22.2 class metrics via class-analytics domain functions.
+ * Teacher home.
+ *
+ * There is no class dashboard of student results, because the site holds no
+ * student results. This page is the teacher's starting point for the things
+ * the site does hold: lessons, the question bank, and the completion-code
+ * checker.
  */
 
+import Link from 'next/link'
 import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import {
-  getClassStatusDistribution,
-  getClassMasteryByBenchmark,
-  getClassMasteryByUnit,
-  getMostMissedQuestions,
-  getCommonMisconceptions,
-  getStudentsNeedingAction,
-  getRecommendedSmallGroups,
-  getEocReadinessTrend,
-  getOffRampStudents,
-  getStrategyCompletionStatus,
-  getCheckpointLevelsForTeacher,
-} from '@/lib/class-analytics'
-import { getClassDecayRates } from '@/lib/spaced-retrieval/decay'
-import { getTeacherRoster } from '@/lib/teacher-roster'
-import { StatCard } from '@/components/teacher/dashboard/StatCard'
-import { ClassProgressCard } from '@/components/teacher/dashboard/ClassProgressCard'
-import { StatusDistribution } from '@/components/teacher/dashboard/StatusDistribution'
-import { MostMissedQuestionsTable } from '@/components/teacher/dashboard/MostMissedQuestionsTable'
-import { MisconceptionsTable } from '@/components/teacher/dashboard/MisconceptionsTable'
-import { DecayAlerts } from '@/components/teacher/dashboard/DecayAlerts'
-import { OffRampList } from '@/components/teacher/dashboard/OffRampList'
-import { RecommendedSmallGroups } from '@/components/teacher/dashboard/RecommendedSmallGroups'
-import { EocReadinessTrendChart } from '@/components/teacher/dashboard/EocReadinessTrendChart'
-import { StrategyCompletionTable } from '@/components/teacher/dashboard/StrategyCompletionTable'
-import { CheckpointLevelTable } from '@/components/teacher/dashboard/CheckpointLevelTable'
 import { LessonPreviewLinks } from '@/components/teacher/dashboard/LessonPreviewLinks'
 
+const CARDS = [
+  {
+    href: '/teacher/check-codes',
+    title: 'Check completion codes',
+    body: 'Paste the codes students turned in on Google Classroom to confirm each one is genuine. Nothing you paste is saved.',
+  },
+  {
+    href: '/teacher/lessons',
+    title: 'Lessons',
+    body: 'Preview each mission, add your own modules, and arrange what students see.',
+  },
+  {
+    href: '/teacher/benchmarks',
+    title: 'Benchmarks',
+    body: 'Every SS.7.CG standard in the course, and the switch that opens a mission to students.',
+  },
+  {
+    href: '/teacher/questions',
+    title: 'Question bank',
+    body: 'Every question, with its tags, reading load and approval status.',
+  },
+  {
+    href: '/teacher/content',
+    title: 'Content approval',
+    body: 'Review drafted content before it can reach students.',
+  },
+]
+
 export default async function TeacherDashboard() {
-  const session = await requireAuth(['TEACHER'])
-  const userId = session.user.userId
+  await requireAuth(['TEACHER'])
 
-  const roster = await getTeacherRoster(userId)
-
-  const [
-    statusDistribution,
-    masteryByUnit,
-    masteryByBenchmark,
-    mostMissed,
-    misconceptions,
-    studentsNeedingAction,
-    smallGroups,
-    eocTrend,
-    offRampStudents,
-    decayRates,
-    strategyCompletion,
-    checkpointLevels,
-  ] = await Promise.all([
-    getClassStatusDistribution(userId),
-    getClassMasteryByUnit(userId),
-    getClassMasteryByBenchmark(userId),
-    getMostMissedQuestions(userId),
-    getCommonMisconceptions(userId),
-    getStudentsNeedingAction(userId),
-    getRecommendedSmallGroups(userId),
-    getEocReadinessTrend(userId),
-    getOffRampStudents(userId),
-    getClassDecayRates(roster.teacherId),
-    getStrategyCompletionStatus(userId),
-    getCheckpointLevelsForTeacher(userId),
-  ])
-
-  // Lesson walkthrough quick links (ADR 0015 teacher preview).
   const previewLessons = await prisma.lesson.findMany({
     where: { approvalStatus: 'APPROVED' },
     orderBy: { benchmark: { sequenceOrder: 'asc' } },
     select: { title: true, benchmark: { select: { code: true } } },
   })
 
-  const totalStudents = roster.allStudentIds.length
-  const masteryRateAll =
-    masteryByBenchmark.length === 0
-      ? 0
-      : Math.round(
-          masteryByBenchmark.reduce((s, r) => s + r.masteryRatePercent, 0) /
-            masteryByBenchmark.length
-        )
-  const spikeCount = decayRates.filter((d) => d.spikeAlert).length
-
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Class Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          {roster.classes.length} class{roster.classes.length !== 1 ? 'es' : ''} · {totalStudents} students
+        <h1 className="text-2xl font-bold text-gray-900">Teacher home</h1>
+        <p className="mt-1 max-w-2xl text-sm text-gray-600">
+          Students use this site without signing in, and their progress stays on their own
+          device. This site does not receive or store anything about a student, so there is no
+          roster or gradebook here. Students show their work by pasting a completion code into
+          Google Classroom.
         </p>
       </div>
 
-      {/* Summary stat cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard
-          label="Students"
-          value={totalStudents}
-          explain="Total students across all your active classes."
-        />
-        <StatCard
-          label="Avg Mastery Rate"
-          value={`${masteryRateAll}%`}
-          alert={masteryRateAll < 40 ? 'warn' : undefined}
-          explain="The average, across all benchmarks, of the share of your roster that has mastered each one."
-        />
-        <StatCard
-          label="Needs Action"
-          value={studentsNeedingAction.length}
-          alert={studentsNeedingAction.length > 0 ? 'warn' : undefined}
-          explain="Students who are off-ramped, stuck in remediation, or otherwise flagged for a check-in."
-        />
-        <StatCard
-          label="Decay Spikes"
-          value={spikeCount}
-          alert={spikeCount > 0 ? 'critical' : undefined}
-          explain="Benchmarks where several students' spaced-review performance has recently dropped — a sign the class needs a refresher."
-        />
-      </div>
+      <ul className="grid gap-3 sm:grid-cols-2" role="list">
+        {CARDS.map((card) => (
+          <li key={card.href}>
+            <Link
+              href={card.href}
+              className="block h-full rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50"
+            >
+              <h2 className="text-base font-semibold text-indigo-700">{card.title}</h2>
+              <p className="mt-1 text-sm text-gray-600">{card.body}</p>
+            </Link>
+          </li>
+        ))}
+      </ul>
 
-      {/* Lesson previews (ADR 0015) */}
       <LessonPreviewLinks
         lessons={previewLessons.map((l) => ({
           benchmarkCode: l.benchmark.code,
           lessonTitle: l.title,
         }))}
       />
-
-      {/* Status distribution */}
-      <StatusDistribution distribution={statusDistribution} />
-
-      {/* Progress + EOC trend side by side */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ClassProgressCard unitMastery={masteryByUnit} />
-        <EocReadinessTrendChart points={eocTrend} />
-      </div>
-
-      {/* Decay + off-ramp */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <DecayAlerts decays={decayRates} />
-        <OffRampList rows={offRampStudents} />
-      </div>
-
-      {/* Most missed + misconceptions */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <MostMissedQuestionsTable rows={mostMissed} />
-        <MisconceptionsTable rows={misconceptions} />
-      </div>
-
-      {/* Small groups */}
-      <RecommendedSmallGroups groups={smallGroups} />
-
-      {/* Nine-week checkpoint Levels */}
-      <CheckpointLevelTable tables={checkpointLevels} />
-
-      {/* Strategist track completion */}
-      <StrategyCompletionTable rows={strategyCompletion} />
     </div>
   )
 }

@@ -1,50 +1,46 @@
 /**
  * POST /api/assessment/[assessmentId]/start
  *
- * Creates a new AssessmentAttempt for the authenticated student.
- * Returns the attemptId to be used in the subsequent submit request.
+ * Returns the questions for an approved assessment, WITHOUT the answer key.
+ *
+ * Stateless and anonymous: this handler reads no session and writes nothing.
+ * There is no attempt to create — the browser simply holds the questions it
+ * was given until it submits them. The only thing the request may carry is the
+ * signed readiness token that opens a Mastery Challenge.
  */
 
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { startAttempt, AssessmentError } from '@/lib/assessment'
+import {
+  deliverAssessment,
+  AssessmentError,
+  ASSESSMENT_ERROR_STATUS,
+  AssessmentStartSchema,
+} from '@/lib/assessment'
 
 interface RouteParams {
   params: { assessmentId: string }
 }
 
-export async function POST(_req: NextRequest, { params }: RouteParams) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  if (session.user.role !== 'STUDENT') {
-    return NextResponse.json({ error: 'Forbidden: students only' }, { status: 403 })
-  }
-
-  // Resolve Student record from the authenticated user
-  const student = await prisma.student.findUnique({
-    where: { userId: session.user.userId },
-    select: { id: true },
-  })
-  if (!student) {
-    return NextResponse.json(
-      { error: 'Student profile not found for this user' },
-      { status: 404 }
-    )
+export async function POST(req: NextRequest, { params }: RouteParams) {
+  // An empty body is fine — most assessments need nothing to start.
+  const body = await req.json().catch(() => ({}))
+  const parsed = AssessmentStartSchema.safeParse(body ?? {})
+  if (!parsed.success) {
+    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
   }
 
   try {
-    const result = await startAttempt(params.assessmentId, student.id)
-    return NextResponse.json(result, { status: 201 })
+    const assessment = await deliverAssessment(params.assessmentId, {
+      readinessToken: parsed.data.readinessToken ?? null,
+    })
+    return NextResponse.json(assessment, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {
-    if (err instanceof AssessmentError && err.code === 'NOT_FOUND') {
-      return NextResponse.json({ error: err.message }, { status: 404 })
-    }
-    if (err instanceof AssessmentError && err.code === 'READINESS_REQUIRED') {
-      return NextResponse.json({ error: err.message, code: err.code }, { status: 409 })
+    if (err instanceof AssessmentError) {
+      return NextResponse.json(
+        { error: err.message, code: err.code },
+        { status: ASSESSMENT_ERROR_STATUS[err.code] }
+      )
     }
     console.error('[assessment/start]', err instanceof Error ? err.message : err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

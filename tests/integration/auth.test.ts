@@ -21,6 +21,7 @@ async function cleanup() {
     select: { id: true },
   })
   const ids = users.map((u) => u.id)
+  await prisma.class.deleteMany({ where: { teacher: { userId: { in: ids } } } })
   await prisma.teacher.deleteMany({ where: { userId: { in: ids } } })
   await prisma.user.deleteMany({ where: { id: { in: ids } } })
 }
@@ -59,6 +60,8 @@ describe('resolveTeacherSignIn', () => {
     expect(row?.role).toBe('TEACHER')
     expect(row?.status).toBe('ACTIVE')
     expect(row?.teacher).not.toBeNull()
+    // One class, so lessons can be arranged — and it is not duplicated later.
+    expect(await prisma.class.count({ where: { teacherId: row!.teacher!.id } })).toBe(1)
   })
 
   it('is idempotent and preserves an ADMIN role', async () => {

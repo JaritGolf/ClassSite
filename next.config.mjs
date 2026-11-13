@@ -63,7 +63,7 @@ function contentSecurityPolicy() {
     // next-auth's signIn() uses fetch + a top-level navigation rather than an HTML
     // form post, so 'self' is sufficient in practice — the OAuth hosts are listed
     // anyway so that a future switch to a real <form> cannot silently break sign-in.
-    "form-action 'self' https://clever.com https://accounts.google.com",
+    "form-action 'self' https://accounts.google.com",
     'upgrade-insecure-requests',
   ]
 

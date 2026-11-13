@@ -13,24 +13,25 @@
  */
 
 import { useState, useRef, useEffect, type ReactNode } from 'react'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
 
 /** Display names for L1 gloss languages. */
 const L1_LABEL: Record<string, string> = { es: 'Español', ht: 'Kreyòl' }
 
 interface GlossaryPopoverProps {
-  /** The glossary term's definition */
   definition: string
-  /** Whether this is a tier-2 (academic) or tier-3 (civics) term */
   tier: 'TIER_2' | 'TIER_3'
-  /** Approved first-language gloss, when available for the active language */
-  l1Definition?: string
-  /** Language code of the L1 gloss (e.g. 'es', 'ht') */
-  l1Language?: string
+  /** Approved translations by language; the device shows the one chosen in Settings. */
+  l1Definitions?: Partial<Record<'es' | 'ht', string>>
   /** The text content (the word/phrase) that triggers the popover */
   children: ReactNode
 }
 
-export function GlossaryPopover({ definition, tier, l1Definition, l1Language, children }: GlossaryPopoverProps) {
+export function GlossaryPopover({ definition, tier, l1Definitions, children }: GlossaryPopoverProps) {
+  // Which language to show is a setting on this device only.
+  const { progress } = useLocalProgress()
+  const l1Language = progress.settings.glossLanguage
+  const l1Definition = l1Language ? l1Definitions?.[l1Language] : undefined
   const [isOpen, setIsOpen] = useState(false)
   const popoverRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLSpanElement>(null)
@@ -108,7 +109,7 @@ export function GlossaryPopover({ definition, tier, l1Definition, l1Language, ch
               <span className="block font-display text-xs font-bold uppercase tracking-wide text-emerald-700">
                 {(l1Language && L1_LABEL[l1Language]) || 'L1'}
               </span>
-              <span lang={l1Language}>{l1Definition}</span>
+              <span lang={l1Language ?? undefined}>{l1Definition}</span>
             </span>
           )}
         </span>

@@ -7,7 +7,8 @@
 import {
   getStrategyMissions,
   getStrategyMission,
-  getStrategyMissionForStudent,
+  getStrategyMissionsServed,
+  gradeStrategyRound,
 } from '@/lib/strategy-track'
 
 describe('strategy mission content', () => {
@@ -32,34 +33,47 @@ describe('strategy mission content', () => {
   })
 })
 
-describe('getStrategyMissionForStudent (served shape)', () => {
-  it('never serializes the answer key', () => {
-    const served = getStrategyMissionForStudent('student-1', 'eliminate-distractor')
-    expect(served).not.toBeNull()
-    expect(JSON.stringify(served)).not.toContain('correctOptionId')
+describe('getStrategyMissionsServed (served shape)', () => {
+  it('never serializes the answer key or the feedback', () => {
+    const served = getStrategyMissionsServed()
+    expect(served).toHaveLength(7)
+    const json = JSON.stringify(served)
+    expect(json).not.toContain('correctOptionId')
+    expect(json).not.toContain('feedback')
   })
 
-  it('keeps every correct option present after shuffle (grading stays safe)', () => {
+  it('keeps every option present after shuffle (grading stays safe)', () => {
+    const served = getStrategyMissionsServed()
     for (const m of getStrategyMissions()) {
-      const served = getStrategyMissionForStudent('student-xyz', m.code)!
+      const s = served.find((x) => x.code === m.code)!
       m.checks.forEach((authored, i) => {
-        const servedIds = served.checks[i].options.map((o) => o.id)
-        expect(servedIds).toContain(authored.correctOptionId)
-        expect(new Set(servedIds)).toEqual(new Set(authored.options.map((o) => o.id)))
+        expect(new Set(s.checks[i].options.map((o) => o.id))).toEqual(
+          new Set(authored.options.map((o) => o.id))
+        )
       })
     }
   })
+})
 
-  it('shuffles deterministically per student (stable across calls)', () => {
-    const a = getStrategyMissionForStudent('student-abc', 'evidence-based')!
-    const b = getStrategyMissionForStudent('student-abc', 'evidence-based')!
-    expect(a.checks[0].options.map((o) => o.id)).toEqual(
-      b.checks[0].options.map((o) => o.id)
+describe('gradeStrategyRound', () => {
+  it('a round is correct only when every check is right', () => {
+    const m = getStrategyMission('eliminate-distractor')!
+    const right = m.checks.map((c, i) => ({ checkIndex: i, optionId: c.correctOptionId }))
+    expect(gradeStrategyRound(m.code, right).correct).toBe(true)
+
+    const wrong = right.map((a, i) =>
+      i === 0 ? { ...a, optionId: m.checks[0].options.find((o) => o.id !== a.optionId)!.id } : a
     )
+    const result = gradeStrategyRound(m.code, wrong)
+    expect(result.correct).toBe(false)
+    expect(result.checks[0].correct).toBe(false)
   })
 
-  it('returns null for an unknown mission', () => {
-    expect(getStrategyMissionForStudent('s', 'not-a-mission')).toBeNull()
-    expect(getStrategyMission('not-a-mission')).toBeNull()
+  it('an unanswered check is wrong', () => {
+    expect(gradeStrategyRound('eliminate-distractor', []).correct).toBe(false)
+  })
+
+  it('rejects an unknown mission', () => {
+    expect(() => gradeStrategyRound('nope', [])).toThrow()
   })
 })

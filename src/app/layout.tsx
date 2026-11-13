@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Baloo_2, Atkinson_Hyperlegible } from 'next/font/google'
 import './globals.css'
-import Providers from '@/components/Providers'
 
 // Display face: chunky + rounded for headings, numbers, buttons.
 const display = Baloo_2({
@@ -53,7 +52,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${body.variable} ${display.variable}`}>
       <body className="font-sans text-gray-900 antialiased">
-        <Providers>{children}</Providers>
+        {children}
       </body>
     </html>
   )

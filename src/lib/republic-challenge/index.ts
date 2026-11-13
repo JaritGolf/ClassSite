@@ -1,41 +1,19 @@
 /**
- * Republic Challenge — Public API (Phase 11)
- *
- * Domain module backing the seven cumulative review modes described in spec
- * §30. Every public function is exported from here; route handlers should
- * not import the internal files directly.
+ * Republic Challenge — public API. Stamina and blueprint math are pure; the
+ * question picker and grader (./stateless) are read-only and anonymous.
  */
 
-export {
-  getStaminaLengthForDate,
-  resolveSessionLength,
-  FINAL_TRIAL_DEFAULT_LENGTH,
-} from './stamina'
+export { getStaminaLengthForDate, resolveSessionLength, FINAL_TRIAL_DEFAULT_LENGTH } from './stamina'
 export type { StaminaResult, ClassConfig, Mode } from './stamina'
 
 export { allocateByBlueprint, isWithinTolerance } from './blueprint'
 export type { BlueprintAllocation } from './blueprint'
 
-export {
-  pickQuickReview,
-  pickCategoryChallenge,
-  pickMixedMission,
-  pickMistakeReplay,
-  pickSourceSprint,
-  pickEnduranceTrial,
-  pickFinalRepublicTrial,
-  getBlueprintCoverage,
-} from './picker'
+export { isFinalTrialWindowOpen, finalTrialOpensAt, schoolYearEndYear } from './final-trial-window'
 
-export {
-  isFinalTrialWindowOpen,
-  finalTrialOpensAt,
-  schoolYearEndYear,
-} from './final-trial-window'
+export { REPORTING_CATEGORY_WEIGHTS, weightForCategoryName } from './weights'
 
-export {
-  createRepublicChallengeSession,
-  RepublicChallengeError,
-  RC_AUDIT_ACTIONS,
-} from './session'
-export type { CreateSessionInput, CreateSessionResult } from './session'
+/** Audit action for a teacher changing a class's Republic Challenge settings. */
+export const RC_AUDIT_ACTIONS = {
+  RC_CLASS_CONFIG_UPDATED: 'RC_CLASS_CONFIG_UPDATED',
+} as const

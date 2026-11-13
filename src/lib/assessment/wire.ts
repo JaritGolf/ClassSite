@@ -5,11 +5,16 @@
  * Client components import from '@/lib/assessment/wire' directly, never from
  * the '@/lib/assessment' index (which pulls in server-only modules).
  *
- * Why this exists: three separate client/server contract drifts have shipped
- * (questionId vs id, position, confidenceRating vs confidence) because clients
- * hand-built request bodies. Clients MUST build request bodies through the
- * builder functions below, and tests/unit/assessment/wire-contract.test.ts
- * parses the builders' exact output through the server zod schemas.
+ * Why this exists: client/server contract drift has shipped more than once
+ * because clients hand-built request bodies. Clients MUST build request bodies
+ * through the builder functions below, and tests/unit/assessment/
+ * wire-contract.test.ts parses the builders' exact output through the server
+ * zod schemas.
+ *
+ * NOTHING in these request bodies identifies a student. There is no attempt
+ * id, no student id, no name and no device id — only question ids, the chosen
+ * option, a confidence rating and (for a Mastery Challenge) the signed
+ * readiness token. A guard test asserts the schemas stay that way.
  */
 
 import { z } from 'zod'
@@ -40,13 +45,8 @@ export const ConfidenceValueSchema = z.union([z.literal(0), z.literal(1), z.lite
 // ── Secure assessment types ───────────────────────────────────────────────────
 
 /**
- * Assessment types whose feedback is never returned to the student, and which
- * therefore also run in Focus Mode when assessment integrity is enabled.
- *
- * This lives in the WIRE module, not in attempt.ts, because both sides need it:
- * the server decides whether to withhold feedback and whether to arm Focus
- * Mode, and the client needs the same list to render consistently. Two copies
- * of this set is exactly the drift this file exists to prevent.
+ * Assessment types whose answer key and per-option feedback are never returned,
+ * even after submission. Shared so the server and the player agree.
  */
 export const SECURE_ASSESSMENT_TYPES: ReadonlySet<string> = new Set([
   'MASTERY_CHALLENGE',
@@ -61,105 +61,21 @@ export function isSecureAssessmentType(assessmentType: string): boolean {
   return SECURE_ASSESSMENT_TYPES.has(assessmentType)
 }
 
-/**
- * The subset of secure types whose Focus Mode must include the FULLSCREEN gate,
- * even when the player is embedded in another flow.
- *
- * Narrower than SECURE_ASSESSMENT_TYPES on purpose: these are the attempts that
- * decide mastery, so they warrant seizing the screen. A formative check
- * (READINESS_CHECK, DIAGNOSTIC) records and blocks but should not take over the
- * screen mid-lesson.
- *
- * Load-bearing: `AssessmentPlayer` previously inferred "needs fullscreen" from
- * the ABSENCE of an `onComplete` callback. That inference was safe only while
- * nothing embedded a high-stakes assessment — the moment the Mastery Challenge
- * moved inside the mission flow, passing a callback would have silently
- * downgraded Focus Mode from fullscreen-gated to ungated (ADR 0020). Deciding
- * from the server-provided assessment type cannot drift that way.
- */
-export const HIGH_STAKES_ASSESSMENT_TYPES: ReadonlySet<string> = new Set([
-  'MASTERY_CHALLENGE',
-  'REASSESSMENT',
-  'REPUBLIC_CHALLENGE',
-  'FINAL_TRIAL',
-])
+const Id = z.string().min(1).max(60)
+const ReadinessToken = z.string().min(1).max(120)
 
-export function isHighStakesAssessmentType(assessmentType: string): boolean {
-  return HIGH_STAKES_ASSESSMENT_TYPES.has(assessmentType)
+// ── Assessment start ──────────────────────────────────────────────────────────
+
+export interface AssessmentStartBody {
+  readinessToken?: string
 }
 
-// ── Assessment integrity ──────────────────────────────────────────────────────
-
-/**
- * Integrity event types the client may report. Departure events (BLUR /
- * VISIBILITY_HIDDEN) are emitted ONCE per away episode — a single tab switch
- * fires both a blur and a visibilitychange, and the client collapses them so
- * the server never has to de-duplicate.
- */
-export const INTEGRITY_EVENT_TYPES = [
-  'BLUR',
-  'VISIBILITY_HIDDEN',
-  'FULLSCREEN_EXIT',
-  'COPY_BLOCKED',
-  'CUT_BLOCKED',
-  'PASTE_BLOCKED',
-  'CONTEXT_MENU_BLOCKED',
-  'PRINT_BLOCKED',
-] as const
-
-export type IntegrityEventType = (typeof INTEGRITY_EVENT_TYPES)[number]
-
-/** Upper bound on a single reported away-duration (1 hour). Anything longer is
- *  meaningless for a class period and is almost certainly a bad clock. */
-export const MAX_REPORTED_DURATION_MS = 60 * 60 * 1000
-
-/** Max events accepted in one report call — the client batches on a debounce. */
-export const MAX_EVENTS_PER_REPORT = 50
-
-export interface IntegrityEventEntry {
-  eventType: IntegrityEventType
-  /** Time away in ms; omitted for instantaneous events. Advisory only. */
-  durationMs?: number
+export function buildAssessmentStartBody(readinessToken?: string | null): AssessmentStartBody {
+  return readinessToken ? { readinessToken } : {}
 }
 
-export interface IntegrityReportBody {
-  attemptId: string
-  events: IntegrityEventEntry[]
-}
-
-/**
- * Build the POST /api/assessment/[id]/integrity body. Note there is no
- * timestamp field by design — the server stamps recordedAt from its own clock,
- * so a client cannot backdate or postdate an event.
- */
-export function buildIntegrityReportBody(
-  attemptId: string,
-  events: readonly IntegrityEventEntry[]
-): IntegrityReportBody {
-  return {
-    attemptId,
-    events: events.slice(0, MAX_EVENTS_PER_REPORT).map((e) => ({
-      eventType: e.eventType,
-      ...(typeof e.durationMs === 'number' && e.durationMs > 0
-        ? { durationMs: Math.min(Math.round(e.durationMs), MAX_REPORTED_DURATION_MS) }
-        : {}),
-    })),
-  }
-}
-
-/** Server-side request schema for the integrity route (lives here so the
- *  contract test can import it — route files can only export handlers). */
-export const IntegrityReportSchema = z.object({
-  attemptId: z.string().min(1),
-  events: z
-    .array(
-      z.object({
-        eventType: z.enum(INTEGRITY_EVENT_TYPES),
-        durationMs: z.number().int().min(0).max(MAX_REPORTED_DURATION_MS).optional(),
-      })
-    )
-    .min(1)
-    .max(MAX_EVENTS_PER_REPORT),
+export const AssessmentStartSchema = z.object({
+  readinessToken: ReadinessToken.optional(),
 })
 
 // ── Assessment submit ─────────────────────────────────────────────────────────
@@ -168,70 +84,95 @@ export interface AssessmentSubmitResponseEntry {
   questionId: string
   selectedOptionId: string
   confidence?: ConfidenceValue
-  timeSeconds?: number
 }
 
 export interface AssessmentSubmitBody {
-  attemptId: string
   responses: AssessmentSubmitResponseEntry[]
+  readinessToken?: string
 }
 
 /**
- * Build the POST /api/assessment/[id]/submit body from the player's answers
- * state. The key MUST be `confidence` (numeric) — the server SubmitSchema
- * strips unknown keys, so a misnamed key fails silently (the historical bug).
+ * Build the POST /api/assessment/[id]/submit body from the player's answers.
+ * The key MUST be `confidence` (numeric) — the server schema strips unknown
+ * keys, so a misnamed key fails silently (the historical bug).
  */
 export function buildAssessmentSubmitBody(
-  attemptId: string,
-  answers: Record<
-    string,
-    { optionId: string; confidence: ConfidenceValue | null; timeSeconds?: number }
-  >
+  answers: Record<string, { optionId: string; confidence: ConfidenceValue | null }>,
+  readinessToken?: string | null
 ): AssessmentSubmitBody {
   return {
-    attemptId,
     responses: Object.entries(answers).map(([questionId, a]) => ({
       questionId,
       selectedOptionId: a.optionId,
       ...(a.confidence !== null ? { confidence: a.confidence } : {}),
-      ...(a.timeSeconds !== undefined ? { timeSeconds: a.timeSeconds } : {}),
     })),
+    ...(readinessToken ? { readinessToken } : {}),
   }
 }
 
-// ── Drill review ──────────────────────────────────────────────────────────────
-
-export interface DrillReviewBody {
-  questionId: string
-  selectedOptionId: string
-  confidence: ConfidenceValue
-}
-
-/** Build the POST /api/drill/[benchmarkId]/review body (explicit allowlist). */
-export function buildDrillReviewBody(args: DrillReviewBody): DrillReviewBody {
-  return {
-    questionId: args.questionId,
-    selectedOptionId: args.selectedOptionId,
-    confidence: args.confidence,
-  }
-}
-
-/** Server-side request schema for the drill review route (lives here so the
- *  contract test can import it — route files can only export handlers). */
-export const DrillReviewSchema = z.object({
-  questionId: z.string().min(1),
-  selectedOptionId: z.string().min(1),
-  confidence: ConfidenceValueSchema,
+/**
+ * Server-side submit schema. Zod strips unknown fields, so `isCorrect`,
+ * `pointsAwarded` or anything else a tampered client adds never reaches the
+ * grader — and neither would a name.
+ */
+export const AssessmentSubmitSchema = z.object({
+  responses: z
+    .array(
+      z.object({
+        questionId: Id,
+        selectedOptionId: Id,
+        confidence: ConfidenceValueSchema.optional(),
+      })
+    )
+    .max(200),
+  readinessToken: ReadinessToken.optional(),
 })
 
-/** Response shape of POST /api/drill/[benchmarkId]/review — DrillCard types
- *  against this so field renames surface as type errors on both sides. */
-export interface DrillReviewResponse {
+/** What POST /api/assessment/[id]/submit returns. */
+export interface AssessmentSubmitResult {
+  assessmentType: string
+  benchmarkCode: string | null
+  score: number
+  passed: boolean
+  totalQuestions: number
+  correctCount: number
+  results: {
+    questionId: string
+    isCorrect: boolean
+    feedback: string | null
+    correctOptionText: string | null
+  }[]
+  calibration: {
+    high: { correct: number; incorrect: number }
+    medium: { correct: number; incorrect: number }
+    low: { correct: number; incorrect: number }
+  } | null
+  reviewTopics: string[] | null
+  readinessToken: string | null
+  remediation: { itemId: string; title: string; remediationType: string }[]
+  /** Signed completion code — present only when a Mastery Challenge is passed. */
+  completionCode: string | null
+}
+
+// ── Single-question answer (practice, drill, challenge) ───────────────────────
+
+export interface QuestionAnswerBody {
+  questionId: string
+  selectedOptionId: string
+}
+
+export function buildQuestionAnswerBody(args: QuestionAnswerBody): QuestionAnswerBody {
+  return { questionId: args.questionId, selectedOptionId: args.selectedOptionId }
+}
+
+export const QuestionAnswerSchema = z.object({
+  questionId: Id,
+  selectedOptionId: Id,
+})
+
+/** What a single-question grading route returns. */
+export interface QuestionAnswerResult {
   isCorrect: boolean
-  quality: number
-  newIntervalDays: number
-  dueAt: string
-  offRampRecovered: boolean
   /** Post-answer learning support (never sent before the answer). */
   correctOptionText: string | null
   selectedFeedback: string | null

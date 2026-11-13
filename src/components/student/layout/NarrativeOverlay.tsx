@@ -5,7 +5,6 @@ import { Mascot } from '@/components/ui/Mascot'
 
 interface Beat {
   beatKey: string
-  unitId: string
   npcName: string
   dialogue: string
 }
@@ -41,13 +40,9 @@ export function NarrativeOverlay({ beat, onDismiss }: NarrativeOverlayProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beat])
 
-  async function handleDismiss() {
+  // Which scenes have been read is remembered on the device by the caller.
+  function handleDismiss() {
     if (!beat) return
-    await fetch(`/api/narrative/${beat.unitId}/read`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ beatKey: beat.beatKey }),
-    })
     onDismiss()
   }
 

@@ -2,29 +2,16 @@ import Link from 'next/link'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
-import type { MissionNodeState } from '@/lib/mastery'
+import type { MissionNodeState } from '@/lib/mastery/availability-core'
 
 interface BenchmarkNodeProps {
   id: string
   code: string
   title: string
-  /**
-   * How this node should render, decided server-side by
-   * `computeAvailability`. Deliberately NOT the raw StudentProgress status:
-   * appearance is not a function of status alone, and treating it as one is
-   * what produced the original bug — a freshly unlocked mission is status
-   * NOT_STARTED, which this component used to draw as a padlock.
-   */
   state: MissionNodeState
   masteryScore: number | null
-  /** Whether the student may open this mission. Never inferred from `state`. */
+  /** Whether the node links into the mission. Decided on the device. */
   openable: boolean
-  /**
-   * Nine-week checkpoint target landing on this mission, if any. Display only —
-   * a checkpoint never affects whether the mission can be opened.
-   */
-  checkpoint?: { checkpointNumber: number; level: number } | null
-  /** Horizontal offset (px) of the node center from the path column's center. */
   offsetX: number
 }
 
@@ -58,8 +45,6 @@ const STATE_NODE: Record<MissionNodeState, { circle: string; iconColor: string; 
   NEEDS_REMEDIATION: { circle: 'bg-amber-400 border-amber-600', iconColor: 'text-amber-950', icon: 'target', chip: 'bg-amber-100 text-amber-800 border-amber-200' },
   REMEDIATION_COMPLETE: { circle: 'bg-amber-400 border-amber-600', iconColor: 'text-amber-950', icon: 'check', chip: 'bg-amber-50 text-amber-700 border-amber-200' },
   EXPOSURE_COMPLETE: { circle: 'bg-sky-500 border-sky-700', iconColor: 'text-white', icon: 'check', chip: 'bg-gray-100 text-gray-600 border-gray-200' },
-  TEACHER_OVERRIDE: { circle: 'bg-purple-600 border-purple-800', iconColor: 'text-white', icon: 'check', chip: 'bg-purple-100 text-purple-800 border-purple-200' },
-  INTERVENTION_REQUIRED: { circle: 'bg-red-500 border-red-700', iconColor: 'text-white', icon: 'target', chip: 'bg-red-100 text-red-800 border-red-200' },
   // NOT_STARTED never reaches the screen — computeAvailability maps a granted
   // NOT_STARTED row to AVAILABLE and an ungranted one to LOCKED. Styled anyway
   // because the union includes it, and a blank node would be worse than a lock.
@@ -80,8 +65,6 @@ const STATE_LABELS: Record<MissionNodeState, string> = {
   NEEDS_REMEDIATION: 'Needs Remediation',
   REMEDIATION_COMPLETE: 'Remediation Complete',
   EXPOSURE_COMPLETE: 'Exposure Complete',
-  TEACHER_OVERRIDE: 'Override',
-  INTERVENTION_REQUIRED: 'Intervention Required',
   NOT_STARTED: 'Locked',
   READY_FOR_MASTERY: 'Ready for Challenge',
   AVAILABLE: 'Ready to Start',
@@ -96,8 +79,6 @@ const STATE_EXPLAINERS: Record<MissionNodeState, string> = {
   NEEDS_REMEDIATION: "A Mastery Challenge attempt came up short. Finish the review activity here to try again.",
   REMEDIATION_COMPLETE: "You've finished the review activity — you're ready to retake the Mastery Challenge.",
   EXPOSURE_COMPLETE: 'This mission moved on after 3 tries plus review (an "off-ramp") — not a fail, and it unlocked the next mission. It shows up more often in your Daily Drill.',
-  TEACHER_OVERRIDE: 'Your teacher manually updated this mission\'s status.',
-  INTERVENTION_REQUIRED: "This mission needs extra help — check in with your teacher.",
   NOT_STARTED: 'Locked — master the mission before this one to unlock it.',
   AVAILABLE: "This mission is open — jump in whenever you're ready.",
   LOCKED: 'Locked — finish the mission before this one to open it.',
@@ -110,7 +91,6 @@ export function BenchmarkNode({
   state,
   masteryScore,
   openable,
-  checkpoint = null,
   offsetX,
 }: BenchmarkNodeProps) {
   // Dimmed when it cannot be opened, whatever the reason. No `??` fallback: the
@@ -147,24 +127,6 @@ export function BenchmarkNode({
           </span>
         )}
       </div>
-      {/* Nine-week checkpoint flag. Icon + text (never colour alone), and the
-          text is real content so screen readers announce it with the node. */}
-      {checkpoint && (
-        <ExplainerHover
-          title={`Quarter ${checkpoint.checkpointNumber} · Level ${checkpoint.level}`}
-          text={
-            `Reaching this mission puts you at Level ${checkpoint.level} for Quarter ` +
-            `${checkpoint.checkpointNumber}. It marks how far along the map you've come — ` +
-            `it never blocks you from moving ahead.`
-          }
-          variant="plain"
-        >
-          <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 font-display text-[11px] font-bold text-amber-900">
-            <TrackIcon name="flag" className="h-3 w-3" strokeWidth={2.5} />
-            Q{checkpoint.checkpointNumber} · Level {checkpoint.level}
-          </span>
-        </ExplainerHover>
-      )}
       <p className="mt-2 font-mono text-[10px] text-gray-500">{code}</p>
       <p className="text-xs font-bold leading-tight text-gray-800 line-clamp-2">{title}</p>
       <ExplainerHover title={label} text={STATE_EXPLAINERS[state]} variant="plain">

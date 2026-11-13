@@ -27,18 +27,15 @@ export interface GlossaryTerm {
   term: string
   definition: string
   tier: 'TIER_2' | 'TIER_3'
-  /** Approved L1 (first-language) gloss, when available for the active language. */
-  l1Definition?: string
-  /** BCP-47-ish language code of the L1 gloss (e.g. 'es', 'ht'). */
-  l1Language?: string
+  /** Approved translations by language code. The DEVICE picks one; the server never knows which. */
+  l1Definitions?: Partial<Record<'es' | 'ht', string>>
 }
 
 export interface GlossaryAnnotation {
   matchText: string
   definition: string
   tier: 'TIER_2' | 'TIER_3'
-  l1Definition?: string
-  l1Language?: string
+  l1Definitions?: Partial<Record<'es' | 'ht', string>>
 }
 
 export interface VariantSelection {
@@ -161,7 +158,7 @@ export function buildGlossaryAnnotations(
           matchText: match[0],
           definition: gTerm.definition,
           tier: gTerm.tier,
-          ...(gTerm.l1Definition ? { l1Definition: gTerm.l1Definition, l1Language: gTerm.l1Language } : {}),
+          ...(gTerm.l1Definitions ? { l1Definitions: gTerm.l1Definitions } : {}),
         })
       }
     } catch {

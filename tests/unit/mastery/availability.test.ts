@@ -11,9 +11,9 @@
  * Every case below is phrased as that question.
  */
 
-import { computeAvailability, pickCurrentMissionId } from '@/lib/mastery/availability'
-import type { AvailabilityInputs } from '@/lib/mastery/availability'
-import type { StudentProgressStatus } from '@prisma/client'
+import { computeAvailability, pickCurrentMissionId } from '@/lib/mastery/availability-core'
+import type { AvailabilityInputs } from '@/lib/mastery/availability-core'
+import type { MissionProgressStatus as StudentProgressStatus } from '@/lib/mastery/availability-core'
 
 /** Build `ordered` from a compact "id:playable" spec, e.g. 'a:1 b:0 c:1'. */
 function ordered(spec: string) {
@@ -187,14 +187,6 @@ describe('computeAvailability — carrying forward', () => {
     expect(r.state('b')).toBe('AVAILABLE')
     expect(r.openable('b')).toBe(true)
   })
-
-  it('treats TEACHER_OVERRIDE as terminal and carries forward', () => {
-    const r = run({
-      ordered: ordered('a:1 b:1'),
-      progressRows: rows({ a: 'TEACHER_OVERRIDE' }),
-    })
-    expect(r.state('b')).toBe('AVAILABLE')
-  })
 })
 
 describe('computeAvailability — engine-written work states', () => {
@@ -202,7 +194,6 @@ describe('computeAvailability — engine-written work states', () => {
     'READY_FOR_MASTERY',
     'NEEDS_REMEDIATION',
     'REMEDIATION_COMPLETE',
-    'INTERVENTION_REQUIRED',
   ])('keeps a student with %s in their mission rather than locking them out', (status) => {
     // These can only be written after a server-graded attempt. Locking a student
     // out mid-remediation because of a course re-order would be a real harm, and

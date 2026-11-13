@@ -4,21 +4,19 @@
  * Seven EOC strategy missions, not tied to any benchmark. Each mission now
  * carries an interactive "apply-it" round: the student answers the mission's
  * check question(s), and one *correct* round counts as one **use** of the
- * strategy (StrategyTrackProgress.useCount++). Mission content is authored
- * in-code (instructional scaffolding, like lesson interactive checks — ADR
- * 0013), but rounds are graded **server-side** so use-counts can't be forged
- * from the client (rule #1). Correct answers never leave the server before
- * submission (rule #2).
+ * strategy. Mission content is authored in-code (instructional scaffolding,
+ * like lesson interactive checks — ADR 0013). Rounds are graded server-side
+ * and the correct answers never leave the server before submission (rule #2).
  *
- * A teacher sets a class-wide required number of uses per strategy
- * (Class.strategyUsesRequired, 0 = no requirement) and can override the count
- * (or waive) per student on StudentStrategyOverride. The requirement is a soft
- * nudge — nothing blocks mastery progression.
+ * The server grades a round and forgets it. The count of uses is kept on the
+ * student's own device (src/lib/local-progress).
+ *
+ * A teacher may set a target number of uses per strategy on a class
+ * (Class.strategyUsesRequired, 0 = none). It is a soft nudge shown to every
+ * student — nothing blocks mastery progression, and there are no per-student
+ * overrides because there are no per-student records.
  */
 
-import { prisma } from '@/lib/db'
-import { assertStudentInTeacherClass, RosterError } from '@/lib/teacher-roster'
-import { seededShuffle } from '@/lib/shuffle'
 
 // ── Content types ──────────────────────────────────────────────────────────
 
@@ -305,7 +303,7 @@ const MISSIONS: StrategyMission[] = [
 export class StrategyTrackError extends Error {
   constructor(
     message: string,
-    public readonly code: 'UNKNOWN_MISSION' | 'FORBIDDEN'
+    public readonly code: 'UNKNOWN_MISSION'
   ) {
     super(message)
     this.name = 'StrategyTrackError'
@@ -322,131 +320,41 @@ export function getStrategyMission(code: string): StrategyMission | null {
   return MISSIONS.find((m) => m.code === code) ?? null
 }
 
-/** Strip the answer key and shuffle options deterministically per student. */
-function toServed(studentId: string, m: StrategyMission): StrategyMissionServed {
+export function getStrategyMissionCodes(): string[] {
+  return MISSIONS.map((m) => m.code)
+}
+
+function shuffled<T>(items: readonly T[]): T[] {
+  const out = items.slice()
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[out[i], out[j]] = [out[j], out[i]]
+  }
+  return out
+}
+
+/** Strip the answer key and shuffle options. Built field by field — never a spread. */
+function toServed(m: StrategyMission): StrategyMissionServed {
   return {
     code: m.code,
     title: m.title,
     objective: m.objective,
     instructions: m.instructions,
     tip: m.tip,
-    checks: m.checks.map((c, i) => ({
+    checks: m.checks.map((c) => ({
       prompt: c.prompt,
       stimulus: c.stimulus,
-      options: seededShuffle(c.options, `${studentId}:${m.code}:${i}`),
+      options: shuffled(c.options).map((o) => ({ id: o.id, text: o.text })),
     })),
   }
 }
 
-export function getStrategyMissionForStudent(
-  studentId: string,
-  code: string
-): StrategyMissionServed | null {
-  const m = getStrategyMission(code)
-  return m ? toServed(studentId, m) : null
+/** Every strategy mission, safe to send to a browser (no answer key). */
+export function getStrategyMissionsServed(): StrategyMissionServed[] {
+  return MISSIONS.map(toServed)
 }
 
-export function getStrategyMissionsForStudent(studentId: string): StrategyMissionServed[] {
-  return MISSIONS.map((m) => toServed(studentId, m))
-}
-
-// ── Requirement resolution ─────────────────────────────────────────────────
-
-export interface MissionRequirement {
-  required: number
-  waived: boolean
-}
-
-/**
- * Resolve, per mission, how many uses this student is required to complete.
- * required = waived ? 0 : (override.requiredUses ?? classGlobal).
- * Uses the student's first ACTIVE class for the global default (mirrors
- * resolveAuthedStudent in republic-challenge/route-helpers).
- */
-export async function resolveStrategyRequirements(
-  studentId: string
-): Promise<{ classGlobal: number; byCode: Map<string, MissionRequirement> }> {
-  const [enrollment, overrides] = await Promise.all([
-    prisma.classEnrollment.findFirst({
-      where: { studentId, status: 'ACTIVE' },
-      orderBy: { enrolledAt: 'asc' },
-      select: { class: { select: { strategyUsesRequired: true } } },
-    }),
-    prisma.studentStrategyOverride.findMany({
-      where: { studentId },
-      select: { missionCode: true, requiredUses: true, waived: true },
-    }),
-  ])
-
-  const classGlobal = enrollment?.class.strategyUsesRequired ?? 0
-  const overrideByCode = new Map(overrides.map((o) => [o.missionCode, o]))
-
-  const byCode = new Map<string, MissionRequirement>()
-  for (const m of MISSIONS) {
-    const o = overrideByCode.get(m.code)
-    if (o?.waived) {
-      byCode.set(m.code, { required: 0, waived: true })
-    } else {
-      byCode.set(m.code, {
-        required: o?.requiredUses ?? classGlobal,
-        waived: false,
-      })
-    }
-  }
-  return { classGlobal, byCode }
-}
-
-// ── Progress ────────────────────────────────────────────────────────────────
-
-export interface StrategyProgressRecord {
-  code: string
-  title: string
-  useCount: number
-  required: number
-  waived: boolean
-  met: boolean
-  completedAt: Date | null
-}
-
-export async function getStrategyProgress(studentId: string): Promise<{
-  progress: StrategyProgressRecord[]
-  classGlobal: number
-  totalOwed: number
-  missionsMet: number
-  missionsRequired: number
-}> {
-  const [rows, { classGlobal, byCode }] = await Promise.all([
-    prisma.strategyTrackProgress.findMany({
-      where: { studentId },
-      select: { missionCode: true, useCount: true, completedAt: true },
-    }),
-    resolveStrategyRequirements(studentId),
-  ])
-  const byMission = new Map(rows.map((r) => [r.missionCode, r]))
-
-  const progress: StrategyProgressRecord[] = MISSIONS.map((m) => {
-    const row = byMission.get(m.code)
-    const useCount = row?.useCount ?? 0
-    const req = byCode.get(m.code) ?? { required: 0, waived: false }
-    return {
-      code: m.code,
-      title: m.title,
-      useCount,
-      required: req.required,
-      waived: req.waived,
-      met: useCount >= req.required,
-      completedAt: row?.completedAt ?? null,
-    }
-  })
-
-  const totalOwed = progress.reduce((s, p) => s + Math.max(0, p.required - p.useCount), 0)
-  const missionsRequired = progress.filter((p) => p.required > 0).length
-  const missionsMet = progress.filter((p) => p.required > 0 && p.met).length
-
-  return { progress, classGlobal, totalOwed, missionsMet, missionsRequired }
-}
-
-// ── Apply-it round grading ──────────────────────────────────────────────────
+// ── Grading ────────────────────────────────────────────────────────────────
 
 export interface StrategyRoundAnswer {
   checkIndex: number
@@ -462,126 +370,31 @@ export interface StrategyCheckResult {
 
 export interface StrategyRoundResult {
   missionCode: string
+  /** True only when every check in the round was answered correctly. */
   correct: boolean
-  useCount: number
   checks: StrategyCheckResult[]
 }
 
 /**
- * Grade an apply-it round server-side. A round is correct only when EVERY check
- * is answered correctly; a correct round increments useCount (one "use") and
- * sets completedAt on the first correct round. Incorrect rounds return feedback
- * but never increment.
+ * Grade one apply-it round. Pure: no database, nothing recorded. A correct
+ * round is one "use"; the device does the counting.
  */
-export async function submitStrategyRound(
-  studentId: string,
+export function gradeStrategyRound(
   missionCode: string,
   answers: StrategyRoundAnswer[]
-): Promise<StrategyRoundResult> {
+): StrategyRoundResult {
   const mission = getStrategyMission(missionCode)
   if (!mission) {
     throw new StrategyTrackError(`Unknown strategy mission: ${missionCode}`, 'UNKNOWN_MISSION')
   }
 
   const answerByIndex = new Map(answers.map((a) => [a.checkIndex, a.optionId]))
+  const checks: StrategyCheckResult[] = mission.checks.map((c, i) => ({
+    checkIndex: i,
+    correct: answerByIndex.get(i) === c.correctOptionId,
+    correctOptionId: c.correctOptionId,
+    feedback: c.feedback,
+  }))
 
-  const checks: StrategyCheckResult[] = mission.checks.map((c, i) => {
-    const selected = answerByIndex.get(i)
-    return {
-      checkIndex: i,
-      correct: selected === c.correctOptionId,
-      correctOptionId: c.correctOptionId,
-      feedback: c.feedback,
-    }
-  })
-
-  const correct = checks.every((c) => c.correct)
-
-  let useCount = 0
-  if (correct) {
-    const existing = await prisma.strategyTrackProgress.findUnique({
-      where: { studentId_missionCode: { studentId, missionCode } },
-      select: { completedAt: true },
-    })
-    const record = await prisma.strategyTrackProgress.upsert({
-      where: { studentId_missionCode: { studentId, missionCode } },
-      create: { studentId, missionCode, useCount: 1, completedAt: new Date() },
-      update: {
-        useCount: { increment: 1 },
-        ...(existing?.completedAt ? {} : { completedAt: new Date() }),
-      },
-      select: { useCount: true },
-    })
-    useCount = record.useCount
-  } else {
-    const row = await prisma.strategyTrackProgress.findUnique({
-      where: { studentId_missionCode: { studentId, missionCode } },
-      select: { useCount: true },
-    })
-    useCount = row?.useCount ?? 0
-  }
-
-  return { missionCode, correct, useCount, checks }
-}
-
-// ── Teacher override ────────────────────────────────────────────────────────
-
-/**
- * Set (or clear) a per-student strategy requirement override. Roster-scoped: a
- * teacher may only touch a student in one of their own classes (IDOR guard,
- * mirrors applyTeacherOverride). Writes the override + an AuditLog atomically.
- */
-export async function setStrategyOverride(
-  teacherUserId: string,
-  studentId: string,
-  missionCode: string,
-  { requiredUses, waived }: { requiredUses: number | null; waived: boolean }
-): Promise<{ overrideId: string }> {
-  if (!getStrategyMission(missionCode)) {
-    throw new StrategyTrackError(`Unknown strategy mission: ${missionCode}`, 'UNKNOWN_MISSION')
-  }
-
-  const teacher = await prisma.teacher.findUnique({
-    where: { userId: teacherUserId },
-    select: { id: true },
-  })
-  if (!teacher) {
-    throw new StrategyTrackError(
-      `User ${teacherUserId} does not have a teacher profile`,
-      'FORBIDDEN'
-    )
-  }
-
-  try {
-    await assertStudentInTeacherClass(teacherUserId, studentId)
-  } catch (err) {
-    if (err instanceof RosterError) {
-      throw new StrategyTrackError(
-        `Student ${studentId} is not in any of this teacher's classes`,
-        'FORBIDDEN'
-      )
-    }
-    throw err
-  }
-
-  const { overrideId } = await prisma.$transaction(async (tx) => {
-    const override = await tx.studentStrategyOverride.upsert({
-      where: { studentId_missionCode: { studentId, missionCode } },
-      create: { studentId, missionCode, requiredUses, waived },
-      update: { requiredUses, waived },
-      select: { id: true },
-    })
-    await tx.auditLog.create({
-      data: {
-        actorUserId: teacherUserId,
-        action: 'STRATEGY_REQUIREMENT_OVERRIDDEN',
-        entityType: 'StudentStrategyOverride',
-        entityId: override.id,
-        metadataJson: { studentId, missionCode, requiredUses, waived, teacherId: teacher.id },
-      },
-    })
-    return { overrideId: override.id }
-  })
-
-  return { overrideId }
+  return { missionCode, correct: checks.every((c) => c.correct), checks }
 }

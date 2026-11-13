@@ -37,7 +37,7 @@ export default async function AdminLessonEditorPage({ params }: PageProps) {
   const lesson = benchmark?.lessons[0]
   if (!benchmark || !lesson) notFound()
 
-  const glossaryTerms = await getGlossaryTermsForBenchmark(benchmark.id, null)
+  const glossaryTerms = await getGlossaryTermsForBenchmark(benchmark.id)
 
   return (
     <div className="space-y-6">

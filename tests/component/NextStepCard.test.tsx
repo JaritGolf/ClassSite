@@ -35,27 +35,24 @@ describe('NextStepCard — one action, unambiguous', () => {
   it('offers exactly ONE link', () => {
     // This is the whole point of the redesign. If this number ever grows, the
     // dashboard has drifted back toward competing calls-to-action.
-    render(<NextStepCard step={step()} studentName="Alex" />)
+    render(<NextStepCard step={step()} />)
     expect(links()).toHaveLength(1)
   })
 
   it('points that link at the resolved step', () => {
-    render(<NextStepCard step={step()} studentName="Alex" />)
+    render(<NextStepCard step={step()} />)
     expect(links()[0]).toHaveAttribute('href', '/student/mission/SS.7.CG.1.5')
     expect(links()[0]).toHaveTextContent('Continue Mission')
   })
 
   it('names the specific step, not just "continue"', () => {
-    render(<NextStepCard step={step()} studentName="Alex" />)
+    render(<NextStepCard step={step()} />)
     expect(screen.getByText('Pick up where you left off')).toBeInTheDocument()
     expect(screen.getByText('Mission 1.5: The Bill of Rights')).toBeInTheDocument()
   })
 
-  it('greets the student by name, and falls back rather than greeting nobody', () => {
-    const { unmount } = render(<NextStepCard step={step()} studentName="Alex" />)
-    expect(screen.getByText(/Welcome back, Alex/)).toBeInTheDocument()
-    unmount()
-    render(<NextStepCard step={step()} studentName={null} />)
+  it('greets without a name — the site never knows who the student is', () => {
+    render(<NextStepCard step={step()} />)
     expect(screen.getByText(/Welcome back, Founder/)).toBeInTheDocument()
   })
 })
@@ -65,14 +62,14 @@ describe('NextStepCard — eyebrow tells the student why this is here', () => {
     render(
       <NextStepCard
         step={step({ kind: 'REMEDIATION', ctaLabel: 'Start Training Mission' })}
-        studentName="Alex"
+       
       />
     )
     expect(screen.getByText(/assigned for you/i)).toBeInTheDocument()
   })
 
   it('says "do this next" for ordinary work', () => {
-    render(<NextStepCard step={step()} studentName="Alex" />)
+    render(<NextStepCard step={step()} />)
     expect(screen.getByText(/do this next/i)).toBeInTheDocument()
   })
 
@@ -87,7 +84,7 @@ describe('NextStepCard — eyebrow tells the student why this is here', () => {
           ctaLabel: 'See the Mission Map',
           href: '/student/map',
         })}
-        studentName="Alex"
+       
       />
     )
     // Both the eyebrow and the step label say it — assert each exactly rather
@@ -101,12 +98,12 @@ describe('NextStepCard — eyebrow tells the student why this is here', () => {
 
 describe('NextStepCard — duration honesty', () => {
   it('renders an estimate approximately, never as an exact figure', () => {
-    render(<NextStepCard step={step({ estimatedMinutes: 15 })} studentName="Alex" />)
+    render(<NextStepCard step={step({ estimatedMinutes: 15 })} />)
     expect(screen.getByText('about 15 min')).toBeInTheDocument()
   })
 
   it('shows no duration at all when there is none to show', () => {
-    render(<NextStepCard step={step({ estimatedMinutes: null })} studentName="Alex" />)
+    render(<NextStepCard step={step({ estimatedMinutes: null })} />)
     expect(screen.queryByText(/min$/)).not.toBeInTheDocument()
   })
 })

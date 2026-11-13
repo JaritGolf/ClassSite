@@ -25,7 +25,7 @@ const EMPTY: RankInputs = {
 }
 
 const REMEDIATION = {
-  studentRemediationId: 'rem-1',
+  remediationItemId: 'rem-1',
   title: 'Separation of Powers — reteach',
   benchmarkTitle: 'Branches of Government',
 }
@@ -193,7 +193,7 @@ describe('rankNextSteps — mission phrasing names the actual step', () => {
   it('never tells a student a mission is locked — it only ever offers work', () => {
     // LOCKED / COMING_SOON benchmarks are filtered out upstream by
     // pickCurrentMissionId, so anything reaching the ranker is actionable.
-    const states = ['IN_PROGRESS', 'NEEDS_REMEDIATION', 'INTERVENTION_REQUIRED'] as const
+    const states = ['IN_PROGRESS', 'NEEDS_REMEDIATION', 'REMEDIATION_COMPLETE'] as const
     for (const state of states) {
       const [step] = rankNextSteps({ ...EMPTY, mission: mission({ state }) })
       expect(step.subLabel).not.toMatch(/locked/i)

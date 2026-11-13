@@ -1,7 +1,7 @@
 /**
- * Adaptive Difficulty Engine — Public API
- *
- * All consumers should import from here, not from internal module files.
+ * Adaptive difficulty (spec §18). The state machine is pure (./transitions) and
+ * the session state lives on the student's device; ./stateless serves the next
+ * practice item for a state the device sends.
  */
 
 export {
@@ -16,11 +16,3 @@ export {
   CONSECUTIVE_THRESHOLD,
 } from './transitions'
 export type { AdaptiveState, NearTransferResult } from './transitions'
-
-export { initSession, getSessionState, saveSessionState } from './session'
-
-export { getNextItem } from './next-item'
-export type { NextItemPayload, WorkedExamplePayload, SafeQuestion } from './next-item'
-
-export { submitPracticeAnswer, AdaptiveError } from './answer'
-export type { AnswerResult, NextAction } from './answer'

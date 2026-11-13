@@ -1,19 +1,20 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
+  buildAssessmentStartBody,
   buildAssessmentSubmitBody,
-  isHighStakesAssessmentType,
+  type AssessmentSubmitResult,
   type ConfidenceValue,
 } from '@/lib/assessment/wire'
 import { ConfidenceSelector } from './ConfidenceSelector'
-import { useSecureMode } from './useSecureMode'
-import { SecureModeGate, SecureModeBreak, SecureModeNotice } from './SecureModeGate'
 import { StimulusDisplay } from '@/components/reading-load/StimulusDisplay'
 import { NextStepHandoff } from '@/components/student/NextStepHandoff'
 import { Mascot } from '@/components/ui/Mascot'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import type { GlossaryAnnotation } from '@/lib/reading-load'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
+import { addCalibration, noteQuestions, recordStreakActivity } from '@/lib/local-progress/engine'
 
 interface Option {
   id: string
@@ -45,11 +46,6 @@ interface AssessmentMeta {
   title: string
   assessmentType: string
   masteryThreshold: number
-  /**
-   * Server-resolved Focus Mode decision (env flag × per-class opt-in ×
-   * assessment type). Absent on older responses / non-secure assessments.
-   */
-  secureMode?: boolean
   questions: Question[]
 }
 
@@ -63,21 +59,24 @@ interface CalibrationSummary {
   low: ConfidenceTally
 }
 
+/** What the player hands to the surrounding flow when a submission is graded. */
+export type AssessmentPlayerResult = AssessmentSubmitResult & {
+  /** True when the assessment had no questions and was skipped, not taken. */
+  skipped?: boolean
+}
+
 interface AssessmentPlayerProps {
   assessmentId: string
   /**
-   * When provided, the player is embedded in another flow (e.g. the mission
-   * pre-check / readiness step): it calls onComplete with the result instead of
-   * rendering the standalone "Mission Map" call-to-action. reviewTopics is
-   * populated on failed readiness checks (topic labels of missed questions).
+   * Signed proof that the Readiness Check was passed. Needed to open (and
+   * submit) a Mastery Challenge; ignored by every other assessment type.
    */
-  onComplete?: (result: {
-    passed: boolean
-    score: number
-    reviewTopics?: string[] | null
-    /** True when the assessment had no questions and was skipped, not taken. */
-    skipped?: boolean
-  }) => void
+  readinessToken?: string | null
+  /**
+   * When provided, the player is embedded in another flow (the mission): it
+   * reports the graded result instead of rendering its own "what's next".
+   */
+  onComplete?: (result: AssessmentPlayerResult) => void
 }
 
 const CONFIDENCE_REQUIRED = new Set(['MASTERY_CHALLENGE', 'REPUBLIC_CHALLENGE', 'FINAL_TRIAL'])
@@ -105,80 +104,56 @@ function ConfettiBurst() {
   )
 }
 
-export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerProps) {
+export function AssessmentPlayer({ assessmentId, readinessToken, onComplete }: AssessmentPlayerProps) {
+  const { update } = useLocalProgress()
   const [meta, setMeta] = useState<AssessmentMeta | null>(null)
-  const [attemptId, setAttemptId] = useState<string | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<string, { optionId: string; confidence: ConfidenceValue | null }>>({})
   const [submitted, setSubmitted] = useState(false)
   const [result, setResult] = useState<{
     passed: boolean
     score: number
-    feedback?: unknown[]
     calibration?: CalibrationSummary | null
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  // Focus Mode. Hooks must run unconditionally, so this sits above the early
-  // returns; `enabled` is what actually arms it.
-  const containerRef = useRef<HTMLDivElement>(null)
-  const secureMode = meta?.secureMode === true && !submitted
-  // Embedded in the mission flow (pre-check / readiness): record and block, but
-  // do not seize the screen mid-mission. Standalone assessments get the full
-  // fullscreen treatment.
-  const isEmbedded = !!onComplete
-  // ...EXCEPT for the attempts that decide mastery, which keep the fullscreen
-  // gate wherever they render. The Mastery Challenge is now embedded in the
-  // mission flow so its debrief can hand off in context; without this clause,
-  // passing `onComplete` would silently downgrade its Focus Mode from
-  // fullscreen-gated to ungated (ADR 0020). Deciding from the server-provided
-  // assessment type instead of from the presence of a callback also means the
-  // standalone behaviour of every existing type is unchanged.
-  const highStakes = meta ? isHighStakesAssessmentType(meta.assessmentType) : false
-  // ONE value drives both the hook and the Begin gate below. They used to be two
-  // copies of the same expression; entering fullscreen needs a user gesture, so
-  // if the hook demands it and the gate never renders, fullscreen never happens.
-  const requireFullscreen = secureMode && (!isEmbedded || highStakes)
-  const integrity = useSecureMode({
-    assessmentId,
-    attemptId,
-    enabled: secureMode,
-    containerRef,
-    requireFullscreen,
-  })
-
+  // One request loads the questions. Nothing is created on the server — the
+  // browser simply holds what it was given until it submits.
   useEffect(() => {
+    let cancelled = false
     async function load() {
       try {
-        const res = await fetch(`/api/assessment/${assessmentId}`)
-        if (!res.ok) throw new Error('Failed to load assessment')
-        const data: AssessmentMeta = await res.json()
-        setMeta(data)
-
-        const startRes = await fetch(`/api/assessment/${assessmentId}/start`, { method: 'POST' })
-        if (!startRes.ok) {
-          const body = await startRes.json().catch(() => null)
+        const res = await fetch(`/api/assessment/${assessmentId}/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildAssessmentStartBody(readinessToken)),
+        })
+        if (!res.ok) {
+          const body = await res.json().catch(() => null)
           throw new Error(
             body?.code === 'READINESS_REQUIRED'
-              ? 'Pass the Training Check first — it unlocks this Mastery Challenge.'
-              : 'Failed to start attempt'
+              ? 'Pass the Readiness Check first — it unlocks this Mastery Challenge.'
+              : 'This assessment could not be loaded.'
           )
         }
-        const { attemptId: id } = await startRes.json()
-        setAttemptId(id)
+        const data: AssessmentMeta = await res.json()
+        if (!cancelled) setMeta(data)
       } catch (e) {
-        setError(e instanceof Error ? e.message : 'Unknown error')
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Unknown error')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     load()
-  }, [assessmentId])
+    return () => {
+      cancelled = true
+    }
+  }, [assessmentId, readinessToken])
 
   if (loading) return <div className="py-12 text-center text-base text-gray-600">Loading assessment…</div>
   if (error) return <div className="py-12 text-center text-base font-semibold text-red-600">{error}</div>
-  if (!meta || !attemptId) return null
+  if (!meta) return null
 
   const needsConfidence = CONFIDENCE_REQUIRED.has(meta.assessmentType)
   const questions = meta.questions
@@ -194,7 +169,21 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
         </p>
         {onComplete ? (
           <button
-            onClick={() => onComplete({ passed: false, score: 0, skipped: true })}
+            onClick={() => onComplete({
+                assessmentType: meta.assessmentType,
+                benchmarkCode: null,
+                score: 0,
+                passed: false,
+                totalQuestions: 0,
+                correctCount: 0,
+                results: [],
+                calibration: null,
+                reviewTopics: null,
+                readinessToken: null,
+                remediation: [],
+                completionCode: null,
+                skipped: true,
+              })}
             className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-6 py-2.5 font-display text-base font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
           >
             Continue →
@@ -261,7 +250,7 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
           // The handoff resolves and names the real next step either way.
           <NextStepHandoff
             intro={
-              !result.passed && highStakes
+              !result.passed && needsConfidence
                 ? "Not there yet — here's how to close the gap before your next attempt."
                 : undefined
             }
@@ -280,18 +269,13 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
   const letters = ['A', 'B', 'C', 'D', 'E', 'F']
 
   async function handleSubmit() {
-    if (!meta || !attemptId) return
+    if (!meta) return
     setLoading(true)
     try {
-      // Flush integrity events BEFORE submitting: submitting sets submittedAt,
-      // after which the server (correctly) refuses late events — anything still
-      // sitting on the debounce would be lost.
-      if (secureMode) await integrity.flush()
-
       const res = await fetch(`/api/assessment/${assessmentId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildAssessmentSubmitBody(attemptId, answers)),
+        body: JSON.stringify(buildAssessmentSubmitBody(answers, readinessToken)),
       })
       const data = await res.json()
       // A non-2xx response is a failed submission — never render the completion
@@ -299,14 +283,20 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
       if (!res.ok) {
         throw new Error(typeof data?.error === 'string' ? data.error : 'Submission failed.')
       }
-      setResult({
-        passed: data.passed,
-        score: data.score,
-        feedback: data.feedback,
-        calibration: data.calibration ?? null,
-      })
+      const graded = data as AssessmentSubmitResult
+
+      // What this device remembers about any graded assessment: that work
+      // happened today, which questions were seen and missed, and the
+      // confidence tally. Mission-specific results are recorded by the caller.
+      const seen = graded.results.map((r) => r.questionId)
+      const missed = graded.results.filter((r) => !r.isCorrect).map((r) => r.questionId)
+      update((p) =>
+        addCalibration(noteQuestions(recordStreakActivity(p, new Date()), seen, missed), graded.calibration)
+      )
+
+      setResult({ passed: graded.passed, score: graded.score, calibration: graded.calibration ?? null })
       setSubmitted(true)
-      onComplete?.({ passed: data.passed, score: data.score, reviewTopics: data.reviewTopics ?? null })
+      onComplete?.(graded)
     } catch (e) {
       setError(e instanceof Error ? `${e.message} Please try again.` : 'Submission failed. Please try again.')
     } finally {
@@ -314,26 +304,8 @@ export function AssessmentPlayer({ assessmentId, onComplete }: AssessmentPlayerP
     }
   }
 
-  // Focus Mode gate — fullscreen needs a user gesture, so a click is required
-  // before the questions render. Formative embedded checks skip it; embedded
-  // high-stakes attempts do not (see `requireFullscreen` above).
-  if (requireFullscreen && !integrity.started) {
-    return <SecureModeGate title={meta.title} onBegin={() => void integrity.begin()} />
-  }
-
-  // Sanctioned break: hide the questions completely and record nothing.
-  if (secureMode && integrity.onBreak) {
-    return <SecureModeBreak onResume={() => void integrity.endBreak()} />
-  }
-
   return (
-    <div ref={containerRef} className="space-y-5 cq-secure-surface">
-      {secureMode && (
-        <SecureModeNotice
-          eventCount={integrity.eventCount}
-          onTakeBreak={integrity.startBreak}
-        />
-      )}
+    <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-bold text-gray-900">{meta.title}</h2>
         <ExplainerHover
