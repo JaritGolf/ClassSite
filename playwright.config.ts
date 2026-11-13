@@ -16,7 +16,7 @@ export default defineConfig({
     actionTimeout: 60000,
   },
   webServer: {
-    command: 'MOCK_AUTH=true npm run dev',
+    command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 300000,

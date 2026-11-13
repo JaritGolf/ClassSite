@@ -6,10 +6,12 @@
  *   2. Enforce role-based access using checkRouteAccess (pure function)
  *
  * Protected prefixes:
- *   /student/* — STUDENT only (ADMIN also allowed via super-access)
  *   /teacher/* — TEACHER only (ADMIN also allowed)
- *   /parent/*  — PARENT only  (ADMIN also allowed)
  *   /admin/*   — ADMIN only
+ *
+ * /student/* is PUBLIC and is deliberately NOT in the matcher below: students
+ * have no accounts, so this middleware never runs for a student request and
+ * never reads (or sets) a cookie for one.
  *
  * CRITICAL: `secret` must be passed explicitly here.
  * withAuth defaults to NEXTAUTH_SECRET env var; our app uses SESSION_SECRET.
@@ -18,13 +20,11 @@
  *
  * This file runs in the Edge Runtime — no Node.js/Prisma imports allowed.
  * `checkRouteAccess` is a pure function with no external imports.
- * `UserRole` is a type-only import (stripped at runtime).
  */
 
 import { withAuth } from 'next-auth/middleware'
 import { NextResponse } from 'next/server'
 import type { NextRequestWithAuth } from 'next-auth/middleware'
-import type { UserRole } from '@prisma/client'
 import { checkRouteAccess } from '@/lib/auth/route-guard'
 
 export default withAuth(
@@ -32,7 +32,7 @@ export default withAuth(
     const { pathname } = req.nextUrl
     const token = req.nextauth.token
 
-    const role = token?.role as UserRole | undefined
+    const role = token?.role as string | undefined
     const result = checkRouteAccess(pathname, role)
 
     if (result === 'redirect-login') {
@@ -48,7 +48,7 @@ export default withAuth(
     // Edge-safe: reads cookie via req.cookies — no Prisma/Node imports.
     const isMutation = ['POST', 'PATCH', 'DELETE'].includes(req.method)
     const isGuardedApi =
-      /^\/api\/(teacher|mastery|reading-load|admin|republic-challenge)\//.test(pathname)
+      /^\/api\/(teacher|admin)\//.test(pathname)
     const isToggleRoute = pathname === '/api/teacher/sub-mode/toggle'
     const subMode = req.cookies.get('cq_sub_mode')?.value === '1'
     if (isMutation && isGuardedApi && !isToggleRoute && subMode) {
@@ -77,9 +77,7 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    '/student/:path*',
     '/teacher/:path*',
-    '/parent/:path*',
     '/admin/:path*',
   ],
 }

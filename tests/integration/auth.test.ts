@@ -1,125 +1,76 @@
 /**
- * Integration Tests: Auth — mock credentials provider
+ * Integration: teacher sign-in decision against the real database.
  *
- * Tests the mockAuthorize function end-to-end against the real database.
- * Verifies that mock auth correctly upserts User records with the right role
- * for all four roles (Audit 2, item 1).
- *
- * Prerequisites: DATABASE_URL must point to a running PostgreSQL instance.
- * MOCK_AUTH must be 'true' (set in .env.local, loaded by export $(...) before jest).
+ * A sign-in that is not on the allowlist must be rejected BEFORE anything is
+ * written, so a stranger (or a student using a school Google account) can never
+ * cause a User row to exist.
  */
 
 import { PrismaClient } from '@prisma/client'
-import { mockAuthorize } from '@/lib/auth/options'
+import { resolveTeacherSignIn } from '@/lib/auth/options'
 
 const prisma = new PrismaClient()
+const ALLOWED = 'signin-test-teacher@example.test'
+const STRANGER = 'signin-test-stranger@example.test'
+const env = { TEACHER_ALLOWED_EMAILS: ALLOWED }
+const google = { provider: 'google' }
 
-beforeAll(async () => {
-  // Ensure mock auth is enabled for this test suite
-  process.env.MOCK_AUTH = 'true'
-  // NODE_ENV is 'test' in Jest (not 'production') — mock auth works in this environment
-})
+async function cleanup() {
+  const users = await prisma.user.findMany({
+    where: { email: { in: [ALLOWED, STRANGER] } },
+    select: { id: true },
+  })
+  const ids = users.map((u) => u.id)
+  await prisma.teacher.deleteMany({ where: { userId: { in: ids } } })
+  await prisma.user.deleteMany({ where: { id: { in: ids } } })
+}
 
+beforeAll(cleanup)
 afterAll(async () => {
-  // Clean up all mock users created during tests. Best-effort: durable dev
-  // fixtures (e.g. seed/demo) are deliberately tied to these same mock-*
-  // identities and may have FK-dependent rows (Class, ClassEnrollment, etc.)
-  // that block a blanket delete. That's not this suite's concern — its
-  // assertions have already run — so swallow the error rather than failing
-  // teardown.
-  await prisma.user
-    .deleteMany({
-      where: { cleverId: { startsWith: 'mock-' } },
-    })
-    .catch(() => {
-      /* FK-blocked by durable dev data — non-fatal */
-    })
+  await cleanup()
   await prisma.$disconnect()
 })
 
-describe('mockAuthorize — guards', () => {
-  it('returns null when MOCK_AUTH is false', async () => {
-    process.env.MOCK_AUTH = 'false'
-    const result = await mockAuthorize({ role: 'STUDENT' })
-    expect(result).toBeNull()
-    process.env.MOCK_AUTH = 'true' // restore
+describe('resolveTeacherSignIn', () => {
+  it('rejects everyone when the allowlist is unset, and writes nothing', async () => {
+    const before = await prisma.user.count()
+    const d = await resolveTeacherSignIn({ id: 'g1', email: ALLOWED, name: 'T T' }, google, {})
+    expect(d.ok).toBe(false)
+    expect(await prisma.user.count()).toBe(before)
   })
 
-  it('returns null for an invalid role string', async () => {
-    const result = await mockAuthorize({ role: 'INVALID_ROLE' })
-    expect(result).toBeNull()
+  it('rejects an address that is not on the list, and writes nothing', async () => {
+    const before = await prisma.user.count()
+    const d = await resolveTeacherSignIn({ id: 'g2', email: STRANGER, name: 'S S' }, google, env)
+    expect(d.ok).toBe(false)
+    expect(await prisma.user.count()).toBe(before)
+    expect(await prisma.user.findUnique({ where: { email: STRANGER } })).toBeNull()
   })
 
-  it('returns null when credentials are undefined', async () => {
-    const result = await mockAuthorize(undefined)
-    expect(result).toBeNull()
-  })
-})
-
-describe('mockAuthorize — STUDENT', () => {
-  it('upserts and returns a STUDENT user', async () => {
-    const result = await mockAuthorize({ role: 'STUDENT' })
-    expect(result).not.toBeNull()
-    expect(result?.role).toBe('STUDENT')
-    expect(result?.userId).toBeTruthy()
-    expect(result?.name).toBeTruthy()
+  it('rejects a non-Google provider and a missing email', async () => {
+    expect((await resolveTeacherSignIn({ id: 'x', email: ALLOWED, name: null }, { provider: 'other' }, env)).ok).toBe(false)
+    expect((await resolveTeacherSignIn({ id: 'x', email: null, name: null }, google, env)).ok).toBe(false)
   })
 
-  it('creates the STUDENT record in the database', async () => {
-    await mockAuthorize({ role: 'STUDENT' })
-    const dbUser = await prisma.user.findUnique({
-      where: { cleverId: 'mock-student-001' },
-    })
-    expect(dbUser).not.toBeNull()
-    expect(dbUser?.role).toBe('STUDENT')
-    expect(dbUser?.status).toBe('ACTIVE')
-  })
-})
-
-describe('mockAuthorize — TEACHER', () => {
-  it('upserts and returns a TEACHER user', async () => {
-    const result = await mockAuthorize({ role: 'TEACHER' })
-    expect(result?.role).toBe('TEACHER')
-    expect(result?.userId).toBeTruthy()
-  })
-})
-
-describe('mockAuthorize — PARENT', () => {
-  it('upserts and returns a PARENT user', async () => {
-    const result = await mockAuthorize({ role: 'PARENT' })
-    expect(result?.role).toBe('PARENT')
-    expect(result?.userId).toBeTruthy()
-  })
-})
-
-describe('mockAuthorize — ADMIN', () => {
-  it('upserts and returns an ADMIN user', async () => {
-    const result = await mockAuthorize({ role: 'ADMIN' })
-    expect(result?.role).toBe('ADMIN')
-    expect(result?.userId).toBeTruthy()
-  })
-})
-
-describe('mockAuthorize — idempotency', () => {
-  it('returns the same userId on repeated calls for STUDENT', async () => {
-    const r1 = await mockAuthorize({ role: 'STUDENT' })
-    const r2 = await mockAuthorize({ role: 'STUDENT' })
-    expect(r1?.userId).toBe(r2?.userId)
+  it('admits a listed address as an ACTIVE TEACHER with a Teacher row', async () => {
+    const d = await resolveTeacherSignIn({ id: 'g3', email: ALLOWED.toUpperCase(), name: 'Tess Teacher' }, google, env)
+    expect(d.ok).toBe(true)
+    const row = await prisma.user.findUnique({ where: { email: ALLOWED }, include: { teacher: true } })
+    expect(row?.role).toBe('TEACHER')
+    expect(row?.status).toBe('ACTIVE')
+    expect(row?.teacher).not.toBeNull()
   })
 
-  it('returns the same userId on repeated calls for TEACHER', async () => {
-    const r1 = await mockAuthorize({ role: 'TEACHER' })
-    const r2 = await mockAuthorize({ role: 'TEACHER' })
-    expect(r1?.userId).toBe(r2?.userId)
+  it('is idempotent and preserves an ADMIN role', async () => {
+    await prisma.user.update({ where: { email: ALLOWED }, data: { role: 'ADMIN' } })
+    const d = await resolveTeacherSignIn({ id: 'g3', email: ALLOWED, name: 'Tess Teacher' }, google, env)
+    expect(d).toMatchObject({ ok: true, role: 'ADMIN' })
+    expect(await prisma.user.count({ where: { email: ALLOWED } })).toBe(1)
   })
 
-  it('each role has a distinct userId', async () => {
-    const student = await mockAuthorize({ role: 'STUDENT' })
-    const teacher = await mockAuthorize({ role: 'TEACHER' })
-    const parent = await mockAuthorize({ role: 'PARENT' })
-    const admin = await mockAuthorize({ role: 'ADMIN' })
-    const ids = [student?.userId, teacher?.userId, parent?.userId, admin?.userId]
-    const unique = new Set(ids.filter(Boolean))
-    expect(unique.size).toBe(4)
+  it('rejects a listed address whose account is not ACTIVE', async () => {
+    await prisma.user.update({ where: { email: ALLOWED }, data: { status: 'SUSPENDED' } })
+    const d = await resolveTeacherSignIn({ id: 'g3', email: ALLOWED, name: 'Tess Teacher' }, google, env)
+    expect(d.ok).toBe(false)
   })
 })

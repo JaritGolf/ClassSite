@@ -2,59 +2,53 @@
  * Route Guard — pure role-check logic, no Edge/Node dependencies.
  *
  * Used by src/middleware.ts (Edge Runtime) and tested directly in unit tests.
- * Keeping this as a pure function avoids Edge Runtime incompatibilities.
  *
  * Access policy:
- *   STUDENT  → /student/* only
- *   TEACHER  → /teacher/* only
- *   PARENT   → /parent/* only
- *   ADMIN    → all protected routes (super-access for support)
+ *   /student/*  → PUBLIC. Students have no accounts; nothing here reads a
+ *                 session. It is deliberately absent from ROLE_ROUTES.
+ *   /teacher/*  → TEACHER (ADMIN also allowed)
+ *   /admin/*    → ADMIN
  */
 
-import type { UserRole } from '@prisma/client'
+/** The only roles that can hold a session. */
+export type StaffRole = 'TEACHER' | 'ADMIN'
 
 /** Route prefix → roles that may access it */
-export const ROLE_ROUTES: Record<string, UserRole[]> = {
-  '/student': ['STUDENT'],
+export const ROLE_ROUTES: Record<string, StaffRole[]> = {
   '/teacher': ['TEACHER'],
-  '/parent': ['PARENT'],
   '/admin': ['ADMIN'],
 }
 
 export type RouteCheckResult = 'allow' | 'redirect-login' | 'redirect-unauthorized'
 
+function matchPrefix(pathname: string): string | undefined {
+  return Object.keys(ROLE_ROUTES).find(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  )
+}
+
 /**
  * Determine whether a request should be allowed, redirected to login,
  * or redirected to the unauthorized page.
  *
- * @param pathname  - The request pathname (e.g. '/student/dashboard')
- * @param role      - The user's role from the JWT, or null/undefined if unauthenticated
+ * @param pathname  - The request pathname (e.g. '/teacher/lessons')
+ * @param role      - The role from the JWT, or null/undefined if unauthenticated
  */
 export function checkRouteAccess(
   pathname: string,
-  role: UserRole | null | undefined
+  role: string | null | undefined
 ): RouteCheckResult {
-  const isProtected = Object.keys(ROLE_ROUTES).some((prefix) =>
-    pathname.startsWith(prefix)
-  )
+  const matchedPrefix = matchPrefix(pathname)
 
-  // Unauthenticated
-  if (!role) {
-    return isProtected ? 'redirect-login' : 'allow'
-  }
-
-  // ADMIN has super-access to all routes (confirmed decision)
-  if (role === 'ADMIN') return 'allow'
-
-  const matchedPrefix = Object.keys(ROLE_ROUTES).find((prefix) =>
-    pathname.startsWith(prefix)
-  )
-
-  // No matched protected prefix — allow
+  // Not a protected prefix (includes everything under /student) — allow.
   if (!matchedPrefix) return 'allow'
 
-  // Check whether the user's role is in the allowed list for this prefix
-  return ROLE_ROUTES[matchedPrefix].includes(role)
+  if (!role) return 'redirect-login'
+
+  // ADMIN has super-access to all protected routes
+  if (role === 'ADMIN') return 'allow'
+
+  return (ROLE_ROUTES[matchedPrefix] as string[]).includes(role)
     ? 'allow'
     : 'redirect-unauthorized'
 }
