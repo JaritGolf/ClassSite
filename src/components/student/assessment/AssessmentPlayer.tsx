@@ -41,7 +41,7 @@ interface Question {
   options: Option[]
 }
 
-interface AssessmentMeta {
+export interface AssessmentMeta {
   assessmentId: string
   title: string
   assessmentType: string
@@ -65,8 +65,20 @@ export type AssessmentPlayerResult = AssessmentSubmitResult & {
   skipped?: boolean
 }
 
+/** Where the questions come from and where answers go, when not a stored assessment. */
+export interface AssessmentSource {
+  load: () => Promise<AssessmentMeta>
+  submit: (
+    answers: Record<string, { optionId: string; confidence: ConfidenceValue | null }>,
+    meta: AssessmentMeta
+  ) => Promise<AssessmentSubmitResult>
+}
+
 interface AssessmentPlayerProps {
+  /** A stored assessment id. Ignored when `source` is given. */
   assessmentId: string
+  /** Custom load/submit (Republic Challenge sessions, which have no stored assessment). */
+  source?: AssessmentSource
   /**
    * Signed proof that the Readiness Check was passed. Needed to open (and
    * submit) a Mastery Challenge; ignored by every other assessment type.
@@ -104,7 +116,7 @@ function ConfettiBurst() {
   )
 }
 
-export function AssessmentPlayer({ assessmentId, readinessToken, onComplete }: AssessmentPlayerProps) {
+export function AssessmentPlayer({ assessmentId, source, readinessToken, onComplete }: AssessmentPlayerProps) {
   const { update } = useLocalProgress()
   const [meta, setMeta] = useState<AssessmentMeta | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -124,6 +136,11 @@ export function AssessmentPlayer({ assessmentId, readinessToken, onComplete }: A
     let cancelled = false
     async function load() {
       try {
+        if (source) {
+          const data = await source.load()
+          if (!cancelled) setMeta(data)
+          return
+        }
         const res = await fetch(`/api/assessment/${assessmentId}/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -149,6 +166,8 @@ export function AssessmentPlayer({ assessmentId, readinessToken, onComplete }: A
     return () => {
       cancelled = true
     }
+    // `source` is stable for the life of a session; it is deliberately not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessmentId, readinessToken])
 
   if (loading) return <div className="py-12 text-center text-base text-gray-600">Loading assessment…</div>
@@ -213,7 +232,11 @@ export function AssessmentPlayer({ assessmentId, readinessToken, onComplete }: A
             result.passed ? 'text-green-700' : 'text-amber-700'
           }`}
         >
-          {result.passed ? 'Mission Complete!' : 'Keep Practicing!'}
+          {result.passed
+            ? meta.assessmentType === 'MASTERY_CHALLENGE'
+              ? 'Mission Complete!'
+              : 'Nice work!'
+            : 'Keep Practicing!'}
         </h2>
         {Number.isFinite(result.score) && (
           <p className="font-display text-lg font-bold text-gray-700">
@@ -272,18 +295,23 @@ export function AssessmentPlayer({ assessmentId, readinessToken, onComplete }: A
     if (!meta) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/assessment/${assessmentId}/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildAssessmentSubmitBody(answers, readinessToken)),
-      })
-      const data = await res.json()
-      // A non-2xx response is a failed submission — never render the completion
-      // card for it (that masks real errors as "Keep Practicing!").
-      if (!res.ok) {
-        throw new Error(typeof data?.error === 'string' ? data.error : 'Submission failed.')
+      let graded: AssessmentSubmitResult
+      if (source) {
+        graded = await source.submit(answers, meta)
+      } else {
+        const res = await fetch(`/api/assessment/${assessmentId}/submit`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(buildAssessmentSubmitBody(answers, readinessToken)),
+        })
+        const data = await res.json()
+        // A non-2xx response is a failed submission — never render the completion
+        // card for it (that masks real errors as "Keep Practicing!").
+        if (!res.ok) {
+          throw new Error(typeof data?.error === 'string' ? data.error : 'Submission failed.')
+        }
+        graded = data as AssessmentSubmitResult
       }
-      const graded = data as AssessmentSubmitResult
 
       // What this device remembers about any graded assessment: that work
       // happened today, which questions were seen and missed, and the

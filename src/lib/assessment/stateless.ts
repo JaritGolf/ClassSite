@@ -167,34 +167,7 @@ export async function deliverAssessment(
 
   await assertReadiness(assessment, opts.readinessToken)
 
-  // Glossary terms once per distinct benchmark, every approved translation attached.
-  const benchmarkIds = [...new Set(assessment.questions.map((aq) => aq.question.benchmarkId))]
-  const glossaryByBenchmark = new Map<string, GlossaryTerm[]>(
-    await Promise.all(
-      benchmarkIds.map(
-        async (bid) => [bid, await getGlossaryTermsForBenchmark(bid)] as [string, GlossaryTerm[]]
-      )
-    )
-  )
-
-  const questions = await Promise.all(
-    assessment.questions.map(async (aq) => ({
-      questionId: aq.question.id,
-      prompt: aq.question.prompt,
-      itemType: aq.question.itemType,
-      stimulus: await fetchStimulusForQuestion(
-        aq.question.id,
-        STANDARD_READING_LEVEL,
-        glossaryByBenchmark.get(aq.question.benchmarkId) ?? []
-      ),
-      // Authored banks list the correct option first — shuffle at serve time.
-      options: shuffled(aq.question.options).map((o, i) => ({
-        id: o.id,
-        optionText: o.optionText,
-        position: i + 1,
-      })),
-    }))
-  )
+  const questions = await deliverQuestions(assessment.questions.map((aq) => aq.question))
 
   return {
     assessmentId: assessment.id,
@@ -204,6 +177,49 @@ export async function deliverAssessment(
     benchmarkCode: assessment.benchmark?.code ?? null,
     questions,
   }
+}
+
+/**
+ * Turn loaded questions into the delivered shape: stimulus attached at the
+ * standard reading level, options shuffled. The input type has NO `isCorrect`
+ * or `feedback` field, so a caller cannot pass the key through by mistake.
+ */
+export async function deliverQuestions(
+  questions: {
+    id: string
+    prompt: string
+    itemType: string
+    benchmarkId: string
+    options: { id: string; optionText: string }[]
+  }[]
+): Promise<DeliveredQuestion[]> {
+  // Glossary terms once per distinct benchmark, every approved translation attached.
+  const benchmarkIds = [...new Set(questions.map((q) => q.benchmarkId))]
+  const glossaryByBenchmark = new Map<string, GlossaryTerm[]>(
+    await Promise.all(
+      benchmarkIds.map(
+        async (bid) => [bid, await getGlossaryTermsForBenchmark(bid)] as [string, GlossaryTerm[]]
+      )
+    )
+  )
+
+  return Promise.all(
+    questions.map(async (q) => ({
+      questionId: q.id,
+      prompt: q.prompt,
+      itemType: q.itemType,
+      stimulus: await fetchStimulusForQuestion(
+        q.id,
+        STANDARD_READING_LEVEL,
+        glossaryByBenchmark.get(q.benchmarkId) ?? []
+      ),
+      // Authored banks list the correct option first — shuffle at serve time.
+      options: shuffled(
+        // Rebuilt field by field so nothing beyond id + text can ride along.
+        q.options.map((o) => ({ id: o.id, optionText: o.optionText }))
+      ).map((o, i) => ({ id: o.id, optionText: o.optionText, position: i + 1 })),
+    }))
+  )
 }
 
 // ── Grading ─────────────────────────────────────────────────────────────────

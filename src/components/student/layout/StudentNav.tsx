@@ -95,6 +95,12 @@ export const AVAILABLE_STUDENT_ROUTES: readonly string[] = [
   '/student/map',
   '/student/mission',
   '/student/remediation',
+  '/student/daily-drill',
+  '/student/republic-challenge',
+  '/student/source-decoder',
+  '/student/source-lab',
+  '/student/strategy',
+  '/student/badges',
   '/student/settings',
   '/student/summary',
 ]
