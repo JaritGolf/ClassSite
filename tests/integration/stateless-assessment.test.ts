@@ -14,6 +14,7 @@ import { gradeSingleAnswer, SingleAnswerError } from '@/lib/assessment/single-an
 import { getPracticeItem } from '@/lib/adaptive-difficulty/stateless'
 import { initialState } from '@/lib/adaptive-difficulty/transitions'
 import { verifyReadinessToken } from '@/lib/completion-codes/readiness-token'
+import { verifyCompletionCode } from '@/lib/completion-codes'
 
 const prisma = new PrismaClient()
 const CODE = 'SS.7.CG.1.1'
@@ -130,6 +131,10 @@ describe('readiness gate without stored attempts', () => {
       readinessToken: passed.readinessToken,
     })
     expect(graded).toMatchObject({ passed: true, score: 1 })
+    // Mastery returns a signed completion code that verifies — and nothing else does.
+    const check = verifyCompletionCode(graded.completionCode!)
+    expect(check).toMatchObject({ valid: true, payload: { benchmarkCode: CODE, scorePercent: 100 } })
+    expect(verifyCompletionCode(graded.completionCode!.replace('-100-', '-90-')).valid).toBe(false)
     // Secure type: right/wrong only — no key, no explanations.
     expect(graded.results.every((r) => r.feedback === null && r.correctOptionText === null)).toBe(true)
     expect(graded.calibration?.high.correct).toBe(graded.totalQuestions)
@@ -158,6 +163,7 @@ describe('grading is server-side', () => {
     })
     expect(graded).toMatchObject({ passed: false, score: 0 })
     expect(graded.remediation.length).toBeGreaterThan(0)
+    expect(graded.completionCode).toBeNull()
     expect(JSON.stringify(graded)).not.toMatch(/correctOptionId/)
   })
 

@@ -61,7 +61,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       reviewTopics: outcome.reviewTopics,
       readinessToken: outcome.readinessToken,
       remediation: outcome.remediation,
-      completionCode: null,
+      completionCode: outcome.completionCode,
     }
     return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store' } })
   } catch (err) {

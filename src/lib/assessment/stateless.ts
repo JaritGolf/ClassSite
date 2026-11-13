@@ -26,6 +26,7 @@ import { fetchStimulusForQuestion, type StimulusAttachment, type GlossaryTerm } 
 import { getGlossaryTermsForBenchmark } from '@/lib/l1-glosses'
 import { computeCalibrationBreakdown, type CalibrationBreakdown } from '@/lib/metacognition/breakdown'
 import { issueReadinessToken, verifyReadinessToken } from '@/lib/completion-codes/readiness-token'
+import { issueCompletionCode } from '@/lib/completion-codes/code'
 import { gradeResponses, computeScore, type ResponseInput } from './grader'
 import { SECURE_ASSESSMENT_TYPES } from './wire'
 import { suggestRemediation, type RemediationSuggestion } from '@/lib/remediation/suggest'
@@ -233,6 +234,11 @@ export interface GradeOutcome {
   readinessToken: string | null
   /** Suggested when a Mastery Challenge is not passed. Curriculum items only. */
   remediation: RemediationSuggestion[]
+  /**
+   * Signed proof of mastery to paste into Google Classroom. Issued only when a
+   * Mastery Challenge is passed. Carries benchmark + score + date, no identity.
+   */
+  completionCode: string | null
 }
 
 export interface GradeInput {
@@ -389,6 +395,11 @@ export async function gradeSubmission(
         )
       : []
 
+  const completionCode =
+    type === 'MASTERY_CHALLENGE' && passed && benchmarkCode
+      ? issueCompletionCode({ benchmarkCode, score, now })
+      : null
+
   return {
     assessmentId: assessment.id,
     assessmentType: type,
@@ -402,5 +413,6 @@ export async function gradeSubmission(
     reviewTopics,
     readinessToken,
     remediation,
+    completionCode,
   }
 }
