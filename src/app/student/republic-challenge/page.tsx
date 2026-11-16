@@ -1,35 +1,39 @@
-import { headers } from 'next/headers'
-import { requireAuth } from '@/lib/auth'
-import { Hub, type HubConfig } from '@/components/student/republic-challenge/Hub'
+import { getPublishedClass } from '@/lib/student-content'
+import { getStaminaLengthForDate, FINAL_TRIAL_DEFAULT_LENGTH, isFinalTrialWindowOpen } from '@/lib/republic-challenge'
+import { getBlueprintCoverage } from '@/lib/republic-challenge/stateless'
+import { Hub } from '@/components/student/republic-challenge/Hub'
 
-async function fetchConfig(): Promise<HubConfig> {
-  // SSR fetch — same-origin; pass through the session cookie.
-  const h = headers()
-  const host = h.get('host') ?? 'localhost:3000'
-  const protocol = h.get('x-forwarded-proto') ?? 'http'
-  const cookie = h.get('cookie') ?? ''
-  const res = await fetch(`${protocol}://${host}/api/republic-challenge/config`, {
-    headers: { cookie },
-    cache: 'no-store',
-  })
-  if (!res.ok) {
-    return {
-      featureEocReviewEnabled: false,
-      stamina: { label: '—', length: 10, isLadderPeak: false },
-      finalTrial: {
-        open: false,
-        length: 50,
-        attemptsAllowed: 1,
-        reviewWindow: 'after_submit',
-        blueprintCoverage: { covered: 0, total: 4 },
-      },
-    }
-  }
-  return res.json()
-}
+export const metadata = { title: 'Republic Challenge' }
 
+/** Hub configuration is curriculum + calendar only — the same for every visitor. */
 export default async function RepublicChallengeHubPage() {
-  await requireAuth(['STUDENT'])
-  const config = await fetchConfig()
-  return <Hub config={config} />
+  const [publishedClass, blueprintCoverage] = await Promise.all([
+    getPublishedClass(),
+    getBlueprintCoverage(2),
+  ])
+  const now = new Date()
+  const ladder = getStaminaLengthForDate(now)
+  const enabled = publishedClass?.featureEocReviewEnabled ?? true
+
+  return (
+    <Hub
+      config={{
+        featureEocReviewEnabled: enabled,
+        stamina: {
+          label: ladder.label,
+          length:
+            publishedClass?.rcStaminaOverride ??
+            publishedClass?.rcSessionLengthOverride ??
+            ladder.length ??
+            FINAL_TRIAL_DEFAULT_LENGTH,
+          isLadderPeak: ladder.length === null,
+        },
+        finalTrial: {
+          open: enabled && isFinalTrialWindowOpen(publishedClass?.schoolYear, now),
+          length: FINAL_TRIAL_DEFAULT_LENGTH,
+          blueprintCoverage,
+        },
+      }}
+    />
+  )
 }

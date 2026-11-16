@@ -1,6 +1,6 @@
 /**
  * Unauthorized page — shown when a user tries to access a route
- * outside their role (e.g., STUDENT visiting /teacher/dashboard).
+ * outside their role (e.g. a TEACHER visiting /admin).
  *
  * No auth check here — this page is intentionally public.
  */

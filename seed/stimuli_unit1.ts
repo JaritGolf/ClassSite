@@ -194,7 +194,4 @@ export async function seedStimuliUnit1(prisma: PrismaClient): Promise<void> {
       }
     }
   }
-
-  // Note: Accommodation records (ACC-SIMPLE-LANG, ELL, BELOW-GRADE-READER)
-  // are seeded by seedBenchmarks() in seed/benchmarks.ts — not duplicated here.
 }

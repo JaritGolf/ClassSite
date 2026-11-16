@@ -4,14 +4,17 @@
  * StrategyTrackList
  *
  * Renders the Test-Taking Strategy missions (spec §19.2) as interactive
- * apply-it rounds. Each round is graded server-side; a correct round counts as
- * one "use" of the strategy (POST /api/strategy/[code]/attempt). A teacher may
- * require a number of uses per strategy — shown as a soft "X to go" nudge.
+ * apply-it rounds. Each round is graded server-side (POST
+ * /api/strategy/[code]/attempt, which records nothing); a correct round counts
+ * as one "use", and the count is kept on this device. A teacher may set a
+ * target number of uses per strategy — shown as a soft "X to go" nudge.
  */
 
-import { useMemo, useState } from 'react'
-import type { StrategyMissionServed, StrategyProgressRecord } from '@/lib/strategy-track'
+import { useState } from 'react'
+import type { StrategyMissionServed } from '@/lib/strategy-track'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
+import { recordStrategyUse, recordStreakActivity, strategyOwed } from '@/lib/local-progress/engine'
 
 interface CheckResult {
   checkIndex: number
@@ -21,28 +24,29 @@ interface CheckResult {
 }
 interface RoundResult {
   correct: boolean
-  useCount: number
   checks: CheckResult[]
+}
+interface StrategyProgressRecord {
+  required: number
 }
 
 interface Props {
   missions: StrategyMissionServed[]
-  progress: StrategyProgressRecord[]
+  /** Target uses per strategy for everyone (0 = no target). */
+  required: number
 }
 
-export function StrategyTrackList({ missions, progress }: Props) {
-  const progressByCode = useMemo(
-    () => new Map(progress.map((p) => [p.code, p])),
-    [progress]
-  )
-  // Live use-counts so the header nudge updates as the student earns uses.
-  const [useCounts, setUseCounts] = useState<Record<string, number>>(
-    () => Object.fromEntries(progress.map((p) => [p.code, p.useCount]))
-  )
+export function StrategyTrackList({ missions, required }: Props) {
+  const { progress, hydrated, update } = useLocalProgress()
 
-  const totalOwed = progress.reduce(
-    (sum, p) => sum + Math.max(0, p.required - (useCounts[p.code] ?? 0)),
-    0
+  if (!hydrated) {
+    return <p className="py-8 text-center text-base text-gray-600">Loading your strategies…</p>
+  }
+
+  const totalOwed = strategyOwed(
+    progress,
+    missions.map((m) => m.code),
+    required
   )
 
   return (
@@ -52,17 +56,19 @@ export function StrategyTrackList({ missions, progress }: Props) {
           role="status"
           className="rounded-2xl border-2 border-amber-200 bg-amber-50 px-4 py-3 text-base font-semibold text-amber-900"
         >
-          🎯 You owe {totalOwed} more strategy {totalOwed === 1 ? 'use' : 'uses'}. Nail an
-          apply-it round to check one off.
+          🎯 {totalOwed} more strategy {totalOwed === 1 ? 'use' : 'uses'} to go. Nail an apply-it
+          round to check one off.
         </div>
       )}
       {missions.map((m) => (
         <MissionCard
           key={m.code}
           mission={m}
-          record={progressByCode.get(m.code)}
-          useCount={useCounts[m.code] ?? 0}
-          onUse={(count) => setUseCounts((prev) => ({ ...prev, [m.code]: count }))}
+          record={{ required }}
+          useCount={progress.strategy[m.code]?.useCount ?? 0}
+          onUse={() =>
+            update((p) => recordStreakActivity(recordStrategyUse(p, m.code, new Date()), new Date()))
+          }
         />
       ))}
     </div>
@@ -78,7 +84,7 @@ function MissionCard({
   mission: StrategyMissionServed
   record: StrategyProgressRecord | undefined
   useCount: number
-  onUse: (count: number) => void
+  onUse: () => void
 }) {
   const required = record?.required ?? 0
   const met = required === 0 || useCount >= required
@@ -109,7 +115,7 @@ function MissionCard({
       }
       const data = (await res.json()) as RoundResult
       setResult(data)
-      if (data.correct) onUse(data.useCount)
+      if (data.correct) onUse()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not submit your answers.')
     } finally {

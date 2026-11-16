@@ -47,7 +47,7 @@ export default async function TeacherWalkthroughPage({ params }: PageProps) {
   if (!benchmark || !lesson) notFound()
 
   const [glossaryTerms, assessments] = await Promise.all([
-    getGlossaryTermsForBenchmark(benchmark.id, null),
+    getGlossaryTermsForBenchmark(benchmark.id),
     getAssessmentPreviewsForBenchmark(benchmark.id),
   ])
 

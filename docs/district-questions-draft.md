@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. Several questions concern data this build no longer holds. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # Draft — Questions for the Educational Technology Department
 
 > ## ⚠️ DRAFT. NOT SENT. NOT FILED.

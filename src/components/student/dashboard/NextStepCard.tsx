@@ -42,13 +42,7 @@ const EYEBROW_EXPLAINERS: Record<string, string> = {
     'The last thing you were working on, so you can get straight back into it.',
 }
 
-export function NextStepCard({
-  step,
-  studentName,
-}: {
-  step: NextStep
-  studentName: string | null | undefined
-}) {
+export function NextStepCard({ step }: { step: NextStep }) {
   const eyebrow = eyebrowFor(step)
   const caughtUp = step.kind === 'ALL_CAUGHT_UP'
 
@@ -71,7 +65,7 @@ export function NextStepCard({
       <div className="relative flex items-start gap-4">
         <div className="min-w-0 flex-1">
           <p className="font-display text-xl font-bold leading-tight sm:text-2xl">
-            Welcome back, {studentName ?? 'Founder'}!
+            Welcome back, Founder!
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">

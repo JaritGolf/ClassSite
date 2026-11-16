@@ -136,7 +136,7 @@ describe('App Router export contract', () => {
   it('finds the route files it is meant to be guarding', () => {
     // A silent zero-match walk would make every assertion below pass vacuously.
     const routeCount = files.filter((f) => ROUTE_FILES.test(f.split('/').pop()!)).length
-    expect(routeCount).toBeGreaterThan(50)
+    expect(routeCount).toBeGreaterThan(20)
   })
 
   it('route.ts exports only HTTP handlers and Next segment config', () => {

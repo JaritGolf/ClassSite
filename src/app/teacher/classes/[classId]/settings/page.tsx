@@ -26,12 +26,9 @@ export default async function ClassSettingsPage({
       id: true,
       name: true,
       rcSessionLengthOverride: true,
-      rcAttemptsAllowed: true,
-      rcReviewWindow: true,
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
       strategyUsesRequired: true,
-      secureAssessmentMode: true,
     },
   })
 
@@ -50,14 +47,8 @@ export default async function ClassSettingsPage({
         className={klass.name}
         initial={{
           rcSessionLengthOverride: klass.rcSessionLengthOverride,
-          rcAttemptsAllowed: klass.rcAttemptsAllowed,
-          rcReviewWindow: klass.rcReviewWindow as
-            | 'immediate'
-            | 'after_submit'
-            | 'after_class_window',
           rcStaminaOverride: klass.rcStaminaOverride,
           featureEocReviewEnabled: klass.featureEocReviewEnabled,
-          secureAssessmentMode: klass.secureAssessmentMode,
           strategyUsesRequired: klass.strategyUsesRequired,
         }}
       />

@@ -1,7 +1,7 @@
 /**
  * E2E Tests — Teacher Smoke
  *
- * Playwright: log in as mock teacher, navigate every teacher page,
+ * Playwright: with the teacher session from global-setup, visit every teacher page,
  * assert no console errors.
  *
  * GATED on process.env.E2E === '1'.
@@ -14,17 +14,18 @@ const RUN_E2E = process.env.E2E === '1'
 
 const TEACHER_PAGES = [
   '/teacher/dashboard',
-  '/teacher/classes',
+  '/teacher/check-codes',
+  '/teacher/lessons',
   '/teacher/benchmarks',
-  '/teacher/decay',
-  '/teacher/calibration',
-  '/teacher/interventions',
+  '/teacher/questions',
   '/teacher/content',
+  '/teacher/classes',
   '/teacher/settings',
-  '/teacher/reports',
 ]
 
 test.describe('Teacher smoke — all pages render', () => {
+  test.use({ storageState: 'tests/e2e/.auth/teacher.json' })
+
   if (!RUN_E2E) {
     test.skip(true, 'Set E2E=1 to run Playwright tests')
     return
@@ -32,15 +33,13 @@ test.describe('Teacher smoke — all pages render', () => {
 
   test.beforeEach(async ({ page }) => {
     // Use stored auth state from global-setup
-    const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    await page.goto(`${BASE_URL}/teacher/dashboard`)
+    await page.goto('/teacher/dashboard')
     // If redirected to login, fail early with a clear message
     await expect(page).not.toHaveURL(/\/login/)
   })
 
   for (const path of TEACHER_PAGES) {
     test(`${path} renders without console errors`, async ({ page }) => {
-      const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
       const consoleErrors: string[] = []
 
       page.on('console', (msg) => {
@@ -49,7 +48,7 @@ test.describe('Teacher smoke — all pages render', () => {
         }
       })
 
-      const response = await page.goto(`${BASE_URL}${path}`)
+      const response = await page.goto(path)
       expect(response?.status()).not.toBe(500)
 
       await page.waitForLoadState('networkidle')
@@ -59,7 +58,11 @@ test.describe('Teacher smoke — all pages render', () => {
         (e) =>
           !e.includes('hydration') &&
           !e.includes('favicon') &&
-          !e.includes('P2002')
+          !e.includes('P2002') &&
+          // beforeEach lands on the dashboard, whose links Next starts
+          // prefetching; navigating away straight afterwards cancels those
+          // requests, and a production build logs each cancellation.
+          !e.includes('Failed to fetch RSC payload')
       )
 
       expect(realErrors).toHaveLength(0)

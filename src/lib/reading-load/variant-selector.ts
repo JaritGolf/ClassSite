@@ -27,18 +27,15 @@ export interface GlossaryTerm {
   term: string
   definition: string
   tier: 'TIER_2' | 'TIER_3'
-  /** Approved L1 (first-language) gloss, when available for the active language. */
-  l1Definition?: string
-  /** BCP-47-ish language code of the L1 gloss (e.g. 'es', 'ht'). */
-  l1Language?: string
+  /** Approved translations by language code. The DEVICE picks one; the server never knows which. */
+  l1Definitions?: Partial<Record<'es' | 'ht', string>>
 }
 
 export interface GlossaryAnnotation {
   matchText: string
   definition: string
   tier: 'TIER_2' | 'TIER_3'
-  l1Definition?: string
-  l1Language?: string
+  l1Definitions?: Partial<Record<'es' | 'ht', string>>
 }
 
 export interface VariantSelection {
@@ -46,15 +43,6 @@ export interface VariantSelection {
   resolvedLevel: number
   fromVariant: boolean
 }
-
-// ── Accommodation codes that trigger level-1 default ──────────────────────
-// Shared between variant-selector (pure) and accommodation.ts (DB)
-
-export const LEVEL_1_ACCOMMODATION_CODES = new Set([
-  'ACC-SIMPLE-LANG',
-  'ELL',
-  'BELOW-GRADE-READER',
-])
 
 // ── selectVariantContent ───────────────────────────────────────────────────
 
@@ -98,37 +86,6 @@ export function selectVariantContent(
   }
 }
 
-// ── resolveAccommodationLevel ─────────────────────────────────────────────
-
-/**
- * Given a student's active accommodation codes, determine the effective
- * reading-load level to use.
- *
- * Rules (spec Section 16.5):
- *   - If any accommodation code is in LEVEL_1_ACCOMMODATION_CODES AND
- *     this is NOT a Mastery Challenge → return 1
- *   - Mastery Challenges are never downgraded (level 2 minimum is a
- *     separate hard constraint)
- *   - Otherwise → return requestedLevel unchanged
- */
-export function resolveAccommodationLevel(
-  accommodationCodes: string[],
-  requestedLevel: number,
-  isMasteryChallenge: boolean
-): number {
-  if (isMasteryChallenge) {
-    // Accommodations never downgrade mastery level — level 2 minimum is
-    // enforced separately. Return unchanged.
-    return requestedLevel
-  }
-
-  const hasLevel1Override = accommodationCodes.some((code) =>
-    LEVEL_1_ACCOMMODATION_CODES.has(code)
-  )
-
-  return hasLevel1Override ? 1 : requestedLevel
-}
-
 // ── buildGlossaryAnnotations ───────────────────────────────────────────────
 
 /**
@@ -161,7 +118,7 @@ export function buildGlossaryAnnotations(
           matchText: match[0],
           definition: gTerm.definition,
           tier: gTerm.tier,
-          ...(gTerm.l1Definition ? { l1Definition: gTerm.l1Definition, l1Language: gTerm.l1Language } : {}),
+          ...(gTerm.l1Definitions ? { l1Definitions: gTerm.l1Definitions } : {}),
         })
       }
     } catch {

@@ -2,9 +2,14 @@
 
 Florida 7th Grade Civics Mastery Learning Platform — EOC-readiness focus.
 
-- **Students** experience it as a game: build the Republic benchmark by benchmark.
-- **Teachers** experience it as an LMS with deep analytics and intervention tools.
+- **Students** experience it as a game: build the Republic benchmark by benchmark. They have no accounts and do not sign in.
+- **Teachers** author and arrange lessons, and check the completion codes students turn in through Google Classroom.
 - **District:** Palm Beach County School District (Spanish / Haitian Creole populations).
+
+**This site holds no student data.** The server never receives or stores anything about a
+student; progress lives in the student's own browser. See
+[`docs/no-student-data-fact-sheet.md`](docs/no-student-data-fact-sheet.md) (one page, plain
+language) and [`docs/privacy-review.md`](docs/privacy-review.md).
 
 ---
 
@@ -30,7 +35,7 @@ npm install
 
 # 3. Configure environment
 cp .env.example .env.local
-# Edit .env.local — set DATABASE_URL at minimum
+# Edit .env.local — set DATABASE_URL and SESSION_SECRET at minimum
 
 # 4. Start PostgreSQL (if using Homebrew)
 brew services start postgresql@16
@@ -54,14 +59,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Build Phase
 
-See `CLAUDE.md` for current phase and `civics_quest_v3_build_spec.md` for full specification.
-
-| Phase | Focus |
-|---|---|
-| **0** | Project setup, env, repo scaffold ← *current* |
-| 1 | Schema, migrations, seeds |
-| 2 | Auth (Clever, Google, mock) |
-| 3–18 | See spec Section 33 |
+See `CLAUDE.md` for the current state and `docs/adrs/0026-no-student-data.md` for the design.
 
 ---
 
@@ -85,12 +83,12 @@ npm run db:studio    # Prisma Studio (DB GUI)
 
 See `CLAUDE.md` Section "Non-Negotiable Rules" and `civics_quest_v3_build_spec.md` Section 2.2.
 
-- Server-side grading only — client is never trusted.
-- Answer keys never sent to client before submission.
-- PostgreSQL only (no SQLite in production).
-- Clever-first SSO → Google fallback → mock for dev only.
-- No third-party analytics or telemetry on student data.
-- WCAG 2.1 AA accessibility target.
+- The server never receives or stores anything about a student.
+- Grading is server-side and stateless — the client is never trusted with correctness.
+- Answer keys are never sent to the client before submission.
+- PostgreSQL only. Google sign-in for the teacher only, behind a mandatory allowlist.
+- No third-party analytics or telemetry.
+- WCAG 2.1 AA accessibility target; reading supports are options any student can switch on.
 
 ---
 

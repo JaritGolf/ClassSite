@@ -18,7 +18,7 @@
  * Sum of returned counts === totalQuestions.
  */
 
-import { REPORTING_CATEGORY_WEIGHTS } from '@/lib/eoc-analytics/readiness'
+import { REPORTING_CATEGORY_WEIGHTS } from './weights'
 
 export interface BlueprintAllocation {
   /** Map of category-name → number of questions. */

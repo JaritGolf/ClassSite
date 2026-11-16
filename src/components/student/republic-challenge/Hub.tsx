@@ -8,8 +8,6 @@ export interface HubConfig {
   finalTrial: {
     open: boolean
     length: number
-    attemptsAllowed: number
-    reviewWindow: string
     /** How many of the four EOC categories currently have questions behind them. */
     blueprintCoverage: { covered: number; total: number }
   }
@@ -21,7 +19,7 @@ export function Hub({ config }: { config: HubConfig }) {
       <div className="mx-auto max-w-2xl py-12 text-center">
         <h1 className="mb-2 font-display text-3xl font-bold text-indigo-900">Republic Challenge</h1>
         <p className="text-base text-gray-600">
-          Republic Challenge is disabled for your class. Check back when your teacher
+          Republic Challenge is switched off right now. Check back when your teacher
           turns it on.
         </p>
       </div>
@@ -50,7 +48,7 @@ export function Hub({ config }: { config: HubConfig }) {
         <ModeCard
           title="Quick Review"
           description="A short practice based on the skills slipping fastest."
-          startUrl="/api/republic-challenge/quick-review/start"
+          href="/student/republic-challenge/play?mode=QUICK_REVIEW"
           meta="5 questions"
           icon="sparkle"
         />
@@ -59,7 +57,6 @@ export function Hub({ config }: { config: HubConfig }) {
           title="Category Challenge"
           description="Practice within one EOC reporting category."
           href="/student/republic-challenge/category"
-          startUrl=""
           meta="Pick a category"
           icon="target"
         />
@@ -67,17 +64,15 @@ export function Hub({ config }: { config: HubConfig }) {
         <ModeCard
           title="Mixed Mission"
           description="A blueprint-weighted mix of all four EOC reporting categories."
-          startUrl="/api/republic-challenge/mixed/start"
-          length={10}
+          href="/student/republic-challenge/play?mode=MIXED_MISSION"
           meta="10 questions"
           icon="map"
         />
 
         <ModeCard
           title="Mistake Replay"
-          description="Re-attempt the questions you've missed before."
-          startUrl="/api/republic-challenge/mistake-replay/start"
-          length={10}
+          description="Re-attempt questions you've missed on this device."
+          href="/student/republic-challenge/play?mode=MISTAKE_REPLAY"
           meta="10 questions"
           icon="search"
         />
@@ -86,7 +81,6 @@ export function Hub({ config }: { config: HubConfig }) {
           title="Source Sprint"
           description="Practice stimulus-heavy items (excerpts, charts, maps)."
           href="/student/republic-challenge/source-sprint"
-          startUrl=""
           meta="Pick a source type"
           icon="book"
         />
@@ -94,7 +88,7 @@ export function Hub({ config }: { config: HubConfig }) {
         <ModeCard
           title="Endurance Trial"
           description="Build stamina. Today's length is based on the time of year."
-          startUrl="/api/republic-challenge/endurance/start"
+          href="/student/republic-challenge/play?mode=ENDURANCE_TRIAL"
           meta={`${config.stamina.length} questions · ${config.stamina.label}`}
           metaExplainer="Endurance sessions get longer as the school year goes on, so your test-taking stamina builds up gradually toward the real EOC."
           icon="flame"
@@ -111,7 +105,7 @@ export function Hub({ config }: { config: HubConfig }) {
               ? `Full-length EOC simulation. Right now it covers ${config.finalTrial.blueprintCoverage.covered} of the ${config.finalTrial.blueprintCoverage.total} EOC topic areas — the rest aren't built yet.`
               : 'Full-length EOC simulation. Only level-2 and level-3 stimuli.'
           }
-          startUrl="/api/republic-challenge/final-trial/start"
+          href="/student/republic-challenge/play?mode=FINAL_REPUBLIC_TRIAL"
           meta={`${config.finalTrial.length} questions`}
           metaExplainer={
             partialBlueprint

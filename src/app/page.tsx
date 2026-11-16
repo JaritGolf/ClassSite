@@ -44,11 +44,13 @@ export default function Home() {
         </p>
 
         <Link
-          href="/login"
+          href="/student/dashboard"
           className="mt-8 rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-8 py-3.5 font-display text-lg font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0 animate-pop-in [animation-delay:340ms]"
         >
           Start Your Mission →
         </Link>
+
+        <p className="mt-3 text-sm text-gray-600">No sign-in needed. Your progress is saved on this device.</p>
 
         <div className="mt-12 grid w-full max-w-3xl gap-4 sm:grid-cols-3">
           {FEATURES.map((f, i) => (
@@ -65,6 +67,11 @@ export default function Home() {
             </div>
           ))}
         </div>
+        <p className="mt-10 text-sm text-gray-600">
+          <Link href="/login" className="underline hover:text-indigo-700">
+            Teacher sign-in
+          </Link>
+        </p>
       </div>
     </main>
   )

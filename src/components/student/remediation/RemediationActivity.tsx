@@ -19,46 +19,53 @@ import { CheckQuestion } from '@/components/student/mission/LessonStepRenderer'
 import { NextStepHandoff } from '@/components/student/NextStepHandoff'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon } from '@/components/ui/TrackIcon'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
+import {
+  assignRemediations,
+  completeRemediation,
+  recordStreakActivity,
+} from '@/lib/local-progress/engine'
 
 interface RemediationActivityProps {
-  studentRemediationId: string
+  /** The curriculum remediation item — the same content for everyone. */
+  itemId: string
+  benchmarkCode: string
   title: string
   remediationType: string
   content: string
-  alreadyComplete: boolean
-  /** Mastery Challenge assessment id for the benchmark, if available */
-  reassessmentAssessmentId: string | null
 }
 
 export function RemediationActivity({
-  studentRemediationId,
+  itemId,
+  benchmarkCode,
   title,
   remediationType,
   content,
-  alreadyComplete,
-  reassessmentAssessmentId,
 }: RemediationActivityProps) {
-  const [done, setDone] = useState(alreadyComplete)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { progress, hydrated, update } = useLocalProgress()
+  const [justFinished, setJustFinished] = useState(false)
 
-  async function handleComplete() {
-    setSubmitting(true)
-    setError(null)
-    try {
-      const res = await fetch(`/api/remediation/${studentRemediationId}/complete`, {
-        method: 'POST',
-      })
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
-        throw new Error(data.error ?? 'Could not mark this complete.')
-      }
-      setDone(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not mark this complete.')
-    } finally {
-      setSubmitting(false)
-    }
+  // Whether this Training Mission is assigned or finished is known only to
+  // this device.
+  const mine = progress.remediations.filter((r) => r.itemId === itemId)
+  const done = justFinished || (mine.length > 0 && mine.every((r) => r.completedAt !== null))
+  const error: string | null = null
+  const submitting = false
+
+  function handleComplete() {
+    update((p) => {
+      // Reached by a direct link without an assignment: count it as assigned
+      // and completed so the work is not lost.
+      const assigned = p.remediations.some((r) => r.itemId === itemId && r.completedAt === null)
+        ? p
+        : assignRemediations(p, benchmarkCode, [{ itemId, title }], new Date())
+      return recordStreakActivity(completeRemediation(assigned, itemId, new Date()), new Date())
+    })
+    setJustFinished(true)
+  }
+
+  if (!hydrated) {
+    return <p className="py-12 text-center text-base text-gray-600">Loading…</p>
   }
 
   return (
@@ -99,19 +106,13 @@ export function RemediationActivity({
               Training complete — you&apos;re ready for your Second Chance Challenge.
             </p>
           </div>
-          {reassessmentAssessmentId ? (
-            <Link
-              href={`/student/assessment/${reassessmentAssessmentId}`}
-              className="inline-block rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
-            >
-              Take Second Chance Challenge →
-            </Link>
-          ) : (
-            // No reassessment authored for this benchmark. This branch used to
-            // read "Back to Mission Map", which left a student who had just
-            // finished assigned work with nothing to do.
-            <NextStepHandoff heading="Your next step" secondary="map" />
-          )}
+          <Link
+            href={`/student/mission/${benchmarkCode}`}
+            className="inline-block rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
+          >
+            Take your Second Chance Challenge →
+          </Link>
+          <NextStepHandoff heading="Or do this next" secondary="map" />
         </div>
       )}
     </div>

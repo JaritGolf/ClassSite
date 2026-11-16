@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. Focus Mode and its focus-loss records were removed from the app. The device-management advice (GoGuardian Scenes) still stands on its own. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # Locking Down Chromebooks During Assessments
 
 **Audience:** the classroom teacher and district IT. This document can be handed

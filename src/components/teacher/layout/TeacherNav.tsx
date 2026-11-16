@@ -3,49 +3,28 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
-import { SuggestionBox } from '@/components/ui/SuggestionBox'
 import { SignOutButton } from '@/components/ui/SignOutButton'
 
 const NAV_ITEMS = [
   {
     href: '/teacher/dashboard',
-    label: 'Dashboard',
-    explain: 'Your class overview — mastery, readiness, and alerts at a glance.',
+    label: 'Home',
+    explain: 'Your starting point. This site keeps no student records, so there is no class dashboard.',
   },
   {
-    href: '/teacher/classes',
-    label: 'Classes',
-    explain: 'Your rosters, plus Republic Challenge and Strategist Track settings per class.',
+    href: '/teacher/check-codes',
+    label: 'Check Codes',
+    explain: 'Paste the completion codes students turned in to confirm they are genuine. Nothing is saved.',
+  },
+  {
+    href: '/teacher/lessons',
+    label: 'Lessons',
+    explain: 'Preview each lesson, add your own modules, and arrange what students see.',
   },
   {
     href: '/teacher/benchmarks',
     label: 'Benchmarks',
-    explain: 'Every SS.7.CG standard in the course, grouped by unit, with your class’s mastery rate on each.',
-  },
-  {
-    href: '/teacher/reporting-categories',
-    label: 'Reporting Categories',
-    explain: 'The four EOC blueprint groupings (Republic Pillars) — mastery and readiness rolled up by category.',
-  },
-  {
-    href: '/teacher/eoc-readiness',
-    label: 'EOC Readiness',
-    explain: 'Your class’s estimated exam readiness, overall and by category — a preparation estimate, not a predicted score.',
-  },
-  {
-    href: '/teacher/students',
-    label: 'Students',
-    explain: 'Browse your roster by class, or search for any student to jump straight to their profile.',
-  },
-  {
-    href: '/teacher/decay',
-    label: 'Decay',
-    explain: 'Which mastered benchmarks students are starting to forget, so you can bring the material back before it’s lost.',
-  },
-  {
-    href: '/teacher/calibration',
-    label: 'Calibration',
-    explain: 'Whether students’ confidence ratings match their actual accuracy.',
+    explain: 'Every SS.7.CG standard in the course, grouped by unit, and the switch that opens a mission.',
   },
   {
     href: '/teacher/questions',
@@ -53,24 +32,14 @@ const NAV_ITEMS = [
     explain: 'Every question in the bank, with tagging, reading-load, and approval status.',
   },
   {
-    href: '/teacher/lessons',
-    label: 'Lessons',
-    explain: 'Preview each lesson and control which videos, images, and diagrams your students see.',
-  },
-  {
     href: '/teacher/content',
     label: 'Content',
-    explain: 'Review and approve AI-drafted or teacher-submitted content before it’s shown to students.',
+    explain: 'Review and approve drafted content before it’s shown to students.',
   },
   {
-    href: '/teacher/interventions',
-    label: 'Interventions',
-    explain: 'Students who need attention — off-ramp, decay spikes, overdue remediation, or overconfidence.',
-  },
-  {
-    href: '/teacher/reports',
-    label: 'Reports',
-    explain: 'Daily action plan and whole-roster mastery reports, exportable to CSV or PDF.',
+    href: '/teacher/classes',
+    label: 'Classes',
+    explain: 'Lesson arrangements and Republic Challenge settings per class. Classes have no rosters.',
   },
   {
     href: '/teacher/settings',
@@ -105,13 +74,7 @@ export function TeacherNav() {
           </Link>
         ))}
       </div>
-      {/* Tightened from ml-4/gap-4 to pay back the width the suggestion box takes:
-          the 14-item row needs 1334px and this group's spacing is the only slack
-          available at 1600px. */}
       <div className="ml-1 flex items-center gap-3 shrink-0">
-        {/* mr-3 keeps the icon clear of Sign out — an accidental sign-out while
-            reaching for the suggestion box is a bad trade. */}
-        <SuggestionBox className="mr-3" />
         <SignOutButton className="text-sm text-gray-600 hover:text-gray-900" />
       </div>
     </nav>

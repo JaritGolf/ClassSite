@@ -38,10 +38,10 @@ const originalFlags = new Map<string, boolean>()
 
 beforeAll(async () => {
   const user = await prisma.user.upsert({
-    where: { cleverId: TEACHER_CLEVER_ID },
+    where: { email: TEACHER_CLEVER_ID },
     update: {},
     create: {
-      cleverId: TEACHER_CLEVER_ID,
+      email: TEACHER_CLEVER_ID,
       role: 'TEACHER',
       firstName: 'Ready',
       lastName: 'Probe',
@@ -76,7 +76,7 @@ afterAll(async () => {
     await prisma.benchmark.update({ where: { id }, data: { readyForStudents } })
   }
   await prisma.auditLog.deleteMany({ where: { actorUserId: teacherUserId } })
-  await prisma.user.deleteMany({ where: { cleverId: TEACHER_CLEVER_ID } })
+  await prisma.user.deleteMany({ where: { email: TEACHER_CLEVER_ID } })
   await prisma.$disconnect()
 })
 

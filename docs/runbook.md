@@ -79,28 +79,17 @@ Copy `.env.example` to `.env.local` for local development. Full inventory:
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `DATABASE_URL` | Yes | PostgreSQL connection string (production: managed Neon) |
-| `SESSION_SECRET` | Yes (prod) | Signs JWT session cookies (`openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | Yes (dev) | NextAuth base URL. Production: `https://mycivicsclass.com` — every OAuth callback URL is derived from it |
-| `APP_BASE_URL` | Yes | App base URL. Production: `https://mycivicsclass.com` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string. Holds curriculum and the teacher account only |
+| `SESSION_SECRET` | Yes | Signs the teacher session cookie **and** completion codes and readiness tokens (`openssl rand -base64 32`). Changing it signs the teacher out and makes previously issued completion codes stop verifying |
+| `TEACHER_ALLOWED_EMAILS` | Yes | Comma-separated exact Google addresses that may sign in. **Unset or empty = nobody can sign in.** Addresses, not a domain |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Yes (for teacher sign-in) | Google OAuth. Production redirect: `https://mycivicsclass.com/api/auth/callback/google` |
+| `NEXTAUTH_URL` | Yes | NextAuth base URL. Production: `https://mycivicsclass.com` |
+| `APP_BASE_URL` | Yes | App base URL |
 | `NODE_ENV` | Yes | `development` / `production` |
-| `CLEVER_CLIENT_ID` / `CLEVER_CLIENT_SECRET` / `CLEVER_REDIRECT_URI` | Prod SSO | Clever OAuth (primary). Production redirect: `https://mycivicsclass.com/api/auth/callback/clever` |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Prod fallback | Google OAuth (staff). Production redirect: `https://mycivicsclass.com/api/auth/callback/google` |
-| `FEATURE_L1_GLOSSES` | No | Enables L1 glosses (Phase 16); `"true"` to opt in. Spanish glosses are owner-approved (ADR 0013); Haitian Creole remains a NEEDS_REVIEW sample |
-| `FEATURE_PARENT_PORTAL` | No | Enables parent login (Phase 18); `"true"` only after district identity-policy sign-off (`docs/parent-identity-policy.md`) |
-| `FEATURE_SECURE_ASSESSMENT` | No | Enables Focus Mode on secure assessments (ADR 0020); `"true"` to opt in. Also requires per-class `secureAssessmentMode`. Does **not** lock the device — see `docs/chromebook-lockdown.md` |
-| `FEATURE_EOC_REVIEW` / `FEATURE_LEADERBOARDS` / `FEATURE_AI_DRAFTING` | No | Reserved flags (not yet wired) |
-| `AUDIT_LOG_RETENTION_DAYS` | No | Retention threshold for audit logs; `0`/unset = keep forever (Phase 17) |
-| `VOIDED_ATTEMPT_RETENTION_DAYS` | No | Retention threshold for voided attempts; `0`/unset = keep forever (Phase 17) |
-| `ACTIVITY_SESSION_RETENTION_DAYS` | No | Retention threshold for student activity/session monitoring rows; `0`/unset = keep forever (ADR 0019) |
-| `SUGGESTION_RETENTION_DAYS` | No | Retention threshold for suggestion-box free text; `0`/unset = keep forever. One school year (`365`) suggested (ADR 0024) |
-| `STUDENT_RECORD_RETENTION_DAYS` | No | Days after a student is marked disenrolled before their records are deleted. **Defaults to `90` and is capped at `90`** — the ceiling in Fla. Stat. § 1006.1494(3)(c). Deletes nobody until an admin records a disenrollment (ADR 0024) |
-| `GOOGLE_ALLOWED_DOMAINS` | No | Comma-separated domain allowlist for Google sign-in. Unset = any domain may attempt (still lands INACTIVE). ⚠ Confirm your own admin address matches before setting (ADR 0003, ADR 0024) |
-| `MOCK_AUTH` | Dev only | Enables mock auth; **never** in production |
-| `DEMO_OPEN_LOGIN` | Demo deploy only | Forces the one-click role panel on even when `NODE_ENV=production`. Owner-directed override of rule #8 for the public demo site; safe only while the DB holds demo/seed data. Delete the variable and redeploy to close the site. Do **not** set in `.env.local` |
 
-See `.env.example` for descriptions and defaults, and `docs/data-retention.md` for the
-retention variables.
+There are no feature flags, no retention windows and no demo-login switch any more.
+`MOCK_AUTH`, `DEMO_OPEN_LOGIN`, `CLEVER_*`, `GOOGLE_ALLOWED_DOMAINS`, `FEATURE_*` and
+`*_RETENTION_DAYS` are ignored if still set, and can be deleted from the host.
 
 ---
 
@@ -150,66 +139,33 @@ All 7 items from spec Section 36.1 verified:
 
 ---
 
-## Clever OAuth Setup (Phase 2 scaffold → production wiring in Phase 17)
+## Teacher sign-in (Google)
 
-Clever is the primary SSO provider for students and teachers.
+Students never sign in. Google sign-in exists only for the teacher/admin who
+authors lessons.
 
-### Development / Sandbox
+1. https://console.cloud.google.com → create or select a project
+2. Credentials → OAuth 2.0 Client IDs → Web application
+3. Add the **Authorized redirect URI**: `http://localhost:3000/api/auth/callback/google`
+   (production: `https://mycivicsclass.com/api/auth/callback/google`)
+4. Copy the Client ID and Secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+5. Put the teacher's exact address in `TEACHER_ALLOWED_EMAILS`
 
-1. Create a developer account at https://dev.clever.com
-2. Create a new application
-3. Set **Redirect URI** to: `http://localhost:3000/api/auth/callback/clever`
-4. Under **OAuth Scopes**, enable **`read:user_id` only** — see `docs/oauth-scopes.md`. Do not
-   enable `read:students` / `read:teachers`: the app never calls those endpoints, and unused
-   scope is a data-minimisation finding under Fla. Stat. § 1006.1494(3)(a).
-5. Copy **Client ID** → `CLEVER_CLIENT_ID` in `.env.local`
-6. Copy **Client Secret** → `CLEVER_CLIENT_SECRET` in `.env.local`
+An address on the list is created as an active TEACHER on first sign-in, with
+one class to arrange lessons for. An address not on the list is refused before
+anything is written. To make an account an admin:
+`npm run admin:bootstrap -- --email you@example.com --apply`.
 
-### Production (Palm Beach County — Phase 17)
-
-1. Submit a Clever district app request through the district's Clever admin
-2. Update redirect URI to production domain
-3. Confirm district-allowed scopes with district IT
-4. Store credentials in production secrets manager (never in code)
-
-### Known Clever Limitations
-
-- Clever `/v3.0/me` does not return name or email — only `{ id, type, district }`
-- Name/email require a second call to `/v3.0/students/{id}` or `/v3.0/teachers/{id}`
-- **TODO Phase 17**: wire the second API call in `src/lib/auth/options.ts` `upsertUserFromSignIn`
-- Clever does **not** support PKCE — `checks: ['state']` in `src/lib/auth/providers/clever.ts` is mandatory
-- Parent accounts are not in Clever's user model — parent login is Phase 18
+There is no demo or mock login. For local testing without Google, the e2e setup
+(`tests/e2e/global-setup.ts`) mints a session cookie from the local
+`SESSION_SECRET`.
 
 ---
 
-## Google OAuth Setup (Phase 2 scaffold)
+## The no-student-data migration
 
-Google is the fallback SSO for staff/teachers without Clever.
-
-1. Go to https://console.cloud.google.com → Create or select a project
-2. Enable the **Google+ API** (or Google Identity)
-3. Credentials → OAuth 2.0 Client IDs → Web application
-4. Add **Authorized redirect URI**: `http://localhost:3000/api/auth/callback/google`
-5. Copy **Client ID** → `GOOGLE_CLIENT_ID`
-6. Copy **Client Secret** → `GOOGLE_CLIENT_SECRET`
-
-### Role Policy
-
-New Google sign-ins create users with `role: TEACHER, status: INACTIVE`.
-An admin must activate the user in `/admin/users` before they can sign in.
-Students must use Clever — Google login is for staff only.
-
----
-
-## Mock Auth (Dev, and the public demo)
-
-With `MOCK_AUTH=true` in `.env.local`, the login page shows a panel with one-click
-sign-in buttons for STUDENT, TEACHER, PARENT, ADMIN roles.
-
-`MOCK_AUTH` alone is **unconditionally disabled** in `NODE_ENV=production` regardless
-of its value. Never set `MOCK_AUTH=true` in staging or production.
-
-The one exception is `DEMO_OPEN_LOGIN=true`, the public-demo escape hatch — see
-`docs/deployment-vercel.md` § Public demo mode. Both paths funnel through the single
-predicate `isMockAuthEnabled()` in `src/lib/auth/demo-mode.ts`, which is the only place
-the rule is expressed.
+`prisma/migrations/20261116120000_no_student_data` drops every student-linked
+table and deletes student and parent accounts. It is **destructive and has no
+down path**. It has been run on local and test databases only. Before running
+it anywhere else, take a backup and decide what, if anything, must be returned
+to families first.

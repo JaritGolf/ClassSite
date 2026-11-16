@@ -22,8 +22,8 @@ const NUM_QUESTIONS = 3
 beforeAll(async () => {
   // Teacher
   const teacherUser = await prisma.user.upsert({
-    where: { cleverId: T_CLEVERID },
-    create: { cleverId: T_CLEVERID, email: `${T_CLEVERID}@test.invalid`, firstName: 'BulkT', lastName: 'Test', role: 'TEACHER' },
+    where: { email: T_CLEVERID },
+    create: { email: T_CLEVERID, firstName: 'BulkT', lastName: 'Test', role: 'TEACHER' },
     update: {},
     select: { id: true },
   })
@@ -66,7 +66,7 @@ afterAll(async () => {
   await prisma.question.deleteMany({ where: { id: { in: questionIds } } })
   await prisma.auditLog.deleteMany({ where: { actorUserId: teacherUserId, action: 'BULK_APPROVE_CONTENT' } })
   await prisma.teacher.deleteMany({ where: { userId: teacherUserId } })
-  await prisma.user.deleteMany({ where: { cleverId: T_CLEVERID } })
+  await prisma.user.deleteMany({ where: { email: T_CLEVERID } })
   await prisma.$disconnect()
 })
 

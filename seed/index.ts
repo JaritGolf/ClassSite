@@ -52,7 +52,7 @@ const prisma = new PrismaClient()
  */
 const STAGES: { name: string; label: string; run: () => Promise<unknown> }[] = [
   { name: 'reporting-categories', label: 'Reporting categories', run: () => seedReportingCategories(prisma) },
-  { name: 'benchmarks', label: 'Benchmarks, units, accommodations', run: () => seedBenchmarks(prisma) },
+  { name: 'benchmarks', label: 'Benchmarks and units', run: () => seedBenchmarks(prisma) },
   { name: 'misconceptions', label: 'Misconception inventory', run: () => seedMisconceptions(prisma) },
   { name: 'vocabulary', label: 'Vocabulary', run: () => seedVocabulary(prisma) },
   { name: 'translations', label: 'L1 term translations (Spanish all tier-3 + Haitian Creole sample)', run: () => seedTermTranslations(prisma) },
@@ -62,7 +62,7 @@ const STAGES: { name: string; label: string; run: () => Promise<unknown> }[] = [
   { name: 'questions-unit1-interim', label: 'Unit 1 interim banks (official 1.1/1.2 — ADR 0017)', run: () => seedUnit1Interim(prisma) },
   { name: 'questions-unit2', label: 'Unit 2 question bank (Phase 15, Tier C / NEEDS_REVIEW)', run: () => seedUnit2Questions(prisma) },
   { name: 'remediation', label: 'Remediation items (≥1 per skill_tag — derived from all questions)', run: () => seedRemediationItems(prisma) },
-  { name: 'stimuli', label: 'Stimuli — Unit 1 reading-load variants + accommodations', run: () => seedStimuliUnit1(prisma) },
+  { name: 'stimuli', label: 'Stimuli — Unit 1 reading-load variants', run: () => seedStimuliUnit1(prisma) },
   { name: 'stimuli-visual', label: 'Visual stimuli (Canva TIMELINE/CHART/FLOWCHART pilot — ADR 0018)', run: () => seedVisualStimuli(prisma) },
   { name: 'badges', label: 'Badges', run: () => seedBadges(prisma) },
   { name: 'assessments', label: 'Mission assessments (pre-check, readiness, vocab, mastery, region reviews)', run: () => seedMissionAssessments(prisma) },

@@ -1,102 +1,75 @@
-import { chromium } from '@playwright/test'
 import { PrismaClient } from '@prisma/client'
+import { encode } from 'next-auth/jwt'
 import { mkdirSync, writeFileSync } from 'fs'
 
-const BASE = 'http://localhost:3000'
+const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3000'
 const AUTH_DIR = 'tests/e2e/.auth'
 
 /**
- * Sign in as a mock role and persist the browser storage state.
- * The credentials provider id is 'mock-credentials' (src/lib/auth/options.ts),
- * so the NextAuth callback is /callback/mock-credentials.
+ * e2e global setup.
+ *
+ * STUDENT tests need nothing from here: the student area is public, so those
+ * tests run with an empty browser — no cookie, no stored state.
+ *
+ * STAFF tests need a session. There is no demo login to click, so this mints
+ * the same encrypted session cookie a real Google sign-in would produce, for
+ * two local test accounts, using the local SESSION_SECRET. It only works
+ * against a database and secret you control.
  */
-async function signInAndSave(
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN',
+async function saveStaffSession(
+  prisma: PrismaClient,
+  role: 'TEACHER' | 'ADMIN',
   file: string
 ): Promise<void> {
-  const browser = await chromium.launch()
-  const context = await browser.newContext()
-  const page = await context.newPage()
-
-  const csrfRes = await page.request.get(`${BASE}/api/auth/csrf`)
-  const { csrfToken } = await csrfRes.json()
-
-  await page.request.post(`${BASE}/api/auth/callback/mock-credentials`, {
-    form: {
-      role,
-      csrfToken,
-      callbackUrl: `${BASE}/`,
-      json: 'true',
-    },
-  })
-
-  await context.storageState({ path: `${AUTH_DIR}/${file}` })
-  await browser.close()
-}
-
-export default async function globalSetup() {
-  mkdirSync(AUTH_DIR, { recursive: true })
-
-  const prisma = new PrismaClient({
-    datasources: { db: { url: process.env.DATABASE_URL } },
-  })
-
-  // Sign in all three roles (each sign-in upserts the mock user).
-  await signInAndSave('STUDENT', 'student.json')
-  await signInAndSave('TEACHER', 'teacher.json')
-  await signInAndSave('ADMIN', 'admin.json')
-
-  // Ensure DB rows so data-bearing pages render (student profile, reports,
-  // parent-summary). Enroll the mock student into a class owned by the mock
-  // teacher, and expose the student id to the staff a11y test via a fixture.
-  const studentUser = await prisma.user.findUnique({
-    where: { cleverId: 'mock-student-001' },
+  const email = `e2e-${role.toLowerCase()}@example.test`
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { role, status: 'ACTIVE' },
+    create: { email, firstName: 'E2E', lastName: role, role, status: 'ACTIVE' },
     select: { id: true },
   })
-  const teacherUser = await prisma.user.findUnique({
-    where: { cleverId: 'mock-teacher-001' },
-    select: { id: true },
-  })
-
-  let teacherStudentId = ''
-
-  if (studentUser) {
-    const student = await prisma.student.upsert({
-      where: { userId: studentUser.id },
+  if (role === 'TEACHER') {
+    const teacher = await prisma.teacher.upsert({
+      where: { userId: user.id },
       update: {},
-      create: { userId: studentUser.id, gradeLevel: 7 },
+      create: { userId: user.id },
       select: { id: true },
     })
-    teacherStudentId = student.id
-
-    if (teacherUser) {
-      const teacher = await prisma.teacher.upsert({
-        where: { userId: teacherUser.id },
-        update: {},
-        create: { userId: teacherUser.id },
-        select: { id: true },
-      })
-
-      let cls = await prisma.class.findFirst({
-        where: { teacherId: teacher.id, name: 'E2E A11y Class' },
-        select: { id: true },
-      })
-      if (!cls) {
-        cls = await prisma.class.create({
-          data: { teacherId: teacher.id, name: 'E2E A11y Class', schoolYear: '2025-2026' },
-          select: { id: true },
-        })
-      }
-
-      await prisma.classEnrollment.upsert({
-        where: { classId_studentId: { classId: cls.id, studentId: student.id } },
-        update: {},
-        create: { classId: cls.id, studentId: student.id, status: 'ACTIVE' },
+    if ((await prisma.class.count({ where: { teacherId: teacher.id } })) === 0) {
+      await prisma.class.create({
+        data: { teacherId: teacher.id, name: 'E2E Class', schoolYear: '2026-2027' },
       })
     }
   }
 
-  writeFileSync(`${AUTH_DIR}/fixtures.json`, JSON.stringify({ teacherStudentId }))
+  const secret = process.env.SESSION_SECRET
+  if (!secret) throw new Error('SESSION_SECRET must be set to run the staff e2e tests')
+  const token = await encode({ token: { userId: user.id, role, email }, secret })
 
+  writeFileSync(
+    `${AUTH_DIR}/${file}`,
+    JSON.stringify({
+      cookies: [
+        {
+          name: 'next-auth.session-token',
+          value: token,
+          domain: new URL(BASE).hostname,
+          path: '/',
+          expires: -1,
+          httpOnly: true,
+          secure: false,
+          sameSite: 'Lax',
+        },
+      ],
+      origins: [],
+    })
+  )
+}
+
+export default async function globalSetup() {
+  mkdirSync(AUTH_DIR, { recursive: true })
+  const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } })
+  await saveStaffSession(prisma, 'TEACHER', 'teacher.json')
+  await saveStaffSession(prisma, 'ADMIN', 'admin.json')
   await prisma.$disconnect()
 }

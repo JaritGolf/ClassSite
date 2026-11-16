@@ -1,141 +1,146 @@
-# My Civics Class — Privacy Review (Phase 17)
+# My Civics Class — What the App Holds and Does Not Hold
 
-> Audit §36.18 item 3. Maps spec §25 (Data, Privacy, and District Readiness) to the
-> implementation. This document is the basis for district privacy sign-off before any
-> real student account is used. **Owner must obtain district review (spec §37) before
-> production.**
+This replaces the earlier privacy review, which described a version of the app
+that collected student data. This version does not. The statements below are
+enforced by code and by tests that fail if they stop being true
+(`tests/unit/guards/no-student-data.test.ts`).
 
-## 1. Data we store (spec §25.1)
+This is a description of the software. It is not legal advice, and whether a
+privacy agreement is needed is the district's decision to make.
 
-| Data category | Stored? | Where | Notes |
-|---|---|---|---|
-| Student Clever/Google ID | Yes | `User.cleverId` / `User.googleId` | Account link only |
-| Student name | Yes | `User.firstName/lastName` | Roster display |
-| Class / period / teacher | Yes | `Class`, `ClassEnrollment`, `Teacher` | Dashboards |
-| Assessment attempts | Yes | `AssessmentAttempt` | Mastery/progression |
-| Item responses | Yes | `AttemptResponse` | Remediation diagnostics |
-| Confidence ratings | Yes | `AttemptResponse.confidence` | Calibration |
-| Spaced retrieval state | Yes | `SpacedReviewState` | Per (student, benchmark) |
-| EOC readiness metrics | Yes | derived / `EocReadinessSnapshot` | Computed |
-| Actual EOC scores | Conditional | `EocActualScore` | **Admin only, consent-gated** (`consentAcknowledged`) |
-| Parent/guardian data | If portal enabled | `Parent`, `ParentStudentLink` | Auth + linking only (Phase 18) |
-| Activity / time-on-platform | Yes | `StudentActivitySession` | When a student was working, for how long, and which app area. **Bucketed area names only — no URLs, no page-by-page trail.** Teacher-visible, roster-scoped. See ADR 0019 |
-| Student login events | Yes | `AuditLog` (`STUDENT_LOGIN`) | Genuine sign-ins only (JWT sessions mean this is not one row per visit) |
-| Health/behavior/sensitive notes | **No** | — | Not modeled |
-| External gradebook data | **No** | — | Internal only |
-| Assessment focus events | If Focus Mode on | `AttemptIntegrityEvent` | Only during a secure assessment, only for classes that opted in. Records **that** the page lost focus and roughly for how long — **never where the student went**: no URL, no tab title, no screenshot, no keystrokes. Teacher-visible, roster-scoped, deleted with the attempt. See ADR 0020 |
-| Keystroke / screen / webcam monitoring | **No** | — | Not modeled. Activity tracking records elapsed time and app area only; Focus Mode records that focus was lost, never where it went |
+## Summary
 
-## 2. Privacy & security controls (spec §25.2)
+- Students have **no accounts**. There is no sign-in, class code, nickname or
+  student number. A student opens the site and starts.
+- The server **stores nothing about any student**. The database has no student
+  table, no coded or pseudonymous student rows, no attempts, no scores, no
+  progress and no settings for a student.
+- A student's progress is kept **in that student's own browser**, and in a file
+  the student can choose to save. The site never uploads it.
+- The only account is the **teacher's**, used to write and arrange lessons.
 
-- **Role-based access control.** `requireAuth(allowedRoles)` (`src/lib/auth`) gates every
-  page/route; admin pages gated at `src/app/admin/layout.tsx`, teacher data roster-scoped via
-  `src/lib/teacher-roster` (`assertStudentInTeacherClass`, `assertClassOwnedByTeacher`).
-- **Least privilege.** Teachers see only their roster; parents (Phase 18) see only linked
-  students and an allowlisted field set (`src/lib/parent-summary`).
-- **Audit logging of sensitive actions.** `AuditLog` records overrides, content approval,
-  accommodations, EOC score import, calibration approval, report exports
-  (`REPORT_EXPORTED`), audit-log export (`AUDIT_LOG_EXPORTED`), retention purges
-  (`RETENTION_PURGE`), and logins (`PARENT_LOGIN`, `STUDENT_LOGIN`). Queryable + exportable
-  at `/admin/audit`.
-- **Answer keys never exposed.** Question option `isCorrect`/`feedback` are deliberately
-  omitted from student-facing assessment payloads (`src/lib/assessment/question-fetcher.ts`);
-  report exports are column-allowlisted and never include item-level/distractor data
-  (enforced by `tests/integration/audit17/02`).
-- **No third-party analytics/telemetry on student data** (non-negotiable rule #9). No GA,
-  Segment, Mixpanel, Hotjar, FullStory, Sentry-browser, etc. Enforced by a static guard test
-  (`tests/integration/audit17/04`).
-- **No PII in URLs/query strings.** Exports deliver data in the response body with a
-  `Content-Disposition` filename; audit-log filters use non-PII params only.
-- **Encryption in transit (TLS 1.2+).** Provided by the hosting/ingress layer — see
-  `docs/hosting-plan.md`. **Encryption at rest** is a hosting/database responsibility — see
-  hosting plan.
-- **Secure sessions.** JWT cookies signed with `SESSION_SECRET` (ADR 0002), expiring **8 hours**
-  after issue (one school day — see the rationale comment on `authOptions.session`). Note the
-  honest limit of a stateless session: there is no server-side revocation, so a token copied off
-  a device stays valid until it expires.
-- **Mock auth in production — read this carefully; the earlier one-line version of this bullet
-  understated it.** There are TWO ways the one-click role login can be on, and only the first is
-  closed by `NODE_ENV`:
-  - `MOCK_AUTH=true` is **hard-disabled** when `NODE_ENV=production`.
-  - `DEMO_OPEN_LOGIN=true` is checked **first and alone** and *does* enable one-click
-    Student/Teacher/Parent/Admin login **in production**. It is a deliberate, owner-directed
-    override of non-negotiable rule #8 for the public evaluation site, and is safe **only** while
-    the database holds demo/seed data exclusively, because every visitor can then enter as ADMIN.
-  Single source of truth: `isMockAuthEnabled()` in `src/lib/auth/demo-mode.ts`. **This variable
-  must be deleted (and the app redeployed) before any real student record exists** — item 1 of the
-  go-live checklist in `docs/deployment-vercel.md`, and disclosed to the district in
-  `docs/district-approval-packet.md` §1.3 / §9.1.
-- **HTTP security headers** are set app-side in `next.config.mjs`: CSP, HSTS,
-  `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, and a
-  `Permissions-Policy` denying camera, microphone, geolocation, and USB. The CSP's `connect-src
-  'self'` is a browser-enforced backstop for rule #9 — verified live that an outbound fetch to an
-  external host, an external CDN script, and a non-sanctioned iframe are all blocked while the
-  `youtube-nocookie` lesson-video facade still loads. The CSP does permit inline script/style
-  (framework-injected); nonce-based CSP is scheduled — see packet §9.10.
-- **Activity monitoring is bounded and first-party** (ADR 0019). The heartbeat posts to this
-  app's own route only — no third-party endpoint is involved (rule #9 intact). It records
-  elapsed time and a **bucketed app area** (`mission`, `drill`, …); raw pathnames are never
-  transmitted or stored, so there is no page-by-page browsing trail. The student is resolved
-  server-side from the session cookie, never from a request parameter, so no student can log
-  activity as another. Reads are roster-scoped inside the domain layer
-  (`getClassSessionActivity` / `getLivePresence` both call `assertClassOwnedByTeacher`).
-  Nothing about it is visible to the student — no timer, no countdown, no idle warning.
-- **Activity data is NOT shared with parents.** `ParentSummaryVM` remains a strict allowlist
-  (enforced by `tests/unit/parent-summary/fields-allowlist.test.ts`); time-on-task and session
-  history are excluded pending an owner/district policy decision against spec §23.
+## What the database holds
 
-## 3. Data subject rights / retention
+27 tables, in three groups.
 
-- **Export.** Per-student, per-class, and EOC-readiness CSV exports (`/teacher/reports`,
-  student profile) plus admin audit export. PDF via browser print (ADR 0008).
-- **Retention.** Configurable purge of aged audit logs, voided attempts, and activity-session
-  monitoring rows — see `docs/data-retention.md`. Default retains everything (conservative).
-  Activity sessions are monitoring data rather than academic records, so a district may set a
-  shorter window (`ACTIVITY_SESSION_RETENTION_DAYS`) without affecting any student work.
-- **Deletion.** Account deletion cascades from `User` (Prisma `onDelete: Cascade` on
-  Student/Teacher/Parent). District-initiated bulk deletion is operational — see runbook.
+| Group | Contents |
+|---|---|
+| Curriculum | Units, benchmarks, lessons and lesson steps, vocabulary terms and translations, questions and answer options, reading passages, assessments (as lists of questions), remediation activities, misconceptions, badge definitions, resources, teacher-uploaded lesson images |
+| Teacher account | The teacher's name, email address and Google account id; an active/inactive status; a role (teacher or admin) |
+| Teacher's working records | Classes (a label for a lesson arrangement — a class has no roster), per-class lesson arrangements, and an audit log of the teacher's own actions (for example "approved a question") |
 
-## 4. Compliance references (spec §References)
+There is nothing else. The migration that removed the student tables is
+`prisma/migrations/20261116120000_no_student_data`.
 
-- FERPA — https://studentprivacy.ed.gov/ferpa
-- Clever student-data privacy — https://support.clever.com/hc/s/articles/202393058
+## What a student's browser sends to the server
 
-## 5. Outstanding for district sign-off (spec §37)
+To grade work, the browser sends the server only what is needed to grade it:
 
-- [ ] District privacy/vendor agreement executed.
-- [ ] Hosting & at-rest encryption approved (`docs/hosting-plan.md` §6).
-- [ ] Clever/Google OAuth scopes approved (`docs/oauth-scopes.md`).
-- [ ] Retention windows set per district policy (`AUDIT_LOG_RETENTION_DAYS`, etc.).
-- [ ] Parent identity-verification policy confirmed before Phase 18.
-- [ ] **Sub-processor agreements with Vercel and Neon** — required by Fla. Stat.
-      § 1006.1494(2)(d)6, which obliges an operator to contractually bar a third party from any
-      use beyond the contracted service, bar re-disclosure, and require reasonable security.
-      Standard provider terms are not a substitute. **Not executed.**
-- [ ] **Technology Clearinghouse submission** (PBSD 2199, and PBSD 2220 if required) — prepared
-      and deliberately unfiled. See `docs/tch-submission-mapping.md`.
+- which questions were answered and which answer option was chosen
+- for Mastery Challenges and the Republic Challenge, a three-level confidence
+  rating per answer ("Not sure" / "Pretty sure" / "Very sure")
+- for practice and review, which benchmarks are due and the ids of questions
+  already seen or missed on that device, so the server can pick a fresh one
+- a signed token proving a Readiness Check was passed (it names a benchmark and
+  a date, not a person)
 
-## 6. Florida operator obligations (Fla. Stat. § 1006.1494)
+The server answers with a score and feedback, and **keeps none of it**. These
+routes read no session, set no cookie and write nothing to the database.
 
-This application meets the statutory definition of an **operator** — an online service "used
-primarily for K-12 school purposes" — so § 1006.1494 places duties on it directly, independent of
-any district agreement. A full duty-by-duty mapping is in
-[`docs/florida-operator-compliance.md`](./florida-operator-compliance.md). The two additions made
-2026-08-07:
+None of those requests contains a name, email, student number, class, or any
+identifier for the student or the device. The request schemas have no field
+that could carry one, and unknown fields are discarded before use.
 
-- **§ 1006.1494(3)(c) deletion.** Covered information must be deleted no later than 90 days after
-  a student is no longer enrolled, upon district notice. An administrator records the notice
-  (`Student.deactivatedAt`) and `purgeDisenrolledStudents()` removes every record belonging to
-  that student, then the student and user rows, writing a `STUDENT_RECORDS_PURGED` audit entry
-  that deliberately does not name the students removed. `STUDENT_RECORD_RETENTION_DAYS` defaults
-  to 90 and cannot be configured higher.
-- **§ 1006.1494(3)(a) minimisation.** Clever scope narrowed to `read:user_id`; the previously
-  requested `read:students` / `read:teachers` were never exercised by any code path. No student
-  name or email now reaches the database from Clever.
+## What stays on the student's device
 
-**§ 1002.222(1)(a)** separately bars collecting a student's political affiliation, voting
-history, or religious affiliation. No such field exists. Note the distinction a reviewer needs:
-this application *teaches about* religion and political parties as SS.7.CG subject matter, which
-a keyword scan will surface — that is curriculum, not collection. The only free-text student
-input is the suggestion box, which now carries a reminder not to include personal details and is
-bounded by `SUGGESTION_RETENTION_DAYS`.
+Saved in the browser's local storage, under one key:
+
+- mission progress and mastery status, scores and dates
+- completion codes earned
+- spaced-review schedule, streak, badges earned
+- which display options are switched on (read aloud, one sentence per line,
+  high contrast, large text, extra time, less motion) and the glossary language
+  chosen (English only, Spanish, or Haitian Creole)
+
+It contains no name. A student can save it to a file and load it on another
+device; the file has the same contents and no name, and the site does not
+receive it. Clearing the browser's site data, or using "Erase progress on this
+device" in Settings, deletes it.
+
+The display options are choices any student can make. Nobody grants them, they
+carry no label such as ELL or ESE, and the server is never told which are on.
+The server sends every approved glossary translation and the device shows the
+one the student picked.
+
+## Completion codes
+
+When a student passes a Mastery Challenge the server returns a short code, for
+example `MCC-1.1-100-20260914-7K2M9XD4AQ`. It encodes the benchmark, the score
+and the date, and is signed so it cannot be typed up by hand. The student
+pastes it into the Google Classroom assignment. The teacher pastes codes into
+the "Check codes" page, which confirms each is genuine.
+
+- A code does not say who earned it. Two students who master the same benchmark
+  with the same score on the same day receive the same code.
+- The server stores no codes. Checking a code recomputes its signature.
+- The check page sends only the codes. If a teacher pastes a column that also
+  contains names, the names are stripped out in the teacher's browser and are
+  not sent.
+- The link between a student and a code exists only in Google Classroom.
+
+## Things a reviewer should know that are not zero
+
+These are stated plainly so that nobody is surprised later.
+
+1. **Web server logs.** Like every website, the hosting provider records
+   routine request logs: time, the address of the page or route requested, and
+   the visitor's IP address. The application does not read, store or use IP
+   addresses or browser details, and the page addresses contain benchmark codes
+   (such as `SS.7.CG.1.1`), not anything about a student. How long the host
+   keeps those logs is set by the host, not by this app.
+2. **Lesson videos.** A lesson may include a video hosted by YouTube's
+   privacy-enhanced player. Nothing loads from YouTube until a student clicks
+   the video. When they do, their browser contacts YouTube directly. No other
+   outside service is contacted: there is no analytics, advertising or tracking
+   code, and the browser is instructed to refuse connections to other sites.
+3. **The teacher's own content.** Lesson text, uploaded images and substitute
+   notes are written by the teacher and stored. The teacher must not put a
+   student's name or picture in them.
+4. **The device is the record.** Anyone using the same browser profile sees the
+   progress saved there. On a district Chromebook each student signs in to
+   their own profile, so progress is separate. On a shared or guest device,
+   use "Erase progress on this device" when finished.
+5. **Not yet applied to the live site.** This version exists on the
+   `no-student-data` branch. The removal of student tables has been run on
+   local and test databases only. Until it is deployed and the migration is run
+   on the production database, the live site still holds its earlier (demo)
+   data.
+
+## What this design gives up
+
+- The teacher cannot see a student's progress, scores or answers in the app.
+  There is no roster, gradebook, report, or parent view.
+- The site cannot stop a student from retaking an assessment, and it cannot
+  tell whether a completion code was earned by the student who turned it in.
+- If a device is wiped and the student did not save a file, that progress is
+  gone.
+- Per-student supports cannot be assigned by a teacher; every option is
+  available to every student to switch on.
+
+## How it is kept true
+
+`tests/unit/guards/no-student-data.test.ts` runs with every test run and fails
+if:
+
+- a model or field linked to a student appears in the database schema
+- a student-facing route reads a session, touches a cookie, or writes to the
+  database — checked through every file the route imports
+- a student page reads a session or sets a cookie
+- a student request schema gains a field that could identify someone
+- any removed feature (parent portal, rosters, accommodations, activity
+  tracking, suggestion box, score import) reappears
+
+`tests/integration/stateless-assessment.test.ts` and
+`tests/integration/stateless-modes.test.ts` count the rows in every table
+before and after delivering and grading assessments, and require the counts to
+be identical.

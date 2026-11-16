@@ -1,127 +1,76 @@
 /**
  * Unit Tests: Route Guard — checkRouteAccess
  *
- * Tests the pure role-check function used by src/middleware.ts.
- * No mocking needed — checkRouteAccess has no external dependencies.
- *
- * Covers all Audit 2 role-blocking scenarios:
- *   ✓ Unauthenticated access to unprotected routes → allow
- *   ✓ Unauthenticated access to protected routes → redirect-login
- *   ✓ STUDENT → /student/* → allow
- *   ✓ STUDENT → /teacher/* → redirect-unauthorized
- *   ✓ TEACHER → /student/* → redirect-unauthorized
- *   ✓ ADMIN → all routes → allow (super-access)
+ * The pure role-check used by src/middleware.ts. The student area is public
+ * (students have no accounts), so the guard must never ask a student request
+ * to sign in.
  */
 
-import { checkRouteAccess } from '@/lib/auth/route-guard'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { checkRouteAccess, ROLE_ROUTES } from '@/lib/auth/route-guard'
+
+describe('checkRouteAccess — the student area is public', () => {
+  it('allows /student/* with no session at all', () => {
+    expect(checkRouteAccess('/student/dashboard', null)).toBe('allow')
+    expect(checkRouteAccess('/student/map', undefined)).toBe('allow')
+    expect(checkRouteAccess('/student/mission/SS.7.CG.1.1', null)).toBe('allow')
+  })
+
+  it('has no /student or /parent entry in the protected-route table', () => {
+    expect(Object.keys(ROLE_ROUTES).sort()).toEqual(['/admin', '/teacher'])
+  })
+
+  it('the middleware matcher does not include /student, so it never runs there', () => {
+    const src = readFileSync(join(__dirname, '../../../src/middleware.ts'), 'utf8')
+    const matcher = src.slice(src.indexOf('matcher:'))
+    expect(matcher).not.toMatch(/\/student/)
+    expect(matcher).not.toMatch(/\/parent/)
+    expect(matcher).toMatch(/\/teacher\/:path\*/)
+    expect(matcher).toMatch(/\/admin\/:path\*/)
+  })
+})
 
 describe('checkRouteAccess — unauthenticated', () => {
-  it('allows unauthenticated access to unprotected routes', () => {
+  it('allows unprotected routes', () => {
     expect(checkRouteAccess('/', null)).toBe('allow')
     expect(checkRouteAccess('/login', null)).toBe('allow')
     expect(checkRouteAccess('/api/health', null)).toBe('allow')
     expect(checkRouteAccess('/unauthorized', null)).toBe('allow')
   })
 
-  it('blocks unauthenticated access to /student/*', () => {
-    expect(checkRouteAccess('/student/dashboard', null)).toBe('redirect-login')
-    expect(checkRouteAccess('/student/missions/SS.7.CG.1.1', null)).toBe('redirect-login')
-  })
-
-  it('blocks unauthenticated access to /teacher/*', () => {
+  it('sends /teacher/* and /admin/* to the login page', () => {
     expect(checkRouteAccess('/teacher/dashboard', null)).toBe('redirect-login')
-  })
-
-  it('blocks unauthenticated access to /parent/*', () => {
-    expect(checkRouteAccess('/parent/dashboard', null)).toBe('redirect-login')
-  })
-
-  it('blocks unauthenticated access to /admin/*', () => {
-    expect(checkRouteAccess('/admin/users', null)).toBe('redirect-login')
+    expect(checkRouteAccess('/teacher', null)).toBe('redirect-login')
+    expect(checkRouteAccess('/admin/lessons', null)).toBe('redirect-login')
   })
 })
 
-describe('checkRouteAccess — STUDENT role', () => {
-  it('allows STUDENT to access /student/*', () => {
-    expect(checkRouteAccess('/student/dashboard', 'STUDENT')).toBe('allow')
-    expect(checkRouteAccess('/student/missions/SS.7.CG.1.1', 'STUDENT')).toBe('allow')
-    expect(checkRouteAccess('/student/badges', 'STUDENT')).toBe('allow')
-  })
-
-  it('blocks STUDENT from /teacher/*', () => {
-    expect(checkRouteAccess('/teacher/dashboard', 'STUDENT')).toBe('redirect-unauthorized')
-    expect(checkRouteAccess('/teacher/students/123', 'STUDENT')).toBe('redirect-unauthorized')
-  })
-
-  it('blocks STUDENT from /parent/*', () => {
-    expect(checkRouteAccess('/parent/dashboard', 'STUDENT')).toBe('redirect-unauthorized')
-  })
-
-  it('blocks STUDENT from /admin/*', () => {
-    expect(checkRouteAccess('/admin/users', 'STUDENT')).toBe('redirect-unauthorized')
-  })
-
-  it('allows STUDENT access to unprotected routes', () => {
-    expect(checkRouteAccess('/', 'STUDENT')).toBe('allow')
-    expect(checkRouteAccess('/login', 'STUDENT')).toBe('allow')
-    expect(checkRouteAccess('/api/health', 'STUDENT')).toBe('allow')
-  })
-})
-
-describe('checkRouteAccess — TEACHER role', () => {
-  it('allows TEACHER to access /teacher/*', () => {
+describe('checkRouteAccess — TEACHER', () => {
+  it('allows /teacher/*', () => {
     expect(checkRouteAccess('/teacher/dashboard', 'TEACHER')).toBe('allow')
-    expect(checkRouteAccess('/teacher/classes/1', 'TEACHER')).toBe('allow')
+    expect(checkRouteAccess('/teacher/lessons/SS.7.CG.1.1/edit', 'TEACHER')).toBe('allow')
   })
 
-  it('blocks TEACHER from /student/*', () => {
-    expect(checkRouteAccess('/student/dashboard', 'TEACHER')).toBe('redirect-unauthorized')
-  })
-
-  it('blocks TEACHER from /parent/*', () => {
-    expect(checkRouteAccess('/parent/dashboard', 'TEACHER')).toBe('redirect-unauthorized')
-  })
-
-  it('blocks TEACHER from /admin/*', () => {
-    expect(checkRouteAccess('/admin/users', 'TEACHER')).toBe('redirect-unauthorized')
+  it('blocks /admin/*', () => {
+    expect(checkRouteAccess('/admin/lessons', 'TEACHER')).toBe('redirect-unauthorized')
   })
 })
 
-describe('checkRouteAccess — PARENT role', () => {
-  it('allows PARENT to access /parent/*', () => {
-    expect(checkRouteAccess('/parent/dashboard', 'PARENT')).toBe('allow')
-  })
-
-  it('blocks PARENT from /student/*', () => {
-    expect(checkRouteAccess('/student/dashboard', 'PARENT')).toBe('redirect-unauthorized')
-  })
-
-  it('blocks PARENT from /teacher/*', () => {
-    expect(checkRouteAccess('/teacher/dashboard', 'PARENT')).toBe('redirect-unauthorized')
-  })
-})
-
-describe('checkRouteAccess — ADMIN super-access', () => {
-  it('allows ADMIN to access /admin/*', () => {
-    expect(checkRouteAccess('/admin/users', 'ADMIN')).toBe('allow')
-    expect(checkRouteAccess('/admin/curriculum', 'ADMIN')).toBe('allow')
-  })
-
-  it('allows ADMIN to access /student/* (super-access)', () => {
-    expect(checkRouteAccess('/student/dashboard', 'ADMIN')).toBe('allow')
-    expect(checkRouteAccess('/student/missions/SS.7.CG.1.1', 'ADMIN')).toBe('allow')
-  })
-
-  it('allows ADMIN to access /teacher/* (super-access)', () => {
+describe('checkRouteAccess — ADMIN', () => {
+  it('allows every protected route', () => {
     expect(checkRouteAccess('/teacher/dashboard', 'ADMIN')).toBe('allow')
+    expect(checkRouteAccess('/admin/lessons', 'ADMIN')).toBe('allow')
+  })
+})
+
+describe('checkRouteAccess — roles that no longer exist', () => {
+  it('a stale STUDENT or PARENT token gets no staff access', () => {
+    expect(checkRouteAccess('/teacher/dashboard', 'STUDENT')).toBe('redirect-unauthorized')
+    expect(checkRouteAccess('/admin/lessons', 'PARENT')).toBe('redirect-unauthorized')
   })
 
-  it('allows ADMIN to access /parent/* (super-access)', () => {
-    expect(checkRouteAccess('/parent/dashboard', 'ADMIN')).toBe('allow')
-  })
-
-  it('allows ADMIN to access unprotected routes', () => {
-    expect(checkRouteAccess('/', 'ADMIN')).toBe('allow')
-    expect(checkRouteAccess('/api/health', 'ADMIN')).toBe('allow')
+  it('does not treat a look-alike prefix as protected or as a match', () => {
+    expect(checkRouteAccess('/teachers-lounge', null)).toBe('allow')
   })
 })

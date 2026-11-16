@@ -2,19 +2,11 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { SuggestionBox } from '@/components/ui/SuggestionBox'
 import { SignOutButton } from '@/components/ui/SignOutButton'
 
 const NAV_ITEMS = [
-  // Reports leads: there is no /admin index, so this is the de facto landing page.
-  { href: '/admin/reports', label: 'Reports' },
-  { href: '/admin/users', label: 'Users' },
   { href: '/admin/lessons', label: 'Lessons' },
-  { href: '/admin/eoc-scores', label: 'EOC Scores' },
-  { href: '/admin/calibration', label: 'Calibration' },
-  { href: '/admin/parents', label: 'Parents' },
   { href: '/admin/audit', label: 'Audit Log' },
-  { href: '/admin/retention', label: 'Retention' },
 ]
 
 export function AdminNav() {
@@ -39,7 +31,6 @@ export function AdminNav() {
         ))}
       </div>
       <div className="ml-4 flex items-center gap-4 shrink-0">
-        <SuggestionBox className="mr-3" />
         <SignOutButton className="text-sm text-gray-600 hover:text-gray-900" />
       </div>
     </nav>

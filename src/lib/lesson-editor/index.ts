@@ -21,7 +21,6 @@ export {
   addLessonStep,
   removeLessonStep,
   reorderLessonSteps,
-  countAffectedStudentProgress,
   LessonStructureError,
   LESSON_STEP_ADDED,
   LESSON_STEP_REMOVED,

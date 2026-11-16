@@ -5,8 +5,6 @@ import { usePathname } from 'next/navigation'
 import { Mascot } from '@/components/ui/Mascot'
 import { TrackIcon, type TrackIconName } from '@/components/ui/TrackIcon'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
-import { SuggestionBox } from '@/components/ui/SuggestionBox'
-import { SignOutButton } from '@/components/ui/SignOutButton'
 
 interface NavItem {
   href: string
@@ -26,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
     href: '/student/dashboard',
     label: 'Dashboard',
     icon: 'home',
-    explain: 'Your home base — your EOC readiness, streak, and what to do next.',
+    explain: 'Your home base — what to do next, your streak, and your progress.',
     badgeNoun: ['task waiting', 'tasks waiting'],
   },
   {
@@ -76,7 +74,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Settings',
     icon: 'gear',
     explain:
-      'Accessibility tools and preferences — high contrast, large text, read-aloud language, and more.',
+      'Reading and display options anyone can switch on, your glossary language, and saving your progress to a file.',
   },
 ]
 
@@ -87,6 +85,30 @@ const NAV_ITEMS: NavItem[] = [
  * NOT from the full next-step resolver, which would add its availability queries
  * to every single student page render.
  */
+/**
+ * Student destinations that exist. Anything not listed here is hidden from the
+ * navigation AND filtered out of the "do this next" plan, so a student is
+ * never sent to a page that is not there.
+ */
+export const AVAILABLE_STUDENT_ROUTES: readonly string[] = [
+  '/student/dashboard',
+  '/student/map',
+  '/student/mission',
+  '/student/remediation',
+  '/student/daily-drill',
+  '/student/republic-challenge',
+  '/student/source-decoder',
+  '/student/source-lab',
+  '/student/strategy',
+  '/student/badges',
+  '/student/settings',
+  '/student/summary',
+]
+
+export function isStudentRouteAvailable(href: string): boolean {
+  return AVAILABLE_STUDENT_ROUTES.some((r) => href === r || href.startsWith(`${r}/`))
+}
+
 export type StudentNavBadges = Partial<Record<string, number>>
 
 export function StudentNav({ badges = {} }: { badges?: StudentNavBadges }) {
@@ -109,7 +131,7 @@ export function StudentNav({ badges = {} }: { badges?: StudentNavBadges }) {
       </Link>
 
       <div className="flex items-center gap-1 overflow-x-auto">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => isStudentRouteAvailable(item.href)).map((item) => {
           const active = pathname.startsWith(item.href)
           const count = item.badgeNoun ? badges[item.href] ?? 0 : 0
           return (
@@ -156,13 +178,6 @@ export function StudentNav({ badges = {} }: { badges?: StudentNavBadges }) {
         })}
       </div>
 
-      <div className="ml-auto flex items-center gap-3 flex-shrink-0">
-        {/* Students get the Comment / Question toggle: the two land on separate tabs
-            of the teacher report page. `mr-2` keeps the icon off Sign out. */}
-        <SuggestionBox allowKindToggle recipient="teacher" className="mr-2" />
-        {/* Settings moved into the scrollable row above — see the NAV_ITEMS note. */}
-        <SignOutButton className="rounded-xl px-3 py-2 text-sm font-display font-semibold text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors" />
-      </div>
     </nav>
   )
 }

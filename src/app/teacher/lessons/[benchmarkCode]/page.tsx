@@ -88,7 +88,7 @@ export default async function TeacherLessonBuilderPage({ params }: PageProps) {
     hasCustomOrderByClass[cls.id] = layer.savedOrder !== null
   }
 
-  const glossaryTerms = await getGlossaryTermsForBenchmark(benchmark.id, null)
+  const glossaryTerms = await getGlossaryTermsForBenchmark(benchmark.id)
 
   return (
     <div className="space-y-4">

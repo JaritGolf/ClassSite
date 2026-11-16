@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import {
-  buildDrillReviewBody,
+  buildQuestionAnswerBody,
   type ConfidenceValue,
-  type DrillReviewResponse,
+  type QuestionAnswerResult,
 } from '@/lib/assessment/wire'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
+import { applyDrillReview, recordStreakActivity } from '@/lib/local-progress/engine'
 import { ConfidenceSelector } from '@/components/student/assessment/ConfidenceSelector'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
@@ -14,16 +16,12 @@ interface DrillOption {
   optionText: string
 }
 
-interface DrillItem {
-  benchmarkId: string
+export interface DrillItem {
   benchmarkCode: string
   questionId: string
   prompt: string
   itemType: string
   options: DrillOption[]
-  dueAt: Date | string
-  repetitionCount: number
-  intervalDays: number
 }
 
 interface DrillCardProps {
@@ -41,20 +39,33 @@ export function DrillCard({ item, onComplete }: DrillCardProps) {
     explanation?: string | null
   } | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const { progress, update } = useLocalProgress()
+  // Captured once: the interval shown is the one this answer is about to change.
+  const [intervalDays] = useState(() => progress.review[item.benchmarkCode]?.intervalDays ?? 1)
 
   async function handleSubmit() {
     if (!selectedOptionId || confidence === null) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/drill/${item.benchmarkId}/review`, {
+      // The server says only whether the answer is right. The confidence
+      // rating and the SM-2 schedule (rule #5) never leave this device.
+      const res = await fetch('/api/practice/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(
-          buildDrillReviewBody({ questionId: item.questionId, selectedOptionId, confidence })
-        ),
+        body: JSON.stringify(buildQuestionAnswerBody({ questionId: item.questionId, selectedOptionId })),
       })
       if (!res.ok) throw new Error('Submission failed')
-      const data: DrillReviewResponse = await res.json()
+      const data: QuestionAnswerResult = await res.json()
+      const now = new Date()
+      update(
+        (p) =>
+          applyDrillReview(
+            recordStreakActivity(p, now),
+            item.benchmarkCode,
+            { isCorrect: data.isCorrect, confidence, questionId: item.questionId },
+            now
+          ).progress
+      )
       setFeedback({
         correct: data.isCorrect,
         message: data.isCorrect ? 'Correct! Well done.' : 'Not quite — keep reviewing this one.',
@@ -81,7 +92,7 @@ export function DrillCard({ item, onComplete }: DrillCardProps) {
           text="How many days until this question comes back around in your drill. Get it right and the interval grows — get it wrong and it comes back sooner."
           variant="plain"
         >
-          <span className="text-sm text-gray-500">Interval: {item.intervalDays}d</span>
+          <span className="text-sm text-gray-500">Interval: {intervalDays}d</span>
         </ExplainerHover>
       </div>
 

@@ -39,7 +39,7 @@ import {
   type NextStepIcon,
   type StudentPlan,
 } from './types'
-import type { MissionNodeState } from '@/lib/mastery/availability'
+import type { MissionNodeState } from '@/lib/mastery/availability-core'
 
 /** The current mission, as the ranker needs to see it. */
 export interface RankMissionInput {
@@ -58,7 +58,8 @@ export interface RankMissionInput {
 export interface RankInputs {
   /** The oldest ASSIGNED remediation, if any. */
   remediation: {
-    studentRemediationId: string
+    /** Curriculum remediation item id (there is no per-student row). */
+    remediationItemId: string
     title: string
     /** Benchmark title for context; StudentRemediation has no Benchmark relation. */
     benchmarkTitle: string | null
@@ -128,12 +129,6 @@ function describeMission(mission: RankMissionInput): {
         subLabel: 'Review this mission, then try again',
         ctaLabel: 'Review the Mission',
       }
-    case 'INTERVENTION_REQUIRED':
-      return {
-        kind: 'MISSION_RESUME',
-        subLabel: 'Keep going — your teacher is helping with this one',
-        ctaLabel: 'Continue Mission',
-      }
     case 'IN_PROGRESS':
       return {
         kind: 'MISSION_RESUME',
@@ -157,7 +152,7 @@ function remediationStep(r: NonNullable<RankInputs['remediation']>): NextStep {
     subLabel: r.benchmarkTitle
       ? `Training Mission · ${r.benchmarkTitle}`
       : 'Training Mission assigned for you',
-    href: `/student/remediation/${r.studentRemediationId}`,
+    href: `/student/remediation/${r.remediationItemId}`,
     icon: 'target',
     ctaLabel: 'Start Training Mission',
     estimatedMinutes: ESTIMATED_MINUTES.REMEDIATION,

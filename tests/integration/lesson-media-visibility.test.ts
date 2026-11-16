@@ -72,10 +72,10 @@ const FULL_STEPS: LessonSeedDef['steps'] = [
 
 async function mkTeacher(suffix: string): Promise<string> {
   const user = await prisma.user.upsert({
-    where: { cleverId: `${PREFIX}${suffix}` },
+    where: { email: `${PREFIX}${suffix}` },
     update: {},
     create: {
-      cleverId: `${PREFIX}${suffix}`,
+      email: `${PREFIX}${suffix}`,
       firstName: 'Lmv',
       lastName: suffix,
       role: 'TEACHER',
@@ -116,7 +116,7 @@ async function cleanup() {
   await prisma.lesson.deleteMany({ where: { id: lessonId } })
   await prisma.benchmark.deleteMany({ where: { code: TEST_BENCHMARK_CODE } })
   const users = await prisma.user.findMany({
-    where: { cleverId: { startsWith: PREFIX } },
+    where: { email: { startsWith: PREFIX } },
     select: { id: true },
   })
   const userIds = users.map((u) => u.id)

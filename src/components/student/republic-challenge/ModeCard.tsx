@@ -8,56 +8,28 @@ import { ExplainerHover } from '@/components/ui/ExplainerHover'
 interface ModeCardProps {
   title: string
   description: string
-  startUrl: string
-  /** Optional length to send in the POST body (mixed / mistake / category modes). */
-  length?: number
-  /** Optional badge text shown in the corner (e.g. "10 questions"). */
+  /** Where the card goes — the player page for this mode, or a picker. */
+  href: string
+  /** Short context line, e.g. "10 questions". */
   meta?: string
-  /** Optional explainer text for the meta badge, when it needs more context (e.g. stamina ladder). */
+  /** Explains `meta` on hover. */
   metaExplainer?: string
-  /** When true the card is rendered as a non-actionable disabled state. */
   disabled?: boolean
-  /** Optional explanatory text shown when disabled. */
   disabledReason?: string
-  /** Alternative href to navigate to without a POST (used for the category + source pickers). */
-  href?: string
-  /** Icon shown on the card's color plate. */
   icon?: TrackIconName
 }
 
 export function ModeCard(props: ModeCardProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const error: string | null = null
 
-  async function handleClick() {
+  // Every card is a link: a session is started by the player page, on the
+  // device, so there is nothing to create on the server first.
+  function handleClick() {
     if (props.disabled || loading) return
-
-    if (props.href) {
-      router.push(props.href)
-      return
-    }
-
     setLoading(true)
-    setError(null)
-    try {
-      const body = props.length ? JSON.stringify({ length: props.length }) : undefined
-      const res = await fetch(props.startUrl, {
-        method: 'POST',
-        headers: body ? { 'Content-Type': 'application/json' } : undefined,
-        body,
-      })
-      const data = (await res.json()) as { assessmentId?: string; error?: string }
-      if (!res.ok || !data.assessmentId) {
-        setError(data.error ?? 'Could not start session')
-        setLoading(false)
-        return
-      }
-      router.push(`/student/assessment/${data.assessmentId}`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Network error')
-      setLoading(false)
-    }
+    router.push(props.href)
   }
 
   return (

@@ -1,8 +1,9 @@
 /**
  * Teacher Roster — public API
  *
- * Provides authorization guards and roster lookup for teacher-scoped
- * analytics and student profile access.
+ * A teacher's classes and the guard that a class belongs to them. "Roster"
+ * here means the teacher's list of CLASSES — classes have no students in them;
+ * they exist so lesson arrangements can differ by class.
  */
 
 export class RosterError extends Error {
@@ -18,9 +19,4 @@ export class RosterError extends Error {
 export { resolveTeacherId } from './resolve'
 export { getTeacherRoster } from './roster'
 export type { TeacherRoster } from './roster'
-export {
-  assertStudentInTeacherClass,
-  assertClassOwnedByTeacher,
-  assertClassesOwnedByTeacher,
-  getStudentInTeacherClass,
-} from './authorize'
+export { assertClassOwnedByTeacher, assertClassesOwnedByTeacher } from './authorize'

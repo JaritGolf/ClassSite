@@ -1,6 +1,12 @@
-// My Civics Class — Full Database Schema
-// Phase 1: All tables from spec Section 27, adapted for Prisma.
-// Table names use snake_case (@@map). Model fields use camelCase.
+// My Civics Class — Database Schema
+//
+// This database holds CURRICULUM CONTENT and the TEACHER ACCOUNT. It holds
+// nothing about any student: no student rows, no pseudonymous or coded rows,
+// no attempts, no progress, no accommodations, no activity. Student progress
+// lives only in the student's own browser (src/lib/local-progress).
+//
+// tests/unit/guards/no-student-data.test.ts fails if a student-linked model or
+// field is added here. Table names use snake_case (@@map); fields camelCase.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,14 +17,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ============================================================
-// ENUMS
-// ============================================================
-
+/// Only staff have accounts. Students never sign in and have no row anywhere.
 enum UserRole {
-  STUDENT
   TEACHER
-  PARENT
   ADMIN
 }
 
@@ -93,16 +94,6 @@ enum AssessmentType {
   DIAGNOSTIC
 }
 
-enum RepublicChallengeMode {
-  QUICK_REVIEW
-  CATEGORY_CHALLENGE
-  MIXED_MISSION
-  MISTAKE_REPLAY
-  SOURCE_SPRINT
-  ENDURANCE_TRIAL
-  FINAL_REPUBLIC_TRIAL
-}
-
 enum RemediationType {
   VOCABULARY_TRAINING
   MINI_LESSON_REPLAY
@@ -112,28 +103,6 @@ enum RemediationType {
   MISCONCEPTION_FIX
   BASIC_RETEACH
   GUIDED_REASONING
-}
-
-enum StudentActivityType {
-  MISSION_TRAINING
-  ASSESSMENT
-  DAILY_DRILL
-  STRATEGY_TRACK
-  SOURCE_DECODER
-  REMEDIATION
-}
-
-/// Student benchmark progress statuses per spec Section 12.2.
-enum StudentProgressStatus {
-  NOT_STARTED
-  IN_PROGRESS
-  READY_FOR_MASTERY
-  NEEDS_REMEDIATION
-  REMEDIATION_COMPLETE
-  MASTERED
-  EXPOSURE_COMPLETE
-  TEACHER_OVERRIDE
-  INTERVENTION_REQUIRED
 }
 
 enum TermTier {
@@ -179,20 +148,6 @@ enum ResourceType {
   REFERENCE
 }
 
-enum AssignmentStatus {
-  SCHEDULED
-  ACTIVE
-  COMPLETED
-  CANCELLED
-}
-
-enum RemediationStatus {
-  ASSIGNED
-  IN_PROGRESS
-  COMPLETED
-  SKIPPED
-}
-
 enum BadgeTrack {
   MASTERY
   READING
@@ -200,58 +155,13 @@ enum BadgeTrack {
   ENGAGEMENT
 }
 
-enum TeacherOverrideAction {
-  UNLOCK_BENCHMARK
-  MARK_MASTERED
-  MARK_EXPOSURE_COMPLETE
-  ASSIGN_REMEDIATION
-  EXTEND_DEADLINE
-  CUSTOM
-}
-
-enum EnrollmentStatus {
-  ACTIVE
-  INACTIVE
-  DROPPED
-}
-
-/// Where a suggestion is routed for review. Derived from the author's role at
-/// submit time and then STORED — never recomputed from User.role at read time,
-/// so a role change can't silently relocate old suggestions.
-enum SuggestionAudience {
-  TEACHER
-  ADMIN
-}
-
-enum SuggestionStatus {
-  NEW
-  IN_REVIEW
-  RESOLVED
-  DISMISSED
-}
-
-/// What the author meant this to be. Chosen in the box via a toggle; drives which
-/// tab it lands on in the teacher report page. Defaults to COMMENT so the column is
-/// additive over rows written before the toggle existed.
-enum SuggestionKind {
-  COMMENT
-  QUESTION
-}
-
-enum ParentVerifiedStatus {
-  PENDING
-  VERIFIED
-  REJECTED
-}
-
 // ============================================================
-// USERS, STUDENTS, TEACHERS, PARENTS
+// STAFF ACCOUNTS (teacher / admin only — students have no accounts)
 // ============================================================
 
 model User {
   id        String     @id @default(cuid())
   role      UserRole
-  cleverId  String?    @unique @map("clever_id")
   googleId  String?    @unique @map("google_id")
   firstName String     @map("first_name")
   lastName  String     @map("last_name")
@@ -260,65 +170,10 @@ model User {
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
 
-  student   Student?
   teacher   Teacher?
-  parent    Parent?
   auditLogs AuditLog[]
 
-  suggestionsAuthored Suggestion[] @relation("SuggestionAuthor")
-  suggestionsReviewed Suggestion[] @relation("SuggestionReviewer")
-
   @@map("users")
-}
-
-model Student {
-  id                String  @id @default(cuid())
-  userId            String  @unique @map("user_id")
-  districtStudentId String? @unique @map("district_student_id")
-  gradeLevel        Int     @default(7) @map("grade_level")
-  active            Boolean @default(true)
-  /// When the district notified us this student is no longer enrolled.
-  ///
-  /// Starts the deletion clock in Fla. Stat. § 1006.1494(3)(c) — covered
-  /// information must be deleted "no later than 90 days after a student is no
-  /// longer enrolled in a school within the district, upon notice by the school
-  /// district." The statute's trigger is that notice, which software cannot
-  /// observe, so an administrator records it here and the purge computes 90 days
-  /// from this timestamp. Null = still enrolled; no clock is running.
-  ///
-  /// See src/lib/retention/student-records.ts.
-  deactivatedAt     DateTime? @map("deactivated_at")
-  l1Language        String? @map("l1_language")
-  ellStatus         String? @map("ell_status")
-  readingLevelFlag  Boolean @default(false) @map("reading_level_flag")
-  eseStatus         Boolean @default(false) @map("ese_status")
-
-  user                  User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parentLinks           ParentStudentLink[]
-  classEnrollments      ClassEnrollment[]
-  studentProgress       StudentProgress[]
-  assessmentAttempts    AssessmentAttempt[]
-  studentRemediations   StudentRemediation[]
-  spacedReviewStates    SpacedReviewState[]
-  spacedReviewEvents    SpacedReviewEvent[]
-  confidenceSnapshots   ConfidenceCalibrationSnapshot[]
-  sourceDecoderProgress SourceDecoderProgress[]
-  strategyTrackProgress StrategyTrackProgress[]
-  strategyOverrides     StudentStrategyOverride[]
-  studentBadges         StudentBadge[]
-  eocReadiness          EocReadinessSnapshot[]
-  eocActualScores       EocActualScore[]
-  accommodations        StudentAccommodation[]
-  teacherOverrides      TeacherOverride[]
-  streakState           StreakState?
-  narrativeProgress     NarrativeProgress[]
-  uiSettings            StudentUiSettings?
-  activitySessions      StudentActivitySession[]
-  lastActivity          StudentLastActivity?
-  suggestions           Suggestion[]
-  checkpointLevels      StudentCheckpointLevel[]
-
-  @@map("students")
 }
 
 model Teacher {
@@ -327,43 +182,14 @@ model Teacher {
   schoolId String? @map("school_id")
   active   Boolean @default(true)
 
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classes       Class[]
-  overrides     TeacherOverride[]
-  suggestions   Suggestion[]
-  progressPlans ProgressPlan[]
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classes Class[]
 
   @@map("teachers")
 }
 
-model Parent {
-  id     String  @id @default(cuid())
-  userId String  @unique @map("user_id")
-  active Boolean @default(true)
-
-  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  studentLinks ParentStudentLink[]
-
-  @@map("parents")
-}
-
-model ParentStudentLink {
-  id             String               @id @default(cuid())
-  parentId       String               @map("parent_id")
-  studentId      String               @map("student_id")
-  relationship   String
-  verifiedStatus ParentVerifiedStatus @default(PENDING) @map("verified_status")
-  createdAt      DateTime             @default(now()) @map("created_at")
-
-  parent  Parent  @relation(fields: [parentId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@unique([parentId, studentId])
-  @@map("parent_student_links")
-}
-
 // ============================================================
-// CLASSES & ENROLLMENTS
+// CLASSES (a label for a lesson arrangement; classes have no roster)
 // ============================================================
 
 model Class {
@@ -377,51 +203,20 @@ model Class {
 
   // Phase 11 — Republic Challenge per-class configuration
   rcSessionLengthOverride Int?    @map("rc_session_length_override")
-  rcAttemptsAllowed       Int     @default(1) @map("rc_attempts_allowed")
-  rcReviewWindow          String  @default("after_submit") @map("rc_review_window")
   rcStaminaOverride       Int?    @map("rc_stamina_override")
   featureEocReviewEnabled Boolean @default(true) @map("feature_eoc_review_enabled")
 
   // Strategy Track — global required number of correct apply-it "uses" per
-  // strategy mission (0 = no requirement). Per-student overrides live on
-  // StudentStrategyOverride.
+  // strategy mission (0 = no requirement). The same soft target is shown to
+  // everyone; uses are counted on each student's own device.
   strategyUsesRequired Int @default(0) @map("strategy_uses_required")
 
-  // Assessment integrity — when true, secure assessments run in Focus Mode
-  // (fullscreen, blocked copy/paste, focus-loss events recorded for the
-  // teacher). Off by default; also requires FEATURE_SECURE_ASSESSMENT.
-  // See docs/adrs/0020-assessment-integrity-and-device-lockdown.md.
-  secureAssessmentMode Boolean @default(false) @map("secure_assessment_mode")
-
-  // Nine-week progress checkpoints. Null means "use my plan for this class's
-  // school year"; a class may be pointed at its own plan to run a different pace.
-  progressPlanId String? @map("progress_plan_id")
-
-  teacher            Teacher                     @relation(fields: [teacherId], references: [id])
-  enrollments        ClassEnrollment[]
-  assignments        Assignment[]
-  readinessSnapshots ClassReadinessSnapshot[]
-  stepVisibility     ClassLessonStepVisibility[]
-  classLessonSteps   ClassLessonStep[]
-  lessonOutlines     ClassLessonOutline[]
-  suggestions        Suggestion[]
-  progressPlan       ProgressPlan?               @relation(fields: [progressPlanId], references: [id])
+  teacher          Teacher                     @relation(fields: [teacherId], references: [id])
+  stepVisibility   ClassLessonStepVisibility[]
+  classLessonSteps ClassLessonStep[]
+  lessonOutlines   ClassLessonOutline[]
 
   @@map("classes")
-}
-
-model ClassEnrollment {
-  id         String           @id @default(cuid())
-  classId    String           @map("class_id")
-  studentId  String           @map("student_id")
-  status     EnrollmentStatus @default(ACTIVE)
-  enrolledAt DateTime         @default(now()) @map("enrolled_at")
-
-  class   Class   @relation(fields: [classId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@unique([classId, studentId])
-  @@map("class_enrollments")
 }
 
 // ============================================================
@@ -437,8 +232,7 @@ model Unit {
   reportingCategoryMix Json?   @map("reporting_category_mix")
   active               Boolean @default(true)
 
-  benchmarks        Benchmark[]
-  narrativeProgress NarrativeProgress[]
+  benchmarks Benchmark[]
 
   @@map("units")
 }
@@ -450,11 +244,9 @@ model ReportingCategory {
   blueprintWeightMax Float   @map("blueprint_weight_max")
   description        String?
 
-  benchmarks              Benchmark[]
-  questions               Question[]
-  misconceptions          Misconception[]
-  eocReadinessSnapshots   EocReadinessSnapshot[]
-  classReadinessSnapshots ClassReadinessSnapshot[]
+  benchmarks     Benchmark[]
+  questions      Question[]
+  misconceptions Misconception[]
 
   @@map("reporting_categories")
 }
@@ -479,22 +271,17 @@ model Benchmark {
   /// See src/lib/mastery/availability.ts.
   readyForStudents Boolean @default(false) @map("ready_for_students")
 
-  unit               Unit                       @relation(fields: [unitId], references: [id])
-  reportingCategory  ReportingCategory          @relation(fields: [reportingCategoryId], references: [id])
-  clarifications     BenchmarkClarification[]
-  connectionsFrom    BenchmarkConnection[]      @relation("ConnectionSource")
-  connectionsTo      BenchmarkConnection[]      @relation("ConnectionTarget")
-  terms              Term[]
-  resources          Resource[]
-  lessons            Lesson[]
-  questions          Question[]
-  assessments        Assessment[]
-  assignments        Assignment[]
-  studentProgress    StudentProgress[]
-  remediationItems   RemediationItem[]
-  spacedReviewStates SpacedReviewState[]
-  spacedReviewEvents SpacedReviewEvent[]
-  checkpointTargets  ProgressCheckpointTarget[]
+  unit              Unit                     @relation(fields: [unitId], references: [id])
+  reportingCategory ReportingCategory        @relation(fields: [reportingCategoryId], references: [id])
+  clarifications    BenchmarkClarification[]
+  connectionsFrom   BenchmarkConnection[]    @relation("ConnectionSource")
+  connectionsTo     BenchmarkConnection[]    @relation("ConnectionTarget")
+  terms             Term[]
+  resources         Resource[]
+  lessons           Lesson[]
+  questions         Question[]
+  assessments       Assessment[]
+  remediationItems  RemediationItem[]
 
   @@map("benchmarks")
 }
@@ -617,7 +404,6 @@ model LessonStep {
   source          LessonStepSource @default(SEED) @map("source")
 
   lesson             Lesson                      @relation(fields: [lessonId], references: [id])
-  currentProgress    StudentProgress[]           @relation("CurrentLessonStep")
   classVisibility    ClassLessonStepVisibility[]
   // Teacher modules that were added relative to this step (ADR 0023). The FK
   // is SetNull, so deleting this step orphans the anchor but never deletes a
@@ -698,7 +484,7 @@ model ClassLessonStep {
   content        String
   // Always false. A teacher module must never gate progression (see
   // stepNeedsAttempt in src/lib/lesson-content/gating.ts) and can never be a
-  // StudentProgress.currentStepId, which is an FK to LessonStep.
+  // resume pointer.
   required       Boolean        @default(false)
   // The class's own hide switch for its own module — NOT routed through
   // ClassLessonStepVisibility, whose FK targets LessonStep and whose
@@ -841,14 +627,12 @@ model Question {
   sourceTier          SourceTier          @default(B) @map("source_tier")
   active              Boolean             @default(true)
 
-  benchmark          Benchmark            @relation(fields: [benchmarkId], references: [id])
-  reportingCategory  ReportingCategory    @relation(fields: [reportingCategoryId], references: [id])
-  stimulus           Stimulus?            @relation(fields: [stimulusId], references: [id])
-  misconception      Misconception?       @relation("QuestionMisconception", fields: [misconceptionId], references: [id])
-  options            QuestionOption[]
-  assessmentItems    AssessmentQuestion[]
-  attemptResponses   AttemptResponse[]
-  spacedReviewEvents SpacedReviewEvent[]
+  benchmark         Benchmark            @relation(fields: [benchmarkId], references: [id])
+  reportingCategory ReportingCategory    @relation(fields: [reportingCategoryId], references: [id])
+  stimulus          Stimulus?            @relation(fields: [stimulusId], references: [id])
+  misconception     Misconception?       @relation("QuestionMisconception", fields: [misconceptionId], references: [id])
+  options           QuestionOption[]
+  assessmentItems   AssessmentQuestion[]
 
   @@index([benchmarkId])
   @@map("questions")
@@ -863,9 +647,8 @@ model QuestionOption {
   feedback        String?
   misconceptionId String? @map("misconception_id")
 
-  question         Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  misconception    Misconception?    @relation("OptionMisconception", fields: [misconceptionId], references: [id])
-  attemptResponses AttemptResponse[]
+  question      Question       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  misconception Misconception? @relation("OptionMisconception", fields: [misconceptionId], references: [id])
 
   @@map("question_options")
 }
@@ -899,22 +682,18 @@ model Misconception {
 // ============================================================
 
 model Assessment {
-  id               String                 @id @default(cuid())
+  id               String         @id @default(cuid())
   /// Nullable for Republic Challenge / Final Trial assessments which span benchmarks (Phase 11).
   /// All other AssessmentTypes require benchmarkId — enforced in code.
-  benchmarkId      String?                @map("benchmark_id")
+  benchmarkId      String?        @map("benchmark_id")
   title            String
-  assessmentType   AssessmentType         @map("assessment_type")
-  /// Set only when assessmentType is REPUBLIC_CHALLENGE or FINAL_TRIAL.
-  mode             RepublicChallengeMode? @map("mode")
-  masteryThreshold Float                  @default(0.80) @map("mastery_threshold")
-  blueprintJson    Json?                  @map("blueprint_json")
-  approvalStatus   ApprovalStatus         @default(DRAFT) @map("approval_status")
+  assessmentType   AssessmentType @map("assessment_type")
+  masteryThreshold Float          @default(0.80) @map("mastery_threshold")
+  blueprintJson    Json?          @map("blueprint_json")
+  approvalStatus   ApprovalStatus @default(DRAFT) @map("approval_status")
 
-  benchmark   Benchmark?           @relation(fields: [benchmarkId], references: [id])
-  questions   AssessmentQuestion[]
-  attempts    AssessmentAttempt[]
-  assignments Assignment[]
+  benchmark Benchmark?           @relation(fields: [benchmarkId], references: [id])
+  questions AssessmentQuestion[]
 
   @@map("assessments")
 }
@@ -934,175 +713,6 @@ model AssessmentQuestion {
 }
 
 // ============================================================
-// ASSIGNMENTS
-// ============================================================
-
-model Assignment {
-  id           String           @id @default(cuid())
-  classId      String           @map("class_id")
-  benchmarkId  String           @map("benchmark_id")
-  assessmentId String?          @map("assessment_id")
-  assignedBy   String           @map("assigned_by")
-  startAt      DateTime?        @map("start_at")
-  dueAt        DateTime?        @map("due_at")
-  status       AssignmentStatus @default(SCHEDULED)
-
-  class      Class       @relation(fields: [classId], references: [id])
-  benchmark  Benchmark   @relation(fields: [benchmarkId], references: [id])
-  assessment Assessment? @relation(fields: [assessmentId], references: [id])
-
-  @@map("assignments")
-}
-
-// ============================================================
-// STUDENT PROGRESS & ASSESSMENT ATTEMPTS
-// ============================================================
-
-model StudentProgress {
-  id                 String                @id @default(cuid())
-  studentId          String                @map("student_id")
-  benchmarkId        String                @map("benchmark_id")
-  status             StudentProgressStatus @default(NOT_STARTED)
-  masteryScore       Float?                @map("mastery_score")
-  masteredAt         DateTime?             @map("mastered_at")
-  currentStepId      String?               @map("current_step_id")
-  attemptsCount      Int                   @default(0) @map("attempts_count")
-  offRampTriggeredAt DateTime?             @map("off_ramp_triggered_at")
-
-  student     Student     @relation(fields: [studentId], references: [id])
-  benchmark   Benchmark   @relation(fields: [benchmarkId], references: [id])
-  currentStep LessonStep? @relation("CurrentLessonStep", fields: [currentStepId], references: [id])
-
-  @@unique([studentId, benchmarkId])
-  @@index([studentId, benchmarkId])
-  @@map("student_progress")
-}
-
-/// Dashboard "pick up where you left off": one row per student, upserted on
-/// every meaningful action across mission/drill/republic-challenge/strategy/
-/// source-decoder/remediation surfaces. referenceId's meaning depends on
-/// activityType (see src/lib/student-activity for the read-side resolver) —
-/// deliberately untyped/no FK so one column covers every activity type.
-model StudentLastActivity {
-  id           String              @id @default(cuid())
-  studentId    String              @unique @map("student_id")
-  activityType StudentActivityType @map("activity_type")
-  referenceId  String?             @map("reference_id")
-  occurredAt   DateTime            @default(now()) @map("occurred_at")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@map("student_last_activity")
-}
-
-model AssessmentAttempt {
-  id            String    @id @default(cuid())
-  assessmentId  String    @map("assessment_id")
-  studentId     String    @map("student_id")
-  attemptNumber Int       @map("attempt_number")
-  score         Float?
-  passed        Boolean?
-  startedAt     DateTime  @default(now()) @map("started_at")
-  submittedAt   DateTime? @map("submitted_at")
-  voided        Boolean   @default(false)
-
-  assessment      Assessment              @relation(fields: [assessmentId], references: [id])
-  student         Student                 @relation(fields: [studentId], references: [id])
-  responses       AttemptResponse[]
-  adaptiveState   AdaptiveSessionState?
-  integrityEvents AttemptIntegrityEvent[]
-
-  @@index([assessmentId, studentId])
-  @@index([studentId, voided])
-  /// Supports session-window progress attribution (activity-sessions report).
-  @@index([studentId, submittedAt])
-  @@map("assessment_attempts")
-}
-
-model AttemptResponse {
-  id               String  @id @default(cuid())
-  attemptId        String  @map("attempt_id")
-  questionId       String  @map("question_id")
-  responseJson     Json    @map("response_json")
-  selectedOptionId String? @map("selected_option_id")
-  /// Server-computed — never accepted from client payload.
-  isCorrect        Boolean @map("is_correct")
-  pointsAwarded    Float   @default(0) @map("points_awarded")
-  /// 0 = "Not sure", 1 = "Pretty sure", 2 = "Very sure"; null if not captured.
-  confidence       Int?
-  timeSeconds      Int?    @map("time_seconds")
-
-  attempt        AssessmentAttempt @relation(fields: [attemptId], references: [id])
-  question       Question          @relation(fields: [questionId], references: [id])
-  selectedOption QuestionOption?   @relation(fields: [selectedOptionId], references: [id])
-
-  @@map("attempt_responses")
-}
-
-// ============================================================
-// ASSESSMENT INTEGRITY
-// Records that a student left a secure assessment (tab switch, window blur,
-// fullscreen exit) or attempted a blocked input (copy/paste/print/right-click).
-// See docs/adrs/0020-assessment-integrity-and-device-lockdown.md.
-//
-// A web app CANNOT lock down a Chromebook — that belongs to the device
-// management layer (see docs/chromebook-lockdown.md). These rows are the app's
-// honest fallback: they make leaving VISIBLE to the teacher without ever
-// auto-punishing the student. Nothing here feeds grading, mastery, SM-2, or
-// analytics; a teacher reviews the flag and decides (the existing void control
-// on the student profile is the remedy).
-//
-// `recordedAt` is the SERVER clock only — the client never supplies a
-// timestamp. `durationMs` is client-reported (it is the only party that can
-// observe how long the tab was hidden) and is therefore advisory, never
-// authoritative. Accommodation-sanctioned breaks generate no rows at all.
-// ============================================================
-
-model AttemptIntegrityEvent {
-  id         String   @id @default(cuid())
-  attemptId  String   @map("attempt_id")
-  /// BLUR | VISIBILITY_HIDDEN | FULLSCREEN_EXIT | COPY_BLOCKED
-  /// | CUT_BLOCKED | PASTE_BLOCKED | CONTEXT_MENU_BLOCKED | PRINT_BLOCKED
-  eventType  String   @map("event_type")
-  /// Client-reported time away in ms; null for instantaneous events.
-  durationMs Int?     @map("duration_ms")
-  recordedAt DateTime @default(now()) @map("recorded_at")
-
-  attempt AssessmentAttempt @relation(fields: [attemptId], references: [id])
-
-  @@index([attemptId])
-  @@map("attempt_integrity_events")
-}
-
-// ============================================================
-// ADAPTIVE DIFFICULTY (Phase 6)
-// Tracks within-session complexity state for PRACTICE sessions.
-// Never created for MASTERY_CHALLENGE attempts (fixed-form rule).
-// ============================================================
-
-model AdaptiveSessionState {
-  id                      String              @id @default(cuid())
-  attemptId               String              @unique @map("attempt_id")
-  /// Current target complexity level for next item selection.
-  currentComplexity       CognitiveComplexity @default(LOW) @map("current_complexity")
-  /// Consecutive correct answers at current complexity (resets on wrong or bump).
-  consecutiveCorrect      Int                 @default(0) @map("consecutive_correct")
-  /// Consecutive incorrect answers at current complexity (resets on correct or bump).
-  consecutiveIncorrect    Int                 @default(0) @map("consecutive_incorrect")
-  /// Next item to deliver is a worked example (triggered at 3 consecutive incorrect).
-  pendingWorkedExample    Boolean             @default(false) @map("pending_worked_example")
-  /// Next item is a near-transfer question (delivered after worked example).
-  pendingNearTransfer     Boolean             @default(false) @map("pending_near_transfer")
-  /// The question that triggered the worked example — used to show solution.
-  workedExampleQuestionId String?             @map("worked_example_question_id")
-  updatedAt               DateTime            @updatedAt @map("updated_at")
-
-  attempt AssessmentAttempt @relation(fields: [attemptId], references: [id])
-
-  @@map("adaptive_session_states")
-}
-
-// ============================================================
 // REMEDIATION
 // ============================================================
 
@@ -1116,146 +726,11 @@ model RemediationItem {
   content         String
   approvalStatus  ApprovalStatus  @default(DRAFT) @map("approval_status")
 
-  benchmark           Benchmark            @relation(fields: [benchmarkId], references: [id])
-  misconception       Misconception?       @relation("RemediationMisconception", fields: [misconceptionId], references: [id])
-  fixForMisconception Misconception[]      @relation("MisconceptionFix")
-  studentRemediations StudentRemediation[]
+  benchmark           Benchmark       @relation(fields: [benchmarkId], references: [id])
+  misconception       Misconception?  @relation("RemediationMisconception", fields: [misconceptionId], references: [id])
+  fixForMisconception Misconception[] @relation("MisconceptionFix")
 
   @@map("remediation_items")
-}
-
-model StudentRemediation {
-  id                String            @id @default(cuid())
-  studentId         String            @map("student_id")
-  benchmarkId       String            @map("benchmark_id")
-  remediationItemId String            @map("remediation_item_id")
-  status            RemediationStatus @default(ASSIGNED)
-  assignedAt        DateTime          @default(now()) @map("assigned_at")
-  completedAt       DateTime?         @map("completed_at")
-
-  student         Student         @relation(fields: [studentId], references: [id])
-  remediationItem RemediationItem @relation(fields: [remediationItemId], references: [id])
-
-  @@map("student_remediations")
-}
-
-// ============================================================
-// SPACED RETRIEVAL ENGINE (SM-2)
-// Spec Section 15. Do NOT skip the due_at index.
-// ============================================================
-
-model SpacedReviewState {
-  id              String    @id @default(cuid())
-  studentId       String    @map("student_id")
-  benchmarkId     String    @map("benchmark_id")
-  repetitionCount Int       @default(0) @map("repetition_count")
-  /// SM-2 easiness factor. Default 2.5 per algorithm spec.
-  easinessFactor  Float     @default(2.5) @map("easiness_factor")
-  intervalDays    Int       @default(1) @map("interval_days")
-  /// Indexed — the daily drill query filters by this column.
-  dueAt           DateTime  @map("due_at")
-  lastReviewedAt  DateTime? @map("last_reviewed_at")
-  /// SM-2 quality score (0–5) from the last review.
-  lastQuality     Int?      @map("last_quality")
-
-  student   Student   @relation(fields: [studentId], references: [id])
-  benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
-
-  @@unique([studentId, benchmarkId])
-  @@index([studentId, benchmarkId])
-  @@index([dueAt])
-  @@map("spaced_review_state")
-}
-
-model SpacedReviewEvent {
-  id          String   @id @default(cuid())
-  studentId   String   @map("student_id")
-  benchmarkId String   @map("benchmark_id")
-  questionId  String   @map("question_id")
-  /// SM-2 quality score (0–5) computed from (correctness × confidence).
-  quality     Int
-  /// 0 = "Not sure", 1 = "Pretty sure", 2 = "Very sure"
-  confidence  Int?
-  isCorrect   Boolean  @map("is_correct")
-  occurredAt  DateTime @default(now()) @map("occurred_at")
-
-  student   Student   @relation(fields: [studentId], references: [id])
-  benchmark Benchmark @relation(fields: [benchmarkId], references: [id])
-  question  Question  @relation(fields: [questionId], references: [id])
-
-  /// Supports session-window progress attribution (activity-sessions report).
-  @@index([studentId, occurredAt])
-  @@map("spaced_review_events")
-}
-
-// ============================================================
-// CONFIDENCE CALIBRATION (Spec Section 17)
-// ============================================================
-
-model ConfidenceCalibrationSnapshot {
-  id                        String   @id @default(cuid())
-  studentId                 String   @map("student_id")
-  /// e.g. "benchmark:SS.7.CG.1.1" or "overall"
-  scope                     String
-  snapshotAt                DateTime @default(now()) @map("snapshot_at")
-  highConfidenceCorrect     Int      @default(0) @map("high_confidence_correct")
-  highConfidenceIncorrect   Int      @default(0) @map("high_confidence_incorrect")
-  mediumConfidenceCorrect   Int      @default(0) @map("medium_confidence_correct")
-  mediumConfidenceIncorrect Int      @default(0) @map("medium_confidence_incorrect")
-  lowConfidenceCorrect      Int      @default(0) @map("low_confidence_correct")
-  lowConfidenceIncorrect    Int      @default(0) @map("low_confidence_incorrect")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@map("confidence_calibration_snapshots")
-}
-
-// ============================================================
-// PARALLEL TRACKS (Source Decoder & Strategist)
-// ============================================================
-
-model SourceDecoderProgress {
-  id          String    @id @default(cuid())
-  studentId   String    @map("student_id")
-  level       Int
-  completedAt DateTime? @map("completed_at")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@unique([studentId, level])
-  @@map("source_decoder_progress")
-}
-
-model StrategyTrackProgress {
-  id          String    @id @default(cuid())
-  studentId   String    @map("student_id")
-  missionCode String    @map("mission_code")
-  // Count of correct apply-it rounds ("uses") the student has completed.
-  useCount    Int       @default(0) @map("use_count")
-  // First correct round — badge signal ("has genuinely used this strategy").
-  completedAt DateTime? @map("completed_at")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@unique([studentId, missionCode])
-  @@map("strategy_track_progress")
-}
-
-// Per-student override of the class-wide strategyUsesRequired for one strategy.
-// requiredUses null => fall back to the class global; waived => not required.
-model StudentStrategyOverride {
-  id           String   @id @default(cuid())
-  studentId    String   @map("student_id")
-  missionCode  String   @map("mission_code")
-  requiredUses Int?     @map("required_uses")
-  waived       Boolean  @default(false)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@unique([studentId, missionCode])
-  @@map("student_strategy_override")
 }
 
 // ============================================================
@@ -1270,136 +745,12 @@ model Badge {
   criteriaJson Json       @map("criteria_json")
   track        BadgeTrack
 
-  studentBadges StudentBadge[]
-
   @@map("badges")
-}
-
-model StudentBadge {
-  id        String   @id @default(cuid())
-  studentId String   @map("student_id")
-  badgeId   String   @map("badge_id")
-  awardedAt DateTime @default(now()) @map("awarded_at")
-
-  student Student @relation(fields: [studentId], references: [id])
-  badge   Badge   @relation(fields: [badgeId], references: [id])
-
-  @@unique([studentId, badgeId])
-  @@map("student_badges")
-}
-
-// ============================================================
-// EOC ANALYTICS & CALIBRATION (Spec Section 20)
-// ============================================================
-
-model EocReadinessSnapshot {
-  id                  String   @id @default(cuid())
-  studentId           String   @map("student_id")
-  reportingCategoryId String   @map("reporting_category_id")
-  readinessScore      Float    @map("readiness_score")
-  readinessLow        Float    @map("readiness_low")
-  readinessHigh       Float    @map("readiness_high")
-  createdAt           DateTime @default(now()) @map("created_at")
-
-  student           Student           @relation(fields: [studentId], references: [id])
-  reportingCategory ReportingCategory @relation(fields: [reportingCategoryId], references: [id])
-
-  @@map("eoc_readiness_snapshots")
-}
-
-model ClassReadinessSnapshot {
-  id                  String   @id @default(cuid())
-  classId             String   @map("class_id")
-  reportingCategoryId String   @map("reporting_category_id")
-  readinessScore      Float    @map("readiness_score")
-  createdAt           DateTime @default(now()) @map("created_at")
-
-  class             Class             @relation(fields: [classId], references: [id])
-  reportingCategory ReportingCategory @relation(fields: [reportingCategoryId], references: [id])
-
-  @@map("class_readiness_snapshots")
-}
-
-model EocActualScore {
-  id                  String   @id @default(cuid())
-  studentId           String   @map("student_id")
-  schoolYear          String   @map("school_year")
-  scaledScore         Float?   @map("scaled_score")
-  achievementLevel    Int?     @map("achievement_level")
-  enteredBy           String   @map("entered_by")
-  enteredAt           DateTime @default(now()) @map("entered_at")
-  consentAcknowledged Boolean  @default(false) @map("consent_acknowledged")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@unique([studentId, schoolYear])
-  @@map("eoc_actual_scores")
-}
-
-model EocCalibrationRun {
-  id                                 String   @id @default(cuid())
-  schoolYear                         String   @map("school_year")
-  correlationReadinessToScaled       Float?   @map("correlation_readiness_to_scaled")
-  correlationByReportingCategory     Json?    @map("correlation_by_reporting_category")
-  correlationByStimulusType          Json?    @map("correlation_by_stimulus_type")
-  correlationByComplexity            Json?    @map("correlation_by_complexity")
-  correlationByReadingLoad           Json?    @map("correlation_by_reading_load")
-  correlationByConfidenceCalibration Json?    @map("correlation_by_confidence_calibration")
-  recommendedWeightChanges           Json?    @map("recommended_weight_changes")
-  applied                            Boolean  @default(false)
-  runAt                              DateTime @default(now()) @map("run_at")
-
-  @@map("eoc_calibration_runs")
-}
-
-// ============================================================
-// ACCOMMODATIONS (Spec Appendix G — first-class profile attributes)
-// ============================================================
-
-model Accommodation {
-  id          String @id @default(cuid())
-  code        String @unique
-  name        String
-  description String
-
-  studentAccommodations StudentAccommodation[]
-
-  @@map("accommodations")
-}
-
-model StudentAccommodation {
-  id              String   @id @default(cuid())
-  studentId       String   @map("student_id")
-  accommodationId String   @map("accommodation_id")
-  grantedBy       String   @map("granted_by")
-  grantedAt       DateTime @default(now()) @map("granted_at")
-  active          Boolean  @default(true)
-
-  student       Student       @relation(fields: [studentId], references: [id])
-  accommodation Accommodation @relation(fields: [accommodationId], references: [id])
-
-  @@unique([studentId, accommodationId])
-  @@map("student_accommodations")
 }
 
 // ============================================================
 // TEACHER OVERRIDES & AUDIT LOG
 // ============================================================
-
-model TeacherOverride {
-  id          String                @id @default(cuid())
-  teacherId   String                @map("teacher_id")
-  studentId   String                @map("student_id")
-  benchmarkId String?               @map("benchmark_id")
-  action      TeacherOverrideAction
-  reason      String
-  createdAt   DateTime              @default(now()) @map("created_at")
-
-  teacher Teacher @relation(fields: [teacherId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@map("teacher_overrides")
-}
 
 model AuditLog {
   id           String   @id @default(cuid())
@@ -1413,245 +764,4 @@ model AuditLog {
   actor User? @relation(fields: [actorUserId], references: [id])
 
   @@map("audit_logs")
-}
-
-// ============================================================
-// PHASE 8: GAME LAYER
-// ============================================================
-
-model StreakState {
-  id                      String    @id @default(cuid())
-  studentId               String    @unique @map("student_id")
-  currentLength           Int       @default(0) @map("current_length")
-  longestLength           Int       @default(0) @map("longest_length")
-  lastActiveDate          DateTime? @map("last_active_date") @db.Date
-  freezeTokens            Int       @default(2) @map("freeze_tokens")
-  freezeTokensGrantedWeek String?   @map("freeze_tokens_granted_week")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@map("streak_states")
-}
-
-model NarrativeProgress {
-  id            String   @id @default(cuid())
-  studentId     String   @map("student_id")
-  unitId        String   @map("unit_id")
-  beatsReadJson Json     @default("[]") @map("beats_read_json")
-  skipAllNpcs   Boolean  @default(false) @map("skip_all_npcs")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  student Student @relation(fields: [studentId], references: [id])
-  unit    Unit    @relation(fields: [unitId], references: [id])
-
-  @@unique([studentId, unitId])
-  @@map("narrative_progress")
-}
-
-// ============================================================
-// STUDENT ACTIVITY SESSIONS
-// Answers "when was this student on the platform, for how long, and what did
-// they get done" — see docs/adrs/0019-student-activity-sessions.md.
-//
-// Sessions are ACTIVITY-driven, not auth-driven: the auth layer uses JWT
-// sessions with no DB adapter, so `events.signIn` only fires on a genuine
-// sign-in (a student returning with a valid cookie fires nothing). The first
-// activity after a gap of SESSION_GAP_MINUTES opens a new session instead.
-//
-// `activeSeconds` accumulates BOUNDED deltas (see sessionize.activeDelta) so a
-// backgrounded or abandoned tab cannot inflate it; the wall-clock span is
-// always derivable as lastActiveAt - startedAt.
-//
-// Progress is attributed to a session by TIME WINDOW against the existing
-// tables (attempts, review events, mastery) — no session id is stamped onto
-// student work rows.
-// ============================================================
-
-model StudentActivitySession {
-  id             String    @id @default(cuid())
-  studentId      String    @map("student_id")
-  startedAt      DateTime  @default(now()) @map("started_at")
-  lastActiveAt   DateTime  @default(now()) @map("last_active_at")
-  /// Set when the session is idle-closed or superseded. Null = still open.
-  endedAt        DateTime? @map("ended_at")
-  /// Engaged time in seconds — sum of bounded per-touch deltas, never span.
-  activeSeconds  Int       @default(0) @map("active_seconds")
-  /// Bucketed area → seconds, e.g. { "mission": 1320, "drill": 480 }.
-  /// Area is a validated enum at the API boundary; raw paths are never stored.
-  areaSeconds    Json?     @map("area_seconds")
-  /// Where the student was on their MOST RECENT touch — what the live panel
-  /// shows. Distinct from areaSeconds, which is where time has accumulated:
-  /// a student who spent 30m on missions then opened the drill is "on" the
-  /// drill, and a student who just arrived has a current area but no tallies.
-  lastArea       String?   @map("last_area")
-  /// True when this session was opened by a real sign-in (vs. resumed work).
-  startedByLogin Boolean   @default(false) @map("started_by_login")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@index([studentId, startedAt])
-  @@index([lastActiveAt])
-  @@map("student_activity_sessions")
-}
-
-model StudentUiSettings {
-  id                String  @id @default(cuid())
-  studentId         String  @unique @map("student_id")
-  pausePointMinutes Int     @default(40) @map("pause_point_minutes")
-  reduceMotion      Boolean @default(false) @map("reduce_motion")
-  highContrast      Boolean @default(false) @map("high_contrast")
-  largeText         Boolean @default(false) @map("large_text")
-  skipAllNpcs       Boolean @default(false) @map("skip_all_npcs")
-
-  student Student @relation(fields: [studentId], references: [id])
-
-  @@map("student_ui_settings")
-}
-
-// SUGGESTION BOX (ADR 0021)
-// ============================================================
-
-/// A free-text suggestion filed from the nav-bar suggestion box, carrying a
-/// snapshot of which page the author was on. Students' suggestions route to
-/// their teacher; teachers' and admins' route to the site admin.
-model Suggestion {
-  id       String             @id @default(cuid())
-  audience SuggestionAudience
-  status   SuggestionStatus   @default(NEW)
-  /// Comment vs. question, chosen by the author. Routes to separate tabs on the
-  /// teacher report page.
-  kind     SuggestionKind     @default(COMMENT)
-
-  authorUserId    String   @map("author_user_id")
-  /// Role snapshot at submit time. `audience` is derived from THIS at creation,
-  /// never from User.role at read time.
-  authorRole      UserRole @map("author_role")
-  /// Set when a student filed it. Powers the roster-union read that surfaces
-  /// suggestions filed before the student was enrolled anywhere.
-  authorStudentId String?  @map("author_student_id")
-
-  /// "The teacher in the loop" — NOT a pure recipient FK. For a student-authored
-  /// suggestion this is the recipient teacher, resolved at submit time from the
-  /// student's earliest active enrollment. For a teacher-authored one it is the
-  /// author themselves. Null when a student had no active enrollment at submit
-  /// time (the roster-union read recovers those once they enroll).
-  teacherId String? @map("teacher_id")
-  /// The class that resolved `teacherId`. Null for teacher/admin authors and for
-  /// unenrolled students.
-  classId   String? @map("class_id")
-
-  /// Plain text, exactly as typed. Never parsed, never rendered as HTML — read
-  /// surfaces render it as text inside `whitespace-pre-wrap`.
-  body         String @db.Text
-  /// The concrete pathname the author was on, e.g. /student/mission/SS.7.CG.1.1.
-  pathname     String
-  /// Server-derived parameterized route, e.g. /student/mission/[benchmarkCode].
-  /// The groupable, PII-free dimension — safe to put in a query string.
-  routePattern String @map("route_pattern")
-  /// Server-derived human label for `routePattern`, e.g. "Mission page".
-  pageLabel    String @map("page_label")
-  /// Non-identifying triage context only: { viewportWidth, params }.
-  /// Deliberately NO user-agent and NO IP — rule #9 (these are minors).
-  contextJson  Json?  @map("context_json")
-
-  reviewedByUserId String?   @map("reviewed_by_user_id")
-  reviewedAt       DateTime? @map("reviewed_at")
-  /// Private note from the reviewer. Never shown to the author.
-  reviewerNote     String?   @map("reviewer_note") @db.Text
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  authorUser    User     @relation("SuggestionAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
-  reviewedBy    User?    @relation("SuggestionReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
-  authorStudent Student? @relation(fields: [authorStudentId], references: [id])
-  teacher       Teacher? @relation(fields: [teacherId], references: [id])
-  class         Class?   @relation(fields: [classId], references: [id])
-
-  @@index([audience, status, createdAt])
-  @@index([teacherId, status, createdAt])
-  @@index([authorStudentId, createdAt])
-  @@index([routePattern])
-  // The queues are always read kind-filtered (comments tab vs questions tab), and
-  // the teacher read is an OR across two branches, which no single index covers
-  // cleanly — this carries the kind for the audience-scoped admin path.
-  @@index([audience, kind, status, createdAt])
-  @@map("suggestions")
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Nine-week progress checkpoints
-//
-// A teacher sets, per school year, four checkpoints (the nine-week grading
-// periods). Each carries an end date and up to four target missions; reaching a
-// target earns that Level. Levels only DESCRIBE progress — nothing in the app
-// gates content on a checkpoint date or a Level.
-//
-// Named "checkpoint", not "period": Class.period already means bell-schedule
-// period, so a `period` field here would be a permanent trap.
-// ─────────────────────────────────────────────────────────────────────────────
-
-model ProgressPlan {
-  id         String   @id @default(cuid())
-  teacherId  String   @map("teacher_id")
-  schoolYear String   @map("school_year")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  teacher     Teacher              @relation(fields: [teacherId], references: [id])
-  checkpoints ProgressCheckpoint[]
-  classes     Class[]
-
-  @@unique([teacherId, schoolYear])
-  @@map("progress_plans")
-}
-
-model ProgressCheckpoint {
-  id               String   @id @default(cuid())
-  planId           String   @map("plan_id")
-  checkpointNumber Int      @map("checkpoint_number")
-  endsOn           DateTime @map("ends_on") @db.Date
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
-
-  plan      ProgressPlan               @relation(fields: [planId], references: [id], onDelete: Cascade)
-  targets   ProgressCheckpointTarget[]
-  snapshots StudentCheckpointLevel[]
-
-  @@unique([planId, checkpointNumber])
-  @@map("progress_checkpoints")
-}
-
-model ProgressCheckpointTarget {
-  id           String @id @default(cuid())
-  checkpointId String @map("checkpoint_id")
-  level        Int
-  benchmarkId  String @map("benchmark_id")
-
-  checkpoint ProgressCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
-  benchmark  Benchmark          @relation(fields: [benchmarkId], references: [id])
-
-  @@unique([checkpointId, level])
-  @@map("progress_checkpoint_targets")
-}
-
-/// Locked standing for one student at one checkpoint, written once the
-/// checkpoint's end date has passed. `targetsJson` freezes the targets that
-/// produced this level — targets stay editable afterwards, so without the frozen
-/// copy a locked row would report a level nobody could reconstruct.
-model StudentCheckpointLevel {
-  id              String   @id @default(cuid())
-  checkpointId    String   @map("checkpoint_id")
-  studentId       String   @map("student_id")
-  level           Int
-  missionsCleared Int      @map("missions_cleared")
-  targetsJson     Json     @map("targets_json")
-  lockedAt        DateTime @map("locked_at")
-
-  checkpoint ProgressCheckpoint @relation(fields: [checkpointId], references: [id], onDelete: Cascade)
-  student    Student            @relation(fields: [studentId], references: [id])
-
-  @@unique([checkpointId, studentId])
-  @@index([studentId])
-  @@map("student_checkpoint_levels")
 }

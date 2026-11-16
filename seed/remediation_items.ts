@@ -107,16 +107,13 @@ export async function seedRemediationItems(prisma: PrismaClient): Promise<void> 
     .map((i) => i.id)
   let staleRemoved = 0
   if (staleIds.length > 0) {
-    const referenced = await prisma.studentRemediation.findMany({
-      where: { remediationItemId: { in: staleIds } },
-      select: { remediationItemId: true },
+    // Unlink any misconception that points at a stale item, then remove it.
+    await prisma.misconception.updateMany({
+      where: { fixRemediationId: { in: staleIds } },
+      data: { fixRemediationId: null },
     })
-    const keep = new Set(referenced.map((r) => r.remediationItemId))
-    const deletable = staleIds.filter((id) => !keep.has(id))
-    if (deletable.length > 0) {
-      const res = await prisma.remediationItem.deleteMany({ where: { id: { in: deletable } } })
-      staleRemoved = res.count
-    }
+    const res = await prisma.remediationItem.deleteMany({ where: { id: { in: staleIds } } })
+    staleRemoved = res.count
   }
 
   console.log(

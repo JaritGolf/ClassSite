@@ -1,19 +1,16 @@
 import { Mascot } from '@/components/ui/Mascot'
 import { ExplainerHover } from '@/components/ui/ExplainerHover'
 import { BenchmarkNode, PATH_COLUMN_W, PATH_ROW_H, NODE_R } from './BenchmarkNode'
-import type { MissionNodeState } from '@/lib/mastery'
+import type { MissionNodeState } from '@/lib/mastery/availability-core'
 
 interface BenchmarkData {
   id: string
   code: string
   title: string
-  /** Decided server-side by computeAvailability — see lib/mastery/availability. */
+  /** Derived on the device from device-local progress. */
   state: MissionNodeState
   masteryScore: number | null
-  /** Whether the student may open this mission. Never inferred from `state`. */
   openable: boolean
-  /** Nine-week checkpoint target landing here, if any. Display only. */
-  checkpoint?: { checkpointNumber: number; level: number } | null
 }
 
 interface UnitData {
@@ -150,7 +147,6 @@ export function MissionMap({ map }: MissionMapProps) {
                   state={b.state}
                   masteryScore={b.masteryScore}
                   openable={b.openable}
-                  checkpoint={b.checkpoint ?? null}
                   offsetX={OFFSETS[i % OFFSETS.length]}
                 />
               ))}

@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { TrackIcon } from '@/components/ui/TrackIcon'
-import type { StudentPlan } from '@/lib/student-next-step'
+import { useStudentPlan } from '@/components/student/shell/StudentShell'
 
 /**
  * "Here is what to do now" — rendered wherever a student finishes something.
@@ -56,26 +55,9 @@ export function NextStepHandoff({
   intro,
   secondary = 'both',
 }: NextStepHandoffProps) {
-  const [plan, setPlan] = useState<StudentPlan | null>(null)
-  const [settled, setSettled] = useState(false)
-
-  useEffect(() => {
-    let cancelled = false
-    fetch('/api/student/next-step')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: StudentPlan | null) => {
-        if (!cancelled) setPlan(data)
-      })
-      .catch(() => {
-        /* fallback links below still render */
-      })
-      .finally(() => {
-        if (!cancelled) setSettled(true)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  // Worked out on this device from device-local progress — no request.
+  const plan = useStudentPlan()
+  const settled = plan !== null
 
   const step = plan?.primary ?? null
   const links = SECONDARY_LINKS[secondary] ?? SECONDARY_LINKS.both

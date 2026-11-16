@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. Clever sign-in was removed. The only sign-in is the teacher's Google account, restricted to an address allowlist. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # My Civics Class — OAuth Scopes Inventory (Phase 17)
 
 > Audit §36.18 item 5. Inventories the exact OAuth scopes the app requests so the owner can

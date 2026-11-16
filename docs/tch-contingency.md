@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. It was written for the build that collected student data. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # Operating Without Technology Clearinghouse Approval — Contingency
 
 > **Status: planning document. Nothing here has been filed with or sent to the district.**

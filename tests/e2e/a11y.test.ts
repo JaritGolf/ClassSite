@@ -2,8 +2,8 @@
  * Audit 12 — Automated WCAG 2.1 AA check (spec §36.13 item 1).
  *
  * Runs axe-core against the core student pages and asserts zero violations at
- * WCAG 2.0/2.1 A and AA levels. Auth/session is provided by global-setup
- * (storageState). Run with the dev server: `npx playwright test tests/e2e/a11y.test.ts`.
+ * WCAG 2.0/2.1 A and AA levels. The student area is public, so these run as an
+ * anonymous visitor. Run with the dev server: `npx playwright test tests/e2e/a11y.test.ts`.
  */
 
 import { test, expect } from '@playwright/test'
@@ -30,15 +30,31 @@ test('mission page has no WCAG A/AA violations', async ({ page }) => {
   await expectNoViolations(page)
 })
 
+test('mission map has no WCAG A/AA violations', async ({ page }) => {
+  await page.goto('/student/map')
+  await page.waitForSelector('[data-testid="benchmark-node"]')
+  await expectNoViolations(page)
+})
+
 test('assessment player has no WCAG A/AA violations', async ({ page }) => {
-  // Navigate via the map/mission to reach a real assessment id, then audit.
-  await page.goto('/student/dashboard')
-  await expect(page).not.toHaveURL(/\/login/)
+  // The pre-check is the first assessment a new visitor reaches.
+  await page.goto('/student/mission/SS.7.CG.1.1')
+  await page.getByRole('button', { name: /Start/ }).first().click()
+  await page.waitForSelector('[aria-label="Assessment progress"]')
   await expectNoViolations(page)
 })
 
 test('settings page has no WCAG A/AA violations', async ({ page }) => {
   await page.goto('/student/settings')
   await expect(page).not.toHaveURL(/\/login/)
+  await expectNoViolations(page)
+})
+
+test('printable summary and badges have no WCAG A/AA violations', async ({ page }) => {
+  await page.goto('/student/summary')
+  await page.waitForSelector('text=progress summary')
+  await expectNoViolations(page)
+  await page.goto('/student/badges')
+  await page.waitForSelector('text=Your Badges')
   await expectNoViolations(page)
 })

@@ -66,11 +66,15 @@ describe('getAssessmentPreviewsForBenchmark', () => {
     expect(dbForms).toBeGreaterThanOrEqual(2) // Form A/B rotation exists for 30-question banks
   })
 
-  it('is strictly read-only — creates no attempts and mutates nothing', async () => {
-    const before = await prisma.assessmentAttempt.count()
+  it('is strictly read-only — mutates nothing', async () => {
+    const snapshot = async () => ({
+      assessments: await prisma.assessment.count(),
+      links: await prisma.assessmentQuestion.count(),
+      audit: await prisma.auditLog.count(),
+    })
+    const before = await snapshot()
     await getAssessmentPreviewsForBenchmark(benchmarkId)
-    const after = await prisma.assessmentAttempt.count()
-    expect(after).toBe(before)
+    expect(await snapshot()).toEqual(before)
   })
 
   it('excludes non-APPROVED assessments', async () => {

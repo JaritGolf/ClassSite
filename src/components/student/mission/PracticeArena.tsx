@@ -5,16 +5,27 @@
  * difficulty engine (spec §18), surfaced as an optional mission step between
  * Scenario Lab and the Readiness Check.
  *
- * Drives POST /api/assessment/[id]/start → GET /api/practice/[attemptId]/next-item
- * → POST /api/practice/[attemptId]/answer. All grading is server-side; the
- * client only ever sees safe questions (no isCorrect on options). When the
- * engine detects a struggle streak it serves a worked example (expert
- * reasoning + revealed answer) followed by a near-transfer question; a missed
- * near-transfer escalates to an assigned remediation.
+ * Drives POST /api/practice/next-item and POST /api/practice/answer. The
+ * adaptive session state lives HERE, in the browser: each request sends it and
+ * the server keeps nothing. Grading is still server-side and the client only
+ * ever sees safe questions (no key on options). A struggle streak brings a
+ * worked example followed by a similar question; missing that one assigns a
+ * Training Mission on this device.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mascot } from '@/components/ui/Mascot'
+import {
+  applyCorrectAnswer,
+  applyIncorrectAnswer,
+  applyNearTransferCorrect,
+  applyNearTransferIncorrect,
+  initialState,
+  type AdaptiveState,
+} from '@/lib/adaptive-difficulty/transitions'
+import { buildQuestionAnswerBody } from '@/lib/assessment/wire'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
+import { assignRemediations, noteQuestions, recordStreakActivity } from '@/lib/local-progress/engine'
 
 interface SafeOption {
   id: string
@@ -39,18 +50,14 @@ type NextItemPayload =
   | { type: 'NEAR_TRANSFER'; question: SafeQuestion }
   | { type: 'NO_ITEMS_AVAILABLE' }
 
+type NextAction = 'NEXT_QUESTION' | 'WORKED_EXAMPLE' | 'REMEDIATION_ESCALATED'
+
 interface AnswerResponse {
   isCorrect: boolean
-  nextAction:
-    | 'NEXT_QUESTION'
-    | 'WORKED_EXAMPLE'
-    | 'NEAR_TRANSFER'
-    | 'REMEDIATION_ESCALATED'
-    | 'SESSION_COMPLETE'
-  remediationAssigned?: boolean
-  /** Post-answer reveal — populated by the answer endpoint after grading. */
-  correctOptionText?: string | null
-  selectedFeedback?: string | null
+  correctOptionText: string | null
+  selectedFeedback: string | null
+  benchmarkCode: string
+  remediation: { itemId: string; title: string }[]
 }
 
 interface PracticeArenaProps {
@@ -69,7 +76,7 @@ type Phase =
       question: SafeQuestion
       selectedId: string
       isCorrect: boolean
-      nextAction: AnswerResponse['nextAction']
+      nextAction: NextAction
       remediationAssigned: boolean
       wasNearTransfer: boolean
       correctOptionText: string | null
@@ -87,76 +94,108 @@ type Phase =
 const LETTERS = ['A', 'B', 'C', 'D', 'E']
 
 export function PracticeArena({ assessmentId, onFinish, itemTarget = 5 }: PracticeArenaProps) {
-  const [attemptId, setAttemptId] = useState<string | null>(null)
+  const { update } = useLocalProgress()
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' })
   const [answered, setAnswered] = useState(0)
   const [correct, setCorrect] = useState(0)
   const [target, setTarget] = useState(itemTarget)
   const remediationNoted = useRef(false)
+  // Adaptive state and the questions seen this session — held in the browser.
+  const stateRef = useRef<AdaptiveState>(initialState)
+  const seenRef = useRef<string[]>([])
 
-  const fetchNextItem = useCallback(
-    async (id: string) => {
-      setPhase({ kind: 'loading' })
-      try {
-        const res = await fetch(`/api/practice/${id}/next-item`)
-        if (!res.ok) throw new Error('Could not load the next practice item.')
-        const payload: NextItemPayload = await res.json()
-        if (payload.type === 'NO_ITEMS_AVAILABLE') {
-          setPhase({ kind: 'done', reason: 'exhausted' })
-        } else if (payload.type === 'WORKED_EXAMPLE') {
-          setPhase({
-            kind: 'worked-example',
-            question: payload.question,
-            expertReasoning: payload.expertReasoning,
-            correctOptionId: payload.correctOptionId,
-            nearTransferQuestion: payload.nearTransferQuestion,
-          })
-        } else {
-          setPhase({
-            kind: 'question',
-            question: payload.question,
-            isNearTransfer: payload.type === 'NEAR_TRANSFER',
-          })
-        }
-      } catch (e) {
-        setPhase({ kind: 'error', message: e instanceof Error ? e.message : 'Something went wrong.' })
-      }
-    },
-    []
-  )
-
-  useEffect(() => {
-    let cancelled = false
-    async function start() {
-      try {
-        const res = await fetch(`/api/assessment/${assessmentId}/start`, { method: 'POST' })
-        if (!res.ok) throw new Error('Could not start a practice session.')
-        const { attemptId: id } = await res.json()
-        if (cancelled) return
-        setAttemptId(id)
-        await fetchNextItem(id)
-      } catch (e) {
-        if (!cancelled) {
-          setPhase({ kind: 'error', message: e instanceof Error ? e.message : 'Something went wrong.' })
-        }
-      }
-    }
-    start()
-    return () => {
-      cancelled = true
-    }
-  }, [assessmentId, fetchNextItem])
-
-  async function submitAnswer(question: SafeQuestion, optionId: string, wasNearTransfer: boolean) {
-    if (!attemptId) return
+  const fetchNextItem = useCallback(async () => {
+    setPhase({ kind: 'loading' })
     try {
-      const res = await fetch(`/api/practice/${attemptId}/answer`, {
+      const res = await fetch('/api/practice/next-item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questionId: question.id, selectedOptionId: optionId }),
+        body: JSON.stringify({
+          assessmentId,
+          state: stateRef.current,
+          seenQuestionIds: seenRef.current,
+        }),
+      })
+      if (!res.ok) throw new Error('Could not load the next practice item.')
+      const data: { payload: NextItemPayload; state: AdaptiveState } = await res.json()
+      stateRef.current = data.state
+      const payload = data.payload
+      if (payload.type === 'NO_ITEMS_AVAILABLE') {
+        setPhase({ kind: 'done', reason: 'exhausted' })
+      } else if (payload.type === 'WORKED_EXAMPLE') {
+        if (payload.nearTransferQuestion) seenRef.current.push(payload.nearTransferQuestion.id)
+        setPhase({
+          kind: 'worked-example',
+          question: payload.question,
+          expertReasoning: payload.expertReasoning,
+          correctOptionId: payload.correctOptionId,
+          nearTransferQuestion: payload.nearTransferQuestion,
+        })
+      } else {
+        seenRef.current.push(payload.question.id)
+        setPhase({
+          kind: 'question',
+          question: payload.question,
+          isNearTransfer: payload.type === 'NEAR_TRANSFER',
+        })
+      }
+    } catch (e) {
+      setPhase({ kind: 'error', message: e instanceof Error ? e.message : 'Something went wrong.' })
+    }
+  }, [assessmentId])
+
+  useEffect(() => {
+    stateRef.current = initialState
+    seenRef.current = []
+    void fetchNextItem()
+  }, [fetchNextItem])
+
+  async function submitAnswer(question: SafeQuestion, optionId: string, wasNearTransfer: boolean) {
+    try {
+      const res = await fetch('/api/practice/answer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...buildQuestionAnswerBody({ questionId: question.id, selectedOptionId: optionId }),
+          // A missed near-transfer question escalates to a Training Mission.
+          suggestRemediation: wasNearTransfer,
+        }),
       })
       if (!res.ok) throw new Error('Could not submit your answer.')
       const data: AnswerResponse = await res.json()
+
+      // Advance the adaptive state machine here — same pure transitions the
+      // server used to run.
+      let nextAction: NextAction = 'NEXT_QUESTION'
+      let remediationAssigned = false
+      const state = stateRef.current
+      if (state.pendingNearTransfer) {
+        if (data.isCorrect) {
+          stateRef.current = applyNearTransferCorrect(state).state
+        } else {
+          stateRef.current = applyNearTransferIncorrect(state).state
+          nextAction = 'REMEDIATION_ESCALATED'
+          remediationAssigned = data.remediation.length > 0
+        }
+      } else if (data.isCorrect) {
+        stateRef.current = applyCorrectAnswer(state)
+      } else {
+        stateRef.current = applyIncorrectAnswer(state, question.id)
+        if (stateRef.current.pendingWorkedExample) nextAction = 'WORKED_EXAMPLE'
+      }
+
+      update((p) => {
+        let next = noteQuestions(
+          recordStreakActivity(p, new Date()),
+          [question.id],
+          data.isCorrect ? [] : [question.id]
+        )
+        if (remediationAssigned) {
+          next = assignRemediations(next, data.benchmarkCode, data.remediation, new Date())
+        }
+        return next
+      })
+
       setAnswered((n) => n + 1)
       if (data.isCorrect) setCorrect((n) => n + 1)
       setPhase({
@@ -164,8 +203,8 @@ export function PracticeArena({ assessmentId, onFinish, itemTarget = 5 }: Practi
         question,
         selectedId: optionId,
         isCorrect: data.isCorrect,
-        nextAction: data.nextAction,
-        remediationAssigned: Boolean(data.remediationAssigned),
+        nextAction,
+        remediationAssigned,
         wasNearTransfer,
         correctOptionText: data.correctOptionText ?? null,
         selectedFeedback: data.selectedFeedback ?? null,
@@ -176,21 +215,16 @@ export function PracticeArena({ assessmentId, onFinish, itemTarget = 5 }: Practi
   }
 
   function handleContinue(p: Extract<Phase, { kind: 'answered' }>) {
-    if (!attemptId) return
-    if (p.nextAction === 'SESSION_COMPLETE') {
-      setPhase({ kind: 'done', reason: 'exhausted' })
-      return
-    }
-    // Struggle streak → the engine wants to teach before asking again.
+    // Struggle streak → teach before asking again.
     if (p.nextAction === 'WORKED_EXAMPLE') {
-      fetchNextItem(attemptId)
+      void fetchNextItem()
       return
     }
     if (answered >= target) {
       setPhase({ kind: 'done', reason: 'target' })
       return
     }
-    fetchNextItem(attemptId)
+    void fetchNextItem()
   }
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -243,7 +277,7 @@ export function PracticeArena({ assessmentId, onFinish, itemTarget = 5 }: Practi
               type="button"
               onClick={() => {
                 setTarget((t) => t + 3)
-                if (attemptId) fetchNextItem(attemptId)
+                void fetchNextItem()
               }}
               className="rounded-2xl border-2 border-b-4 border-indigo-300 bg-white px-4 py-2 font-display text-sm font-bold text-indigo-700 transition-colors hover:bg-indigo-50 active:translate-y-[2px] active:border-b-2"
             >
@@ -323,7 +357,7 @@ export function PracticeArena({ assessmentId, onFinish, itemTarget = 5 }: Practi
         ) : (
           <button
             type="button"
-            onClick={() => attemptId && fetchNextItem(attemptId)}
+            onClick={() => void fetchNextItem()}
             className="rounded-2xl border-b-4 border-indigo-800 bg-indigo-600 px-5 py-2 font-display text-sm font-bold text-white transition-colors hover:bg-indigo-500 active:translate-y-[3px] active:border-b-0"
           >
             Continue →

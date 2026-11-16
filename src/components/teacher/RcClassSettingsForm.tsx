@@ -5,12 +5,9 @@ import { ExplainerHover } from '@/components/ui/ExplainerHover'
 
 interface Settings {
   rcSessionLengthOverride: number | null
-  rcAttemptsAllowed: number
-  rcReviewWindow: 'immediate' | 'after_submit' | 'after_class_window'
   rcStaminaOverride: number | null
   featureEocReviewEnabled: boolean
   strategyUsesRequired: number
-  secureAssessmentMode: boolean
 }
 
 interface Props {
@@ -69,13 +66,14 @@ export function RcClassSettingsForm({ classId, className, initial }: Props) {
         </h2>
         <p className="text-sm text-gray-500 mt-1">
           These settings affect Quick Review, Mixed Mission, Endurance Trial, and Final
-          Republic Trial for all students enrolled in this class.
+          Republic Trial. Students are not enrolled in classes — the settings of your first
+          class are the ones every student gets.
         </p>
       </header>
 
       <Field
         label="Feature: Republic Challenge"
-        hint="Disable to hide Republic Challenge from students in this class."
+        hint="Disable to switch Republic Challenge off for students."
       >
         <label className="inline-flex items-center gap-2">
           <input
@@ -114,30 +112,6 @@ export function RcClassSettingsForm({ classId, className, initial }: Props) {
         />
       </Field>
 
-      <Field label="Final Trial — attempts allowed" hint="How many times each student can attempt the Final Republic Trial.">
-        <input
-          type="number"
-          min={1}
-          max={10}
-          value={settings.rcAttemptsAllowed}
-          onChange={(e) => update('rcAttemptsAllowed', parseInt(e.target.value, 10) || 1)}
-          className="rounded border border-gray-300 px-3 py-1.5 w-32"
-        />
-      </Field>
-
-      <Field label="Final Trial — review window" hint="When students can see their results.">
-        <select
-          value={settings.rcReviewWindow}
-          onChange={(e) =>
-            update('rcReviewWindow', e.target.value as Settings['rcReviewWindow'])
-          }
-          className="rounded border border-gray-300 px-3 py-1.5"
-        >
-          <option value="immediate">Immediate (per-item feedback)</option>
-          <option value="after_submit">After submit (score only)</option>
-          <option value="after_class_window">After class window closes</option>
-        </select>
-      </Field>
 
       <div className="border-t border-gray-100 pt-4">
         <h3 className="text-sm font-bold text-gray-800">
@@ -168,33 +142,6 @@ export function RcClassSettingsForm({ classId, className, initial }: Props) {
         />
       </Field>
 
-      <div className="border-t border-gray-100 pt-4">
-        <h3 className="text-sm font-bold text-gray-800">
-          <ExplainerHover
-            theme="admin"
-            variant="underline"
-            title="Focus Mode"
-            text="What the app itself can do during a graded assessment: open it full screen, block copy/paste and right-click, and record when a student leaves the page. It CANNOT lock the Chromebook — only your district's device management (GoGuardian, or a ChromeOS kiosk) can do that. See docs/chromebook-lockdown.md for that setup."
-          >
-            Focus Mode
-          </ExplainerHover>
-        </h3>
-      </div>
-
-      <Field
-        label="Focus Mode on secure assessments"
-        hint="Applies to Mastery Challenges, Readiness Checks, Republic Challenge, and the Final Trial. Students see a note that leaving the page was recorded; you see a flag on the attempt. Nothing is ever deducted automatically — you decide. Breaks taken with the in-app button are never counted."
-      >
-        <label className="flex items-center gap-2 text-sm text-gray-800">
-          <input
-            type="checkbox"
-            checked={settings.secureAssessmentMode}
-            onChange={(e) => update('secureAssessmentMode', e.target.checked)}
-            className="h-4 w-4"
-          />
-          Turn on Focus Mode for this class
-        </label>
-      </Field>
 
       <div className="flex items-center gap-4 pt-2">
         <button

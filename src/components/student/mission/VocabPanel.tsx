@@ -14,14 +14,15 @@
 import { useState } from 'react'
 import { AssessmentPlayer } from '@/components/student/assessment/AssessmentPlayer'
 import { TrackIcon } from '@/components/ui/TrackIcon'
+import { useLocalProgress } from '@/lib/local-progress/useLocalProgress'
 import { LessonStepRenderer, type LessonStepView } from './LessonStepRenderer'
 
 export interface TermView {
   term: string
   definition: string
   relatedVocab: string | null
-  l1Definition?: string
-  l1Language?: string
+  /** Approved translations by language; the device shows the one chosen in Settings. */
+  l1Definitions?: Partial<Record<'es' | 'ht', string>>
 }
 
 const L1_LABELS: Record<string, string> = { es: 'Español', ht: 'Kreyòl Ayisyen' }
@@ -35,6 +36,8 @@ interface VocabPanelProps {
 
 export function VocabPanel({ terms, vocabSteps, vocabCheckAssessmentId, onContinue }: VocabPanelProps) {
   const [wordBuilderDone, setWordBuilderDone] = useState(false)
+  const { progress } = useLocalProgress()
+  const glossLanguage = progress.settings.glossLanguage
   const continueGated = Boolean(vocabCheckAssessmentId) && !wordBuilderDone
 
   return (
@@ -62,12 +65,12 @@ export function VocabPanel({ terms, vocabSteps, vocabCheckAssessmentId, onContin
                 </span>
               </div>
               <p className="mt-1 text-base leading-relaxed text-gray-700">{t.definition}</p>
-              {t.l1Definition && t.l1Language && (
-                <p className="mt-1 text-base leading-relaxed text-indigo-900" lang={t.l1Language}>
+              {glossLanguage && t.l1Definitions?.[glossLanguage] && (
+                <p className="mt-1 text-base leading-relaxed text-indigo-900" lang={glossLanguage}>
                   <span className="mr-1 text-xs font-bold uppercase tracking-wide text-indigo-600">
-                    {L1_LABELS[t.l1Language] ?? t.l1Language}:
+                    {L1_LABELS[glossLanguage] ?? glossLanguage}:
                   </span>
-                  {t.l1Definition}
+                  {t.l1Definitions[glossLanguage]}
                 </p>
               )}
               {t.relatedVocab && (

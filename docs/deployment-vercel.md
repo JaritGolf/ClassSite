@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. References to Clever, the demo login (`DEMO_OPEN_LOGIN`) and seeded demo accounts no longer apply. `TEACHER_ALLOWED_EMAILS` must be set or nobody can sign in. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # Deploying My Civics Class to mycivicsclass.com
 
 > Target for the **first** deployment: a demo/preview site running seed data only —

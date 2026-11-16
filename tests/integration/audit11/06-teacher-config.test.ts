@@ -17,9 +17,9 @@ let classId: string
 
 beforeAll(async () => {
   const u = await prisma.user.upsert({
-    where: { cleverId: 'test-audit11-06-t1' },
+    where: { email: 'test-audit11-06-t1' },
     create: {
-      cleverId: 'test-audit11-06-t1',
+      email: 'test-audit11-06-t1',
       firstName: 'Audit11',
       lastName: 'Teacher',
       role: 'TEACHER',
@@ -51,7 +51,7 @@ afterAll(async () => {
   await prisma.class.deleteMany({ where: { id: classId } })
   await prisma.teacher.deleteMany({ where: { id: teacherId } })
   await prisma.user.deleteMany({
-    where: { cleverId: { startsWith: 'test-audit11-06-' } },
+    where: { email: { startsWith: 'test-audit11-06-' } },
   })
   await prisma.$disconnect()
 })
@@ -62,15 +62,11 @@ describe('Audit 11 item 6 — teacher configures Class Republic Challenge settin
       where: { id: classId },
       select: {
         rcSessionLengthOverride: true,
-        rcAttemptsAllowed: true,
-        rcReviewWindow: true,
         rcStaminaOverride: true,
         featureEocReviewEnabled: true,
       },
     })
     expect(c?.rcSessionLengthOverride).toBeNull()
-    expect(c?.rcAttemptsAllowed).toBe(1)
-    expect(c?.rcReviewWindow).toBe('after_submit')
     expect(c?.rcStaminaOverride).toBeNull()
     expect(c?.featureEocReviewEnabled).toBe(true)
   })
@@ -78,8 +74,6 @@ describe('Audit 11 item 6 — teacher configures Class Republic Challenge settin
   it('settings round-trip in a $transaction with an AuditLog row', async () => {
     const newSettings = {
       rcSessionLengthOverride: 8,
-      rcAttemptsAllowed: 2,
-      rcReviewWindow: 'after_class_window',
       rcStaminaOverride: 15,
       featureEocReviewEnabled: false,
     }
@@ -88,8 +82,6 @@ describe('Audit 11 item 6 — teacher configures Class Republic Challenge settin
       where: { id: classId },
       select: {
         rcSessionLengthOverride: true,
-        rcAttemptsAllowed: true,
-        rcReviewWindow: true,
         rcStaminaOverride: true,
         featureEocReviewEnabled: true,
       },
@@ -112,8 +104,6 @@ describe('Audit 11 item 6 — teacher configures Class Republic Challenge settin
       where: { id: classId },
       select: {
         rcSessionLengthOverride: true,
-        rcAttemptsAllowed: true,
-        rcReviewWindow: true,
         rcStaminaOverride: true,
         featureEocReviewEnabled: true,
       },

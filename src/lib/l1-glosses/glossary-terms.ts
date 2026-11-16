@@ -1,16 +1,29 @@
 /**
- * Build the glossary-term list for a benchmark, attaching APPROVED L1 glosses for
- * the active language. Single source of glossary terms for the Source Lab and the
- * assessment player. Only APPROVED Terms and APPROVED TermTranslations are returned
- * (spec §36.17 item 3 — reviewed/approved before student visibility).
+ * Glossary terms for a benchmark, with EVERY approved translation attached.
+ *
+ * The server does not know — and is never told — which language a student
+ * reads. It sends the approved Spanish and Haitian Creole glosses alongside
+ * the English definition, and the student's own device shows the one the
+ * student picked in Settings (or none). A language choice is information about
+ * a child; keeping the choice on the device means the server never holds it.
  */
 
 import { prisma } from '@/lib/db'
 import type { GlossaryTerm } from '@/lib/reading-load'
 
+export const SUPPORTED_L1_LANGUAGES = ['es', 'ht'] as const
+export type L1Language = (typeof SUPPORTED_L1_LANGUAGES)[number]
+
+function isSupported(code: string): code is L1Language {
+  return (SUPPORTED_L1_LANGUAGES as readonly string[]).includes(code)
+}
+
+/**
+ * Approved tier-2 (global) and tier-3 (this benchmark) terms.
+ * Display-only: glossary support never affects grading.
+ */
 export async function getGlossaryTermsForBenchmark(
-  benchmarkId: string | null,
-  languageCode: string | null
+  benchmarkId: string | null
 ): Promise<GlossaryTerm[]> {
   const terms = await prisma.term.findMany({
     where: {
@@ -18,29 +31,27 @@ export async function getGlossaryTermsForBenchmark(
       tier: { in: ['TIER_2', 'TIER_3'] },
       OR: [{ benchmarkId }, { benchmarkId: null }],
     },
-    select: { id: true, term: true, definition: true, tier: true },
+    select: {
+      term: true,
+      definition: true,
+      tier: true,
+      translations: {
+        where: { approvalStatus: 'APPROVED', languageCode: { in: [...SUPPORTED_L1_LANGUAGES] } },
+        select: { languageCode: true, definitionTranslated: true },
+      },
+    },
   })
 
-  let trMap = new Map<string, string>()
-  if (languageCode && terms.length > 0) {
-    const translations = await prisma.termTranslation.findMany({
-      where: {
-        languageCode,
-        approvalStatus: 'APPROVED',
-        termId: { in: terms.map((t) => t.id) },
-      },
-      select: { termId: true, definitionTranslated: true },
-    })
-    trMap = new Map(translations.map((t) => [t.termId, t.definitionTranslated]))
-  }
-
   return terms.map((t) => {
-    const l1 = languageCode ? trMap.get(t.id) : undefined
+    const l1Definitions: Partial<Record<L1Language, string>> = {}
+    for (const tr of t.translations) {
+      if (isSupported(tr.languageCode)) l1Definitions[tr.languageCode] = tr.definitionTranslated
+    }
     return {
       term: t.term,
       definition: t.definition,
       tier: t.tier as 'TIER_2' | 'TIER_3',
-      ...(l1 ? { l1Definition: l1, l1Language: languageCode! } : {}),
+      ...(Object.keys(l1Definitions).length > 0 ? { l1Definitions } : {}),
     }
   })
 }

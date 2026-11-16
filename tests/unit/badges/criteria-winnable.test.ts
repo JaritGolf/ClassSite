@@ -12,7 +12,7 @@
  * two cannot drift. These fixtures pin that pairing.
  */
 
-import { isCriteriaWinnable } from '@/lib/badges'
+import { isCriteriaWinnable } from '@/lib/local-progress/badge-rules'
 
 describe('isCriteriaWinnable — unsupported events', () => {
   it.each([

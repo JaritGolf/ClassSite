@@ -1,5 +1,5 @@
 /**
- * Get a teacher's full roster: classes + student IDs
+ * Get a teacher's classes.
  */
 
 import { prisma } from '@/lib/db'
@@ -13,9 +13,7 @@ export interface TeacherRoster {
     name: string
     period: string | null
     subPrepNotes: string | null
-    studentIds: string[]
   }>
-  allStudentIds: string[]
 }
 
 export async function getTeacherRoster(
@@ -34,17 +32,13 @@ export async function getTeacherRoster(
           name: true,
           period: true,
           subPrepNotes: true,
-          enrollments: {
-            where: { status: 'ACTIVE' },
-            select: { studentId: true },
-          },
         },
       },
     },
   })
 
   if (!teacher) {
-    return { teacherId, schoolId: null, classes: [], allStudentIds: [] }
+    return { teacherId, schoolId: null, classes: [] }
   }
 
   const classes = teacher.classes.map((c) => ({
@@ -52,15 +46,12 @@ export async function getTeacherRoster(
     name: c.name,
     period: c.period,
     subPrepNotes: c.subPrepNotes,
-    studentIds: c.enrollments.map((e) => e.studentId),
   }))
 
-  const allStudentIds = [...new Set(classes.flatMap((c) => c.studentIds))]
 
   return {
     teacherId,
     schoolId: teacher.schoolId,
     classes,
-    allStudentIds,
   }
 }

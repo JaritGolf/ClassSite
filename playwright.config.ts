@@ -10,14 +10,15 @@ export default defineConfig({
   timeout: 180000,
   expect: { timeout: 30000 },
   use: {
-    baseURL: 'http://localhost:3000',
-    storageState: 'tests/e2e/.auth/student.json',
+    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
+    // No stored state by default: students have no session, so the student
+    // tests run as a brand-new anonymous browser. Staff tests opt in per file.
     navigationTimeout: 150000,
     actionTimeout: 60000,
   },
   webServer: {
-    command: 'MOCK_AUTH=true npm run dev',
-    url: 'http://localhost:3000',
+    command: 'npm run dev',
+    url: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
     reuseExistingServer: true,
     timeout: 300000,
   },

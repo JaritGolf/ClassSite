@@ -79,8 +79,8 @@ export async function DELETE(
   if (auth.error) return auth.error
 
   try {
-    const result = await removeLessonStep(auth.session.user.userId, params.lessonStepId)
-    return NextResponse.json(result)
+    await removeLessonStep(auth.session.user.userId, params.lessonStepId)
+    return NextResponse.json({ ok: true })
   } catch (e: unknown) {
     if (e instanceof LessonStructureError) {
       return NextResponse.json({ error: e.code }, { status: e.code === 'NOT_FOUND' ? 404 : 422 })

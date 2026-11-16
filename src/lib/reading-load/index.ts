@@ -7,10 +7,8 @@
 // ── Pure functions ─────────────────────────────────────────────────────────
 export {
   selectVariantContent,
-  resolveAccommodationLevel,
   buildGlossaryAnnotations,
   filterQuestionsForMastery,
-  LEVEL_1_ACCOMMODATION_CODES,
 } from './variant-selector'
 export type {
   VariantLike,
@@ -21,26 +19,6 @@ export type {
   QuestionWithLevel,
 } from './variant-selector'
 
-// ── Accommodation (DB) ─────────────────────────────────────────────────────
-export {
-  getStudentAccommodations,
-  getEffectiveReadingLevel,
-  hasActiveAccommodation,
-  setAccommodation,
-  AccommodationError,
-} from './accommodation'
-export type { AccommodationRecord, EffectiveReadingLevel } from './accommodation'
-
-// ── Reduced answer choices (ACC-REDUCED-CHOICES) ───────────────────────────
-export {
-  reduceChoices,
-  isReducedChoicesEligibleType,
-  ACC_REDUCED_CHOICES_CODE,
-  REDUCED_CHOICE_COUNT,
-  REDUCED_CHOICES_ELIGIBLE_TYPES,
-} from './reduced-choices'
-
-// ── Question filter & stimulus (DB) ────────────────────────────────────────
 export {
   fetchStimulusForQuestion,
 } from './question-filter'
@@ -50,12 +28,8 @@ export type { StimulusAttachment } from './question-filter'
 export {
   getSourceDecoderMissions,
   getSourceDecoderMission,
-  getSourceDecoderProgress,
-  completeSourceDecoderLevel,
-  SourceDecoderError,
 } from './source-decoder'
 export type {
   SourceDecoderMission,
   SourceDecoderActivityType,
-  SourceDecoderProgressRecord,
 } from './source-decoder'
