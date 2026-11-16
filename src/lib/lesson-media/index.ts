@@ -45,6 +45,8 @@ export {
   getClassLessonLayer,
 } from './class-steps'
 
+export { getClassStepOverrideMap } from './read'
+
 export const LESSON_MEDIA_AUDIT_ACTION = 'LESSON_MEDIA_VISIBILITY_CHANGED'
 
 export type ClassVisibilityState = 'inherit' | 'show' | 'hide'
@@ -307,28 +309,6 @@ export async function getClassVisibilityMap(
     select: { lessonStepId: true, visible: true },
   })
   return new Map(rows.map((r) => [r.lessonStepId, r.visible as boolean]))
-}
-
-/**
- * Class-override map (stepId → {visible, overrideTitle, overrideContent})
- * for a set of steps — feeds resolveEffectiveSteps. Empty map when classId
- * is null.
- */
-export async function getClassStepOverrideMap(
-  classId: string | null,
-  lessonStepIds: string[]
-): Promise<Map<string, StepOverride>> {
-  if (!classId || lessonStepIds.length === 0) return new Map()
-  const rows = await prisma.classLessonStepVisibility.findMany({
-    where: { classId, lessonStepId: { in: lessonStepIds } },
-    select: { lessonStepId: true, visible: true, overrideTitle: true, overrideContent: true },
-  })
-  return new Map(
-    rows.map((r) => [
-      r.lessonStepId,
-      { visible: r.visible, overrideTitle: r.overrideTitle, overrideContent: r.overrideContent },
-    ])
-  )
 }
 
 /**
