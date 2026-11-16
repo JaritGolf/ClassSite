@@ -58,7 +58,11 @@ test.describe('Teacher smoke — all pages render', () => {
         (e) =>
           !e.includes('hydration') &&
           !e.includes('favicon') &&
-          !e.includes('P2002')
+          !e.includes('P2002') &&
+          // beforeEach lands on the dashboard, whose links Next starts
+          // prefetching; navigating away straight afterwards cancels those
+          // requests, and a production build logs each cancellation.
+          !e.includes('Failed to fetch RSC payload')
       )
 
       expect(realErrors).toHaveLength(0)
