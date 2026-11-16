@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { extractCodes } from '@/lib/completion-codes/code'
+import { extractCodes } from '@/lib/completion-codes/format'
 
 interface Row {
   code: string

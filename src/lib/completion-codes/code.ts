@@ -24,6 +24,9 @@
  */
 
 import { isValidDateStamp, schoolDateStamp, signMessage, signaturesMatch } from './signing'
+import { normalizeCode } from './format'
+
+export { normalizeCode, extractCodes, CODE_SHAPE } from './format'
 
 const PREFIX = 'MCC'
 const BENCHMARK_PREFIX = 'SS.7.CG.'
@@ -69,18 +72,6 @@ export type CodeCheck =
   | { valid: true; code: string; payload: CompletionPayload }
   | { valid: false; code: string; reason: 'malformed' | 'bad-signature' }
 
-/** Tidy a pasted code: trim, upper-case, and undo Crockford look-alikes in the signature. */
-export function normalizeCode(raw: string): string {
-  const cleaned = raw.trim().toUpperCase()
-  const lastDash = cleaned.lastIndexOf('-')
-  if (lastDash === -1) return cleaned
-  const sig = cleaned
-    .slice(lastDash + 1)
-    .replace(/[IL]/g, '1')
-    .replace(/O/g, '0')
-  return `${cleaned.slice(0, lastDash)}-${sig}`
-}
-
 const CODE_PATTERN = /^MCC-(\d{1,2}\.\d{1,2})-(\d{1,3})-(\d{8})-([0-9A-HJKMNP-TV-Z]{10})$/
 
 /**
@@ -118,16 +109,3 @@ export function verifyCompletionCode(
     ? { valid: true, code, payload }
     : { valid: false, code, reason: 'bad-signature' }
 }
-
-/**
- * Pull completion codes out of pasted text. Runs IN THE TEACHER'S BROWSER, so
- * that whatever else was pasted alongside them — a student's name, a comment —
- * never leaves the page.
- */
-export function extractCodes(text: string): string[] {
-  const found = text.toUpperCase().match(/MCC-[0-9A-Z.]+(?:-[0-9A-Z]+){3}/g) ?? []
-  return found.map(normalizeCode)
-}
-
-/** Shape a code must have to be accepted by the check endpoint at all. */
-export const CODE_SHAPE = /^MCC-[0-9A-Z.]{1,8}-[0-9A-Z]{1,4}-[0-9A-Z]{1,10}-[0-9A-Z]{1,16}$/
