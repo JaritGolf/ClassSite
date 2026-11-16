@@ -104,20 +104,6 @@ export async function seedLessonDefs(
     })
     if (lessonRow.structureEditedAt) continue
 
-    // Step ids are POSITIONAL (`lstep-<code>-<n>`), so inserting/removing a
-    // step mid-lesson re-maps existing ids to different content. When the step
-    // count changes, resume pointers into this lesson would silently aim at
-    // shifted steps — null them (display-only; students fall back to the
-    // default start). Per-class visibility rows carry the same positional
-    // caveat (ADR 0015) but are teacher-set, so they are left alone.
-    const existingCount = await prisma.lessonStep.count({ where: { lessonId } })
-    if (existingCount !== 0 && existingCount !== def.steps.length) {
-      await prisma.studentProgress.updateMany({
-        where: { currentStep: { lessonId } },
-        data: { currentStepId: null },
-      })
-    }
-
     // Lesson content editor guard (fine-grained, per-step): a step an admin
     // has hand-edited (contentEditedAt set) keeps its edited title/content/
     // stepType forever — only its sequenceOrder/required still track the
@@ -161,11 +147,9 @@ export async function seedLessonDefs(
       })
     }
 
-    // Remove steps dropped from the def (unreference from progress rows first).
-    await prisma.studentProgress.updateMany({
-      where: { currentStep: { lessonId }, currentStepId: { notIn: keptIds } },
-      data: { currentStepId: null },
-    })
+    // Remove steps dropped from the def. (A student's saved place in a lesson
+    // lives on their own device and is validated when the mission opens, so
+    // there is nothing here to unreference.)
     await prisma.lessonStep.deleteMany({ where: { lessonId, id: { notIn: keptIds } } })
   }
 

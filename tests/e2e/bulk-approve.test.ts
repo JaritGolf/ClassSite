@@ -12,14 +12,15 @@ import { test, expect } from '@playwright/test'
 const RUN_E2E = process.env.E2E === '1'
 
 test.describe('Bulk approve flow', () => {
+  test.use({ storageState: 'tests/e2e/.auth/teacher.json' })
+
   if (!RUN_E2E) {
     test.skip(true, 'Set E2E=1 to run Playwright tests')
     return
   }
 
   test('content queue renders and shows items', async ({ page }) => {
-    const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    await page.goto(`${BASE_URL}/teacher/content`)
+    await page.goto('/teacher/content')
 
     // Should not be redirected to login
     await expect(page).not.toHaveURL(/\/login/)
@@ -27,8 +28,7 @@ test.describe('Bulk approve flow', () => {
   })
 
   test('bulk approve page renders filter builder', async ({ page }) => {
-    const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    await page.goto(`${BASE_URL}/teacher/content/bulk-approve`)
+    await page.goto('/teacher/content/bulk-approve')
 
     await expect(page).not.toHaveURL(/\/login/)
     await expect(page.locator('h1')).toContainText('Bulk Approve Content')
@@ -38,8 +38,7 @@ test.describe('Bulk approve flow', () => {
   })
 
   test('bulk approve confirm dialog opens on click', async ({ page }) => {
-    const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-    await page.goto(`${BASE_URL}/teacher/content/bulk-approve`)
+    await page.goto('/teacher/content/bulk-approve')
 
     await page.click('button:has-text("Preview")')
 

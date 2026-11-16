@@ -148,12 +148,8 @@ export function LessonEditorWorkspace({
   }
 
   async function handleDelete(stepId: string) {
-    const check = await fetch(`/api/admin/lessons/steps/${stepId}/delete-check`)
-    const { studentProgressCount } = await check.json().catch(() => ({ studentProgressCount: 0 }))
     const message =
-      studentProgressCount > 0
-        ? `${studentProgressCount} student${studentProgressCount === 1 ? ' has' : 's have'} their place saved at this step — deleting it will move their resume pointer. This can't be undone. Delete anyway?`
-        : 'Delete this step? This can\'t be undone.'
+      "Delete this step? This can't be undone. A student who had their place saved here will pick up at the nearest step."
     if (!window.confirm(message)) return
     const res = await fetch(`/api/admin/lessons/steps/${stepId}`, { method: 'DELETE' })
     if (res.ok) router.refresh()

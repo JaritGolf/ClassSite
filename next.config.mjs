@@ -55,8 +55,7 @@ function contentSecurityPolicy() {
     // The click-to-load lesson-video facade (ADR 0015) is the only embed.
     "frame-src 'self' https://www.youtube-nocookie.com",
     // This app is never meant to be framed. Paired with X-Frame-Options below for
-    // older browsers. Clever's Instant Login opens apps in a new tab, not an iframe,
-    // so this does not interfere with district SSO launch.
+    // older browsers.
     "frame-ancestors 'none'",
     "object-src 'none'",
     "base-uri 'self'",

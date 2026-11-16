@@ -1,17 +1,33 @@
 import { test, expect } from '@playwright/test'
 
-test('dashboard page renders student content', async ({ page }) => {
+/**
+ * Student smoke — as an anonymous visitor. There is no sign-in to do: these
+ * run with an empty browser and must never be sent to /login or be given a
+ * cookie.
+ */
+
+test('dashboard renders for a visitor with no account', async ({ page, context }) => {
   await page.goto('/student/dashboard')
-  // Should not redirect to login — session is set in global-setup
   await expect(page).not.toHaveURL(/\/login/)
-  // Dashboard hero renders with "Welcome back" or "Republic"
-  const body = await page.locator('body').textContent()
-  expect(body).toMatch(/Welcome back|Republic/i)
+  await expect(page.getByText(/Welcome back, Founder/)).toBeVisible()
+  expect(await context.cookies()).toEqual([])
 })
 
-test('map page renders benchmark nodes', async ({ page }) => {
+test('map opens exactly the first mission on a new device', async ({ page }) => {
   await page.goto('/student/map')
   await expect(page).not.toHaveURL(/\/login/)
-  // Wait for at least one benchmark node to render
   await expect(page.locator('[data-testid="benchmark-node"]').first()).toBeVisible({ timeout: 10000 })
+})
+
+test('progress written on the device survives a reload', async ({ page, context }) => {
+  await page.goto('/student/settings')
+  await page.check('#setting-largeText')
+  await page.reload()
+  await expect(page.locator('#setting-largeText')).toBeChecked()
+  expect(await context.cookies()).toEqual([])
+})
+
+test('teacher pages still require sign-in', async ({ page }) => {
+  await page.goto('/teacher/dashboard')
+  await expect(page).toHaveURL(/\/login/)
 })

@@ -44,15 +44,6 @@ export interface VariantSelection {
   fromVariant: boolean
 }
 
-// ── Accommodation codes that trigger level-1 default ──────────────────────
-// Shared between variant-selector (pure) and accommodation.ts (DB)
-
-export const LEVEL_1_ACCOMMODATION_CODES = new Set([
-  'ACC-SIMPLE-LANG',
-  'ELL',
-  'BELOW-GRADE-READER',
-])
-
 // ── selectVariantContent ───────────────────────────────────────────────────
 
 /**
@@ -93,37 +84,6 @@ export function selectVariantContent(
     resolvedLevel: stimulus.readingLoadLevel,
     fromVariant: false,
   }
-}
-
-// ── resolveAccommodationLevel ─────────────────────────────────────────────
-
-/**
- * Given a student's active accommodation codes, determine the effective
- * reading-load level to use.
- *
- * Rules (spec Section 16.5):
- *   - If any accommodation code is in LEVEL_1_ACCOMMODATION_CODES AND
- *     this is NOT a Mastery Challenge → return 1
- *   - Mastery Challenges are never downgraded (level 2 minimum is a
- *     separate hard constraint)
- *   - Otherwise → return requestedLevel unchanged
- */
-export function resolveAccommodationLevel(
-  accommodationCodes: string[],
-  requestedLevel: number,
-  isMasteryChallenge: boolean
-): number {
-  if (isMasteryChallenge) {
-    // Accommodations never downgrade mastery level — level 2 minimum is
-    // enforced separately. Return unchanged.
-    return requestedLevel
-  }
-
-  const hasLevel1Override = accommodationCodes.some((code) =>
-    LEVEL_1_ACCOMMODATION_CODES.has(code)
-  )
-
-  return hasLevel1Override ? 1 : requestedLevel
 }
 
 // ── buildGlossaryAnnotations ───────────────────────────────────────────────

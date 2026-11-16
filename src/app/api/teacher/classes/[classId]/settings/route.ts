@@ -4,11 +4,8 @@
  *
  * Teacher-facing per-class Republic Challenge configuration:
  *   - rcSessionLengthOverride (nullable; null = use mode default)
- *   - rcAttemptsAllowed (>= 1)
- *   - rcReviewWindow ('immediate' | 'after_submit' | 'after_class_window')
  *   - rcStaminaOverride (nullable; null = use ladder)
  *   - featureEocReviewEnabled
- *   - secureAssessmentMode (Focus Mode on secure assessments)
  *
  * POST writes an AuditLog row with action=RC_CLASS_CONFIG_UPDATED.
  */
@@ -23,12 +20,9 @@ import { RC_AUDIT_ACTIONS } from '@/lib/republic-challenge'
 
 const SettingsSchema = z.object({
   rcSessionLengthOverride: z.number().int().min(1).max(100).nullable(),
-  rcAttemptsAllowed: z.number().int().min(1).max(10),
-  rcReviewWindow: z.enum(['immediate', 'after_submit', 'after_class_window']),
   rcStaminaOverride: z.number().int().min(1).max(100).nullable(),
   featureEocReviewEnabled: z.boolean(),
   strategyUsesRequired: z.number().int().min(0).max(20),
-  secureAssessmentMode: z.boolean(),
 })
 
 export async function GET(
@@ -55,12 +49,9 @@ export async function GET(
       id: true,
       name: true,
       rcSessionLengthOverride: true,
-      rcAttemptsAllowed: true,
-      rcReviewWindow: true,
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
       strategyUsesRequired: true,
-      secureAssessmentMode: true,
     },
   })
 
@@ -112,12 +103,9 @@ export async function POST(
     where: { id: params.classId },
     select: {
       rcSessionLengthOverride: true,
-      rcAttemptsAllowed: true,
-      rcReviewWindow: true,
       rcStaminaOverride: true,
       featureEocReviewEnabled: true,
       strategyUsesRequired: true,
-      secureAssessmentMode: true,
     },
   })
 

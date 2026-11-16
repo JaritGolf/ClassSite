@@ -7,10 +7,8 @@
 // ── Pure functions ─────────────────────────────────────────────────────────
 export {
   selectVariantContent,
-  resolveAccommodationLevel,
   buildGlossaryAnnotations,
   filterQuestionsForMastery,
-  LEVEL_1_ACCOMMODATION_CODES,
 } from './variant-selector'
 export type {
   VariantLike,
@@ -21,7 +19,6 @@ export type {
   QuestionWithLevel,
 } from './variant-selector'
 
-// ── Accommodation (DB) ─────────────────────────────────────────────────────
 export {
   fetchStimulusForQuestion,
 } from './question-filter'

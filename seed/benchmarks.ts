@@ -106,21 +106,13 @@ async function applyBenchmarkCodeRealignment(prisma: PrismaClient): Promise<void
   if (fired.length === 0) return
 
   await prisma.$transaction(async (tx) => {
-    // Phase 1: park fired rows (and their calibration-snapshot scopes) on temp codes.
+    // Phase 1: park fired rows on temp codes.
     for (const r of fired) {
       await tx.benchmark.update({ where: { code: r.from }, data: { code: `LEGACY::${r.from}` } })
-      await tx.confidenceCalibrationSnapshot.updateMany({
-        where: { scope: `benchmark:${r.from}` },
-        data: { scope: `benchmark:LEGACY::${r.from}` },
-      })
     }
     // Phase 2: land on the official codes.
     for (const r of fired) {
       await tx.benchmark.update({ where: { code: `LEGACY::${r.from}` }, data: { code: r.to } })
-      await tx.confidenceCalibrationSnapshot.updateMany({
-        where: { scope: `benchmark:LEGACY::${r.from}` },
-        data: { scope: `benchmark:${r.to}` },
-      })
     }
   })
   console.log(`  ✓ Benchmark codes realigned to official SS.7.CG meanings (${fired.length} renames, row ids preserved)`)
@@ -1014,86 +1006,6 @@ export async function seedBenchmarks(prisma: PrismaClient): Promise<void> {
     }
   }
 
-  // ── Seed default accommodations ───────────────────────────────────────
-  //
-  // ⚠ A description here is a PROMISE TO A TEACHER READING AN IEP. If the code
-  // does not do what the text says, a teacher grants the support, believes it
-  // took effect, and the student does not get it. Several entries below were in
-  // exactly that state until 2026-08-07/08; each is now either implemented or
-  // described accurately, and `src/lib/accommodations/registry.ts` records which
-  // is which. Do not add an aspirational description — describe what ships, and
-  // add a matching registry entry (a test fails if the two lists disagree).
-  const accommodations = [
-    {
-      code: 'ACC-EXT-TIME',
-      name: 'Extended Time',
-      // Not implemented, and deliberately so: there is nothing to extend. No
-      // assessment, drill, or lesson in this platform has a time limit — no
-      // countdown, no expiry, no timed field in the schema. Every student
-      // already has unlimited time, which meets or exceeds what this
-      // accommodation asks for. Recorded so the grant appears on the student's
-      // profile for IEP documentation.
-      description:
-        'No action needed — this platform is untimed for every student. Nothing here has a time limit or countdown, so extended time is already met. Recorded for IEP documentation.',
-    },
-    { code: 'ACC-READ-ALOUD', name: 'Read-Aloud', description: 'No action needed — the read-aloud button is on every passage for every student already. Recorded for IEP documentation.' },
-    {
-      code: 'ACC-CHUNK',
-      name: 'Sentence Chunking',
-      // Implemented 2026-08-08: the toggle was always available to everyone, but
-      // that is not the same as the accommodation doing something. It now sets
-      // the starting position so the student does not have to find and press the
-      // button on every passage. Their own toggle still wins once used.
-      description:
-        'Passages open already split one sentence per line. The student can still switch it off for themselves, and that choice is remembered.',
-    },
-    { code: 'ACC-SIMPLE-LANG', name: 'Simplified Language', description: 'Defaults stimulus to reading-load level 1 where available.' },
-    {
-      code: 'ACC-T2-VOCAB',
-      name: 'Tier-2 Vocabulary Popovers Always On',
-      // Implemented 2026-08-08. Levels 1 and 2 already gloss tier-2 words for
-      // everyone, so the only state this can change is level 3 — the raw source
-      // passage, which deliberately carries no scaffolding. Tier-3 civics terms
-      // stay hidden there; this grant is scoped to academic vocabulary.
-      description:
-        'Academic (tier-2) vocabulary keeps its tap-for-definition underline even on original-source passages, which normally carry no glossary help at all.',
-    },
-    {
-      code: 'ACC-REDUCED-CHOICES',
-      name: 'Reduced Answer Choices',
-      description:
-        'Serves 3 answer choices instead of 4 on Practice, Pre-Check, Word Builder, and Unit Review. Never on the Mastery Challenge, Readiness Check, or Republic Challenge — changing the odds of a guess there would change what mastery means.',
-    },
-    { code: 'ACC-BREAKS', name: 'Frequent Breaks', description: 'Auto-suggests a pause every 10 minutes across all sessions.' },
-    {
-      code: 'ACC-SCREEN-READER',
-      name: 'Screen Reader Optimized',
-      // Not a per-student toggle and should never have been one: ARIA labelling
-      // and tab order are properties of the whole application, applied to every
-      // page for every student. There is no code that could key off this grant
-      // without implying the app is less accessible when it is absent.
-      description:
-        'No action needed — ARIA labelling and keyboard tab order apply to every page for every student, not per account. Recorded for IEP documentation. Note that manual screen-reader testing is still outstanding (see the district packet, §9.3).',
-    },
-    { code: 'ACC-HIGH-CONTRAST', name: 'High Contrast Mode', description: 'Switches the color palette to a high-contrast scheme.' },
-    { code: 'ACC-LARGE-TEXT', name: 'Large Text', description: 'Bumps the base font size; layout reflows.' },
-    { code: 'ACC-CONTEXT-BOOST', name: 'Background Context Cards', description: 'Optional 30-60s context cards before unfamiliar references. (Cards wired in a later phase.)' },
-    { code: 'ELL', name: 'English Language Learner', description: 'Defaults stimulus content to reading-load level 1 for practice. Tier-2 glossary and sentence-chunking enabled by default.' },
-    { code: 'BELOW-GRADE-READER', name: 'Below-Grade Reader', description: 'Defaults stimulus content to reading-load level 1. Read-aloud and sentence-chunking enabled by default.' },
-    // Phase 16: L1 gloss accommodations (Appendix G). Resolve to a gloss language
-    // in src/lib/l1-glosses; honored alongside the student's l1_language field.
-    { code: 'ACC-L1-SPANISH', name: 'Spanish Glosses', description: 'Tier-3 civics terms display an approved Spanish gloss on hover/tap.' },
-    { code: 'ACC-L1-CREOLE', name: 'Haitian Creole Glosses', description: 'Tier-3 civics terms display an approved Haitian Creole gloss on hover/tap.' },
-  ]
-  for (const acc of accommodations) {
-    await prisma.accommodation.upsert({
-      where: { code: acc.code },
-      create: acc,
-      update: { name: acc.name, description: acc.description },
-    })
-  }
-
   console.log(`  ✓ Units seeded (${UNITS.length} total)`)
   console.log(`  ✓ Benchmarks seeded (${benchmarkCount} across the full SS.7.CG course)`)
-  console.log(`  ✓ Accommodations seeded (${accommodations.length})`)
 }

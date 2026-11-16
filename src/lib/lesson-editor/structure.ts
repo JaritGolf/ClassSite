@@ -113,20 +113,17 @@ export async function addLessonStep(
   })
 }
 
-/** How many students currently have their resume pointer on this step — for
- * a confirm-dialog warning before a destructive delete. */
-export async function countAffectedStudentProgress(lessonStepId: string): Promise<number> {
-  return prisma.studentProgress.count({ where: { currentStepId: lessonStepId } })
-}
-
-/** Remove a step. Nulls any StudentProgress.currentStepId pointing at it
- * BEFORE deleting (mirrors the existing reseed precedent that already nulls
- * resume pointers when step positions shift), then renumbers later
- * siblings. */
+/**
+ * Remove a step and renumber later siblings.
+ *
+ * A student's place in a lesson is saved on their own device by step id; if
+ * that step is gone, the mission falls back to the saved position. There is
+ * no server-side resume pointer to clear.
+ */
 export async function removeLessonStep(
   actorUserId: string,
   lessonStepId: string
-): Promise<{ nulledProgressCount: number }> {
+): Promise<void> {
   const step = await prisma.lessonStep.findUnique({
     where: { id: lessonStepId },
     select: { id: true, lessonId: true, stepType: true, title: true, sequenceOrder: true },
@@ -136,11 +133,6 @@ export async function removeLessonStep(
   }
 
   return prisma.$transaction(async (tx) => {
-    const { count: nulledProgressCount } = await tx.studentProgress.updateMany({
-      where: { currentStepId: lessonStepId },
-      data: { currentStepId: null },
-    })
-
     await tx.lessonStep.delete({ where: { id: lessonStepId } })
 
     await tx.lessonStep.updateMany({
@@ -164,12 +156,10 @@ export async function removeLessonStep(
           stepType: step.stepType,
           title: step.title,
           sequenceOrder: step.sequenceOrder,
-          nulledProgressCount,
         },
       },
     })
 
-    return { nulledProgressCount }
   })
 }
 

@@ -5,7 +5,7 @@
  * (ADR 0023). Built-in content is never touched.
  *
  * NOTE the explicit assertNotSubMode() below. src/middleware.ts's matcher
- * covers /student, /teacher, /parent and /admin — NOT /api — so the
+ * covers /teacher and /admin — NOT /api — so the
  * substitute-mode write gate does not apply to API routes automatically. Every
  * mutating route has to call it itself.
  */

@@ -2,7 +2,7 @@
  * Integration — Lesson structure editing (admin-only add/remove/reorder).
  *
  * Covers: sequenceOrder renumbering on add/remove/reorder, resume-pointer
- * safety on delete (StudentProgress.currentStepId nulled, no FK violation),
+ * clean delete + renumber,
  * reorder rejecting a payload that isn't exactly the current step-id set,
  * and Lesson.structureEditedAt being set by every structural op (the flag
  * the seed guard checks — see the seed-guard regression suite).
@@ -15,7 +15,6 @@ import {
   addLessonStep,
   removeLessonStep,
   reorderLessonSteps,
-  countAffectedStudentProgress,
   LessonStructureError,
 } from '@/lib/lesson-editor'
 import { seedLessonDefs, lessonIdFor, type LessonSeedDef } from '../../seed/lessons/_seeder'
@@ -27,7 +26,6 @@ const TEST_BENCHMARK_CODE = 'TEST.LSE.1'
 const ACTOR_ID_PREFIX = 'test-lse-actor'
 
 let actorUserId: string
-let studentId: string
 
 const testLessonDef = (): LessonSeedDef => ({
   benchmarkCode: TEST_BENCHMARK_CODE,
@@ -43,16 +41,13 @@ const testLessonDef = (): LessonSeedDef => ({
 
 async function cleanup() {
   const lessonId = lessonIdFor(TEST_BENCHMARK_CODE)
-  await prisma.studentProgress.deleteMany({ where: { benchmark: { code: TEST_BENCHMARK_CODE } } })
   await prisma.classLessonStepVisibility.deleteMany({ where: { lessonStep: { lessonId } } })
   await prisma.lessonStep.deleteMany({ where: { lessonId } })
   await prisma.lesson.deleteMany({ where: { id: lessonId } })
   await prisma.benchmark.deleteMany({ where: { code: TEST_BENCHMARK_CODE } })
-  const users = await prisma.user.findMany({ where: { cleverId: { startsWith: PREFIX } }, select: { id: true } })
+  const users = await prisma.user.findMany({ where: { email: { startsWith: PREFIX } }, select: { id: true } })
   const userIds = users.map((u) => u.id)
   await prisma.auditLog.deleteMany({ where: { actorUserId: { in: userIds } } })
-  const students = await prisma.student.findMany({ where: { userId: { in: userIds } }, select: { id: true } })
-  await prisma.student.deleteMany({ where: { id: { in: students.map((s) => s.id) } } })
   await prisma.user.deleteMany({ where: { id: { in: userIds } } })
 }
 
@@ -75,10 +70,10 @@ beforeAll(async () => {
   benchmarkId = benchmark.id
 
   const actor = await prisma.user.upsert({
-    where: { cleverId: `${ACTOR_ID_PREFIX}` },
+    where: { email: `${ACTOR_ID_PREFIX}` },
     update: {},
     create: {
-      cleverId: ACTOR_ID_PREFIX,
+      email: ACTOR_ID_PREFIX,
       firstName: 'Lse',
       lastName: 'Admin',
       role: 'ADMIN',
@@ -86,24 +81,6 @@ beforeAll(async () => {
     },
   })
   actorUserId = actor.id
-
-  const studentUser = await prisma.user.upsert({
-    where: { cleverId: `${PREFIX}student` },
-    update: {},
-    create: {
-      cleverId: `${PREFIX}student`,
-      firstName: 'Lse',
-      lastName: 'Student',
-      role: 'STUDENT',
-      status: 'ACTIVE',
-    },
-  })
-  const student = await prisma.student.upsert({
-    where: { userId: studentUser.id },
-    update: {},
-    create: { userId: studentUser.id, gradeLevel: 7 },
-  })
-  studentId = student.id
 })
 
 afterAll(async () => {
@@ -113,7 +90,6 @@ afterAll(async () => {
 
 beforeEach(async () => {
   const lessonId = lessonIdFor(TEST_BENCHMARK_CODE)
-  await prisma.studentProgress.deleteMany({ where: { benchmarkId } })
   await prisma.lessonStep.deleteMany({ where: { lessonId } })
   await prisma.lesson.deleteMany({ where: { id: lessonId } })
   await seedLessonDefs(prisma, [testLessonDef()], { approvalStatus: 'DRAFT' })
@@ -182,24 +158,12 @@ describe('removeLessonStep', () => {
     expect(after.map((s) => s.sequenceOrder)).toEqual([1, 2])
   })
 
-  it('nulls a resume pointer on the removed step before deleting it (no FK violation)', async () => {
+  it('deletes a middle step cleanly and writes an audit row', async () => {
     const steps = await orderedSteps()
-    await prisma.studentProgress.create({
-      data: { studentId, benchmarkId, currentStepId: steps[1].id },
-    })
-
-    const result = await removeLessonStep(actorUserId, steps[1].id)
-    expect(result.nulledProgressCount).toBe(1)
-
-    const progress = await prisma.studentProgress.findUniqueOrThrow({
-      where: { studentId_benchmarkId: { studentId, benchmarkId } },
-    })
-    expect(progress.currentStepId).toBeNull()
-  })
-
-  it('reports zero affected students via countAffectedStudentProgress when none point at the step', async () => {
-    const steps = await orderedSteps()
-    expect(await countAffectedStudentProgress(steps[2].id)).toBe(0)
+    const auditBefore = await prisma.auditLog.count({ where: { actorUserId } })
+    await removeLessonStep(actorUserId, steps[1].id)
+    expect((await orderedSteps()).map((s) => s.title)).toEqual(['Step one', 'Step three'])
+    expect(await prisma.auditLog.count({ where: { actorUserId } })).toBe(auditBefore + 1)
   })
 })
 
@@ -214,17 +178,10 @@ describe('reorderLessonSteps', () => {
     expect(after.map((s) => s.sequenceOrder)).toEqual([1, 2, 3])
   })
 
-  it('never touches resume pointers — the row identity is unchanged', async () => {
+  it('keeps every step id — a place saved by id on a student device still resolves', async () => {
     const steps = await orderedSteps()
-    await prisma.studentProgress.create({
-      data: { studentId, benchmarkId, currentStepId: steps[0].id },
-    })
     await reorderLessonSteps(actorUserId, steps[0].lessonId, [steps[2].id, steps[1].id, steps[0].id])
-
-    const progress = await prisma.studentProgress.findUniqueOrThrow({
-      where: { studentId_benchmarkId: { studentId, benchmarkId } },
-    })
-    expect(progress.currentStepId).toBe(steps[0].id)
+    expect(new Set((await orderedSteps()).map((s) => s.id))).toEqual(new Set(steps.map((s) => s.id)))
   })
 
   it('rejects a payload that is not exactly the current step-id set (missing an id)', async () => {

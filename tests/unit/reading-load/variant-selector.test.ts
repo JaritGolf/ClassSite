@@ -7,10 +7,8 @@
 
 import {
   selectVariantContent,
-  resolveAccommodationLevel,
   buildGlossaryAnnotations,
   filterQuestionsForMastery,
-  LEVEL_1_ACCOMMODATION_CODES,
   type StimulusLike,
   type GlossaryTerm,
 } from '@/lib/reading-load'
@@ -100,60 +98,6 @@ describe('selectVariantContent', () => {
     const stimulus: StimulusLike = { content: 'Base.', readingLoadLevel: 2, variants: [] }
     const result = selectVariantContent(stimulus, 1)
     expect(result.resolvedLevel).toBe(2) // base stimulus level, not requested level
-  })
-})
-
-// ── resolveAccommodationLevel ─────────────────────────────────────────────
-
-describe('resolveAccommodationLevel', () => {
-  it('ACC-SIMPLE-LANG forces level to 1 for practice', () => {
-    expect(resolveAccommodationLevel(['ACC-SIMPLE-LANG'], 2, false)).toBe(1)
-  })
-
-  it('ELL forces level to 1 for practice', () => {
-    expect(resolveAccommodationLevel(['ELL'], 2, false)).toBe(1)
-  })
-
-  it('BELOW-GRADE-READER forces level to 1 for practice', () => {
-    expect(resolveAccommodationLevel(['BELOW-GRADE-READER'], 3, false)).toBe(1)
-  })
-
-  it('accommodation does NOT override mastery challenge level', () => {
-    expect(resolveAccommodationLevel(['ELL'], 2, true)).toBe(2)
-    expect(resolveAccommodationLevel(['ACC-SIMPLE-LANG'], 3, true)).toBe(3)
-  })
-
-  it('no accommodation codes → returns requestedLevel unchanged', () => {
-    expect(resolveAccommodationLevel([], 2, false)).toBe(2)
-    expect(resolveAccommodationLevel([], 3, false)).toBe(3)
-  })
-
-  it('unknown accommodation code does not trigger level-1 override', () => {
-    expect(resolveAccommodationLevel(['OTHER-CODE', 'SOME-OTHER'], 2, false)).toBe(2)
-  })
-
-  it('mixed codes: only one level-1 code is enough to trigger override', () => {
-    expect(resolveAccommodationLevel(['SOME-CODE', 'ELL', 'OTHER'], 2, false)).toBe(1)
-  })
-})
-
-// ── LEVEL_1_ACCOMMODATION_CODES set ───────────────────────────────────────
-
-describe('LEVEL_1_ACCOMMODATION_CODES', () => {
-  it('contains ACC-SIMPLE-LANG', () => {
-    expect(LEVEL_1_ACCOMMODATION_CODES.has('ACC-SIMPLE-LANG')).toBe(true)
-  })
-
-  it('contains ELL', () => {
-    expect(LEVEL_1_ACCOMMODATION_CODES.has('ELL')).toBe(true)
-  })
-
-  it('contains BELOW-GRADE-READER', () => {
-    expect(LEVEL_1_ACCOMMODATION_CODES.has('BELOW-GRADE-READER')).toBe(true)
-  })
-
-  it('does not contain arbitrary codes', () => {
-    expect(LEVEL_1_ACCOMMODATION_CODES.has('UNKNOWN')).toBe(false)
   })
 })
 

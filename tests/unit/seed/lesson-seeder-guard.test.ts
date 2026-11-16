@@ -64,7 +64,7 @@ async function cleanupBenchmark(code: string) {
 async function cleanup() {
   await cleanupBenchmark(TEST_BENCHMARK_CODE)
   await cleanupBenchmark(NEVER_SEEDED_BENCHMARK_CODE)
-  const users = await prisma.user.findMany({ where: { cleverId: { startsWith: PREFIX } }, select: { id: true } })
+  const users = await prisma.user.findMany({ where: { email: { startsWith: PREFIX } }, select: { id: true } })
   const userIds = users.map((u) => u.id)
   await prisma.auditLog.deleteMany({ where: { actorUserId: { in: userIds } } })
   await prisma.user.deleteMany({ where: { id: { in: userIds } } })
@@ -95,9 +95,9 @@ beforeAll(async () => {
   })
 
   const actor = await prisma.user.upsert({
-    where: { cleverId: ACTOR_ID_PREFIX },
+    where: { email: ACTOR_ID_PREFIX },
     update: {},
-    create: { cleverId: ACTOR_ID_PREFIX, firstName: 'Lsg', lastName: 'Admin', role: 'ADMIN', status: 'ACTIVE' },
+    create: { email: ACTOR_ID_PREFIX, firstName: 'Lsg', lastName: 'Admin', role: 'ADMIN', status: 'ACTIVE' },
   })
   actorUserId = actor.id
 })

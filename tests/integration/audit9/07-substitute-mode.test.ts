@@ -24,8 +24,8 @@ let teacherUserId: string
 
 beforeAll(async () => {
   const teacherUser = await prisma.user.upsert({
-    where: { cleverId: T_CLEVERID },
-    create: { cleverId: T_CLEVERID, email: `${T_CLEVERID}@test.invalid`, firstName: 'Audit907', lastName: 'Teacher', role: 'TEACHER' },
+    where: { email: T_CLEVERID },
+    create: { email: T_CLEVERID, firstName: 'Audit907', lastName: 'Teacher', role: 'TEACHER' },
     update: {},
     select: { id: true },
   })
@@ -36,7 +36,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await prisma.auditLog.deleteMany({ where: { actorUserId: teacherUserId, action: 'SUB_MODE_TOGGLE' } })
   await prisma.teacher.deleteMany({ where: { userId: teacherUserId } })
-  await prisma.user.deleteMany({ where: { cleverId: T_CLEVERID } })
+  await prisma.user.deleteMany({ where: { email: T_CLEVERID } })
   await prisma.$disconnect()
 })
 
