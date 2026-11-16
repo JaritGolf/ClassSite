@@ -10,7 +10,9 @@ My Civics Class is a Florida 7th Grade Civics mastery-learning platform with an 
 
 The product was renamed from "Civics Quest" to "My Civics Class" on 2026-08-03. The game framing ("Build the Republic", Republic Challenge, Mission Map, the Founder mascot) was deliberately KEPT. Some internal identifiers still carry the old name on purpose — the `.cq-*` accessibility CSS classes, the `cq_sub_mode` cookie, the `civics-quest:sentence-chunking` and `cq:mission:*` localStorage keys, the local `civics_quest_dev` database, and the `civics_quest_v3_build_spec.md` filename. Do not "fix" these: renaming them resets saved student state or breaks local dev for no user-visible gain.
 
-Target users: 7th grade students, classroom teachers, parents/guardians, district admins.
+Target users: 7th grade students and their classroom teacher.
+
+**As of 2026-11-16 (branch `no-student-data`, ADR 0026) the platform holds no student data.** Students have no accounts; their progress lives in their own browser. Teachers no longer get an LMS with analytics — they get lesson authoring and a completion-code checker. Anything below this file's "Current Build Phase" heading that describes rosters, parent portals, accommodations, activity tracking or student analytics is **history**, kept for context; that code and those tables are gone.
 
 District context: Palm Beach County School District. Significant Spanish-speaking and Haitian Creole-speaking populations.
 
@@ -20,22 +22,28 @@ The build specification is `civics_quest_v3_build_spec.md` at repo root. **When 
 
 If you find this file and the spec in conflict, the spec is correct and this file should be updated.
 
+**One exception (2026-11-16):** on anything about student accounts, sign-in, where mastery state lives, accommodations, parents, rosters or analytics, the spec describes the previous design. For those topics the Non-Negotiable Rules below and `docs/adrs/0026-no-student-data.md` are correct, and the spec has not yet been revised to match.
+
 ---
 
 ## Non-Negotiable Rules
 
 These are decided. Do not relitigate them mid-build. If you think one of them is wrong, stop and surface the concern before acting.
 
-1. **Server-side grading only.** All grading and unlock decisions happen server-side. The client is never trusted. Tampered client payloads must be detected and rejected.
-2. **Answer keys never leak.** Question option keys must never appear in API responses to a student before submission of a secure assessment.
+Rules 0, 1, 8 and 10 were rewritten on 2026-11-16 for the **no-student-data build** (ADR 0026, owner-approved). They deliberately replace the earlier rules requiring Clever-first SSO, server-side mastery state, and accommodations as profile attributes.
+
+0. **The server never receives or stores anything about a student.** No student accounts, no sign-in, no class code, no nickname, no cookie and no identifier of any kind — and no per-student rows, including coded or pseudonymous ones (a coded row whose key the teacher holds is still linkable student information). The database holds curriculum content and the teacher account only. Progress lives in the student's browser (`src/lib/local-progress`) with export/import to a file. `tests/unit/guards/no-student-data.test.ts` enforces this; if it fails, do not edit the test to make it pass — stop and surface it.
+1. **Grading is server-side and stateless.** Whether an answer is right, the score, and whether the threshold was met are computed on the server from the database answer key; nothing of the kind is accepted from the client. The grading routes read no session and write nothing. What the server *cannot* do is remember: unlock, off-ramp, form rotation and SM-2 scheduling are applied on the device from server-graded results.
+2. **Answer keys never leak.** Question option keys must never appear in API responses to a student before submission. Mastery Challenge questions are never graded one at a time and never appear in practice, drill or Republic Challenge pools.
 3. **Every question must be fully tagged.** Required tags: benchmark, reporting_category, cognitive_complexity, stimulus_type, reading_load_level, skill_tag, misconception_id, remediation_tag, source_tier, approval_status. Untagged content does not ship.
 4. **Mastery threshold is 80%.** Off-ramp triggers after 3 failed attempts plus completed remediation plus 7 days elapsed. Off-ramp is not failure — it unlocks next benchmark and increases spaced review frequency.
-5. **Spaced repetition uses SM-2.** Do not substitute FSRS or other algorithms. The mapping from (correctness × confidence) to SM-2 quality is in spec Section 15.2.
+5. **Spaced repetition uses SM-2.** Do not substitute FSRS or other algorithms. The mapping from (correctness × confidence) to SM-2 quality is in spec Section 15.2. The algorithm runs on the student's device.
 6. **Confidence ratings required on Mastery Challenges, Republic Challenge, and Daily Republic Drill.** Three-level scale: "Not sure" / "Pretty sure" / "Very sure." No percentages or numerical scales for 7th graders.
-7. **Build in phase order, gated by a tiered audit (ADR 0006).** Run the audit checkpoint at each phase boundary (spec Section 36) under the **tiered verification model**: **Tier 1 (`tsc --noEmit` + jest unit) and Tier 2 (jest integration) are BLOCKING** — they are the code-correctness gate and must be genuinely green to tag a phase. **Tier 3 (`next build`, axe e2e, manual a11y/VoiceOver) is NON-BLOCKING** — tracked in `docs/audits/deferred/phase-N.md` and cleared asynchronously with owner sign-off; it does NOT freeze the start of Phase N+1. If a tier that you cannot run in the current environment blocks progress, record it honestly in the deferred ledger and proceed — never tag a tier "passed" that did not actually run. If a Phase N-1 audit failure surfaces during Phase N, stop and report.
-8. **PostgreSQL only** (SQLite acceptable only for local prototype). Clever-first SSO, Google fallback. Mock auth for dev only — never in production.
-9. **No third-party analytics or telemetry on student data.** No PII in URL parameters or query strings. Encrypt in transit (TLS 1.2+).
-10. **Accessibility is a first-class requirement, not polish.** Read-aloud, sentence chunking, tier-2 vocabulary popovers ship in MVP. WCAG 2.1 AA target. Accommodations are profile attributes that flow through every assessment.
+7. **Build in phase order, gated by a tiered audit (ADR 0006).** **Tier 1 (`tsc --noEmit` + jest unit) and Tier 2 (jest integration) are BLOCKING.** **Tier 3 (`next build`, axe e2e, manual a11y/VoiceOver) is NON-BLOCKING** — tracked in `docs/audits/deferred/` and cleared asynchronously with owner sign-off. Never tag a tier "passed" that did not actually run.
+8. **PostgreSQL only. Google sign-in for the teacher/admin only**, restricted to `TEACHER_ALLOWED_EMAILS`, which is mandatory and fails closed (unset = nobody can sign in). It is a list of addresses, never a domain: a district domain is shared by every student. There is no Clever, no student sign-in, and no mock or demo login of any kind.
+9. **No third-party analytics or telemetry.** No PII in URL parameters or query strings. Encrypt in transit (TLS 1.2+).
+10. **Accessibility is a first-class requirement, not polish.** Read-aloud, sentence chunking, tier-2 vocabulary popovers, high contrast, large text and extra time ship as options **any student can switch on**, saved on the device with no labels. The Spanish / Haitian Creole glossary is chosen by the student on the device. WCAG 2.1 AA target. There are no per-student accommodation records and nothing is granted by a teacher.
+11. **Completion codes carry no identity.** A code is an HMAC (`SESSION_SECRET`) over benchmark + score + date. It proves a mission was mastered, not by whom. The teacher "Check codes" page validates and stores nothing.
 
 ---
 
@@ -65,9 +73,10 @@ Switch with `/model` mid-session as appropriate.
 ### Stop and Ask Before
 
 - Adding any new external paid service or SaaS dependency.
-- Deviating from PostgreSQL or the auth provider order.
+- Deviating from PostgreSQL, or adding any sign-in path other than the allowlisted teacher Google sign-in.
 - Introducing third-party state-management libraries beyond what comes with Next.js.
-- Adding analytics or telemetry that transmits any student data outside this app's database.
+- Adding analytics or telemetry of any kind.
+- **Anything that would make the server receive, derive or store information about a student** — a new student-facing route that writes, a session or cookie on a student page, a per-student or per-device identifier, a model or column about a student, or a free-text field a student could type a name into.
 - Touching anything labeled "Phase X" before phase X-1 audit has passed.
 - Schema decisions affecting existing data.
 - Anything that touches accessibility, accommodations, or privacy.
@@ -90,15 +99,16 @@ Conventional commits with phase reference: `feat(phase-5): implement SM-2 schedu
 
 ### Known Pitfalls (Do Not Repeat)
 
-- Do not use client-side mastery calculation. Server-side only.
-- Do not include `is_correct` in the question options API response when serving secure assessments.
-- Do not skip `due_at` indexing on `spaced_review_state` — the daily drill query must be fast.
-- Do not reset SM-2 state on Mastery Challenge re-attempts; only the daily review and calibration logic update SM-2 state.
-- Do not auto-apply EOC calibration weight changes — admin approval required.
-- Do not include third-party analytics scripts that transmit student data.
+- Do not accept `isCorrect`, a score, or a pass/fail from the client. The device records results; the server decides them.
+- Do not include `is_correct` or option feedback in any response sent before submission. Build served objects field by field, never with a spread.
+- Do not add a student-facing route outside the list in `tests/unit/guards/no-student-data.test.ts`, and do not let one import a module that writes to the database (split read-only helpers out, as `lesson-media/read.ts` does).
+- Do not put a session provider, `cookies()`, or `headers()` anywhere a student page can reach. A root-layout `SessionProvider` once called `/api/auth/session` and set auth cookies on every student page; only a browser walk caught it.
+- Do not reset SM-2 state on Mastery Challenge re-attempts; only the Daily Drill updates it.
 - Do not use timer-based UI patterns that punish students for absences (use freeze tokens).
-- Do not display public individual score leaderboards.
-- Do not expose item-level distractor analysis to parents.
+- Do not display leaderboards.
+- Do not rename the localStorage keys `mcc:progress:v1` or `civics-quest:sentence-chunking` — that silently erases students' saved progress or preferences.
+- Do not change `SESSION_SECRET` casually: it signs completion codes, and codes issued under the old value stop verifying.
+- The migration `20261116120000_no_student_data` is destructive and has no down path. Never run it against a database without the owner's explicit go-ahead.
 
 ---
 
@@ -149,6 +159,13 @@ Maintain this layout. Files in `src/lib/` are domain modules; cross-module impor
 ---
 
 ## Current Build Phase
+
+**NO-STUDENT-DATA BUILD (2026-11-16, ADR 0026, branch `no-student-data`) — Tier 1 `tsc` GREEN + Tier 2 jest GREEN + in-browser verification.**
+The district informally refused the platform because it collects student data. Owner-approved plan: a build in which the server never receives or stores anything about a student, so there is no student data for a privacy agreement to cover. **This is a rewrite of the student area, not a flag flip** — 228 files referenced a student identity on `main`.
+What shipped: (1) `/student/**` is public; Clever and the mock/demo login are deleted; Google sign-in is teacher-only behind a mandatory, fail-closed `TEACHER_ALLOWED_EMAILS`. (2) `src/lib/local-progress/` — a localStorage store plus pure rules for mastery, unlock, off-ramp, form rotation, remediation, SM-2, badges, streaks and next-step guidance, with export/import to a file. (3) Stateless grading: `/api/assessment/[id]/start|submit`, `/api/practice/*`, `/api/drill/items`, `/api/republic-challenge/*`, `/api/strategy/*/attempt` read no session and write nothing. The readiness→mastery gate survives as a signed token; Republic Challenge sessions are bound by a signed token so only a server-issued question set can be graded. (4) Signed completion codes + `/teacher/check-codes`. (5) Every student mode ported. (6) Parent portal, rosters, reports, accommodations, activity sessions, suggestions, EOC score import and calibration, overrides, retention purge and Focus Mode deleted. (7) One migration drops 35 models; **27 remain**. (8) Guard tests, mutation-tested.
+**Not done / owner actions:** the migration has been run on **local and test databases only**; production still holds its earlier demo data and still needs `TEACHER_ALLOWED_EMAILS` set before anyone can sign in. The older docs under `docs/` (approval packet, data retention, parent identity, OAuth scopes, hosting plan, TCH documents) describe the previous design and are marked superseded, not rewritten. `civics_quest_v3_build_spec.md` has **not** been updated and now conflicts with this file on auth, mastery state, accommodations, parents and analytics — for those topics this file and ADR 0026 win.
+
+---
 
 **ACCOMMODATION ENFORCEMENT — EVERY CODE IS NOW IMPLEMENTED OR HONESTLY LABELLED (2026-08-08,
 ADR 0025) — Tier 1 `tsc` GREEN (0 errors, 9.1s) + Tier 2 jest GREEN (186/186 suites, 2,137

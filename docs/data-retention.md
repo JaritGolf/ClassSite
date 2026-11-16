@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. There is no student data left to retain or purge; the retention windows and purge tools it describes were removed. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # My Civics Class — Data Retention Policy (Phase 17)
 
 > Audit §36.18 item 8. The retention policy is **configurable** via environment variables and

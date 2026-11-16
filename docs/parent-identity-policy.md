@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. The parent portal was removed; there are no parent accounts. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # Parent Identity-Verification Policy (Phase 18)
 
 > Audit §36.19 item 1 / spec §37. This is the **configurable district gate** for parent

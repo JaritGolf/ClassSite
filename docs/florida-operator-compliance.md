@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. It analyses duties that attach to student data the app no longer holds. It has not been re-reviewed for this build. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # Florida SOPIPA — Operator Compliance Mapping
 
 > Fla. Stat. **§ 1006.1494**, Student Online Personal Information Protection (ch. 2023-170,

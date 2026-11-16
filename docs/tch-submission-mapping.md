@@ -1,3 +1,5 @@
+> **SUPERSEDED (2026-11-16).** This document describes the build before the no-student-data change (ADR 0026) and has not been rewritten. It maps the previous, data-collecting build to the district form. For what the app holds now, read `docs/privacy-review.md` and `docs/no-student-data-fact-sheet.md`.
+
 # Technology Clearinghouse Submission — Mapping
 
 > ## ⚠️ PREPARED, NOT FILED.
